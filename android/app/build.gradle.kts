@@ -13,7 +13,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        ///////////////////////////////////////////////////////////////
         isCoreLibraryDesugaringEnabled = true
+        //^needed to run Gradle, added as well
+        ///////////////////////////////////////////////////////////////
     }
 
     kotlinOptions {
@@ -42,9 +45,11 @@ android {
     }
 }
 
+///////////////////////////////////////////////////////////////
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
-}
+} // ^needed, which is why it is added as 'true' in compileOptions
+///////////////////////////////////////////////////////////////
 
 flutter {
     source = "../.."
