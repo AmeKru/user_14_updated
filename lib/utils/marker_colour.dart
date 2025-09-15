@@ -1,8 +1,15 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
-Color getMarkerColor(String markerName, int currentValue) {
+//////////////////////////////////////////////////////////////
+// Returns a [Color] for a map marker based on:
+// - The marker's name (`markerName`)
+// - The current value (`currentValue`)
+// - Whether dark mode is enabled (`darkMode`)
+//
+// Certain marker names combined with specific `currentValue`s
+// will be highlighted in RED, if not then they are by default BLUE
+
+Color getMarkerColor(String markerName, int currentValue, bool darkMode) {
   if (markerName == "ENT" && currentValue == 2) {
     return Colors.red;
   } else if (markerName == "B23" && currentValue == 3) {
@@ -24,6 +31,9 @@ Color getMarkerColor(String markerName, int currentValue) {
   } else if (markerName == "B72" && currentValue == 11) {
     return Colors.red;
   }
-  // Default color for all other cases
+
+  if (darkMode == true) {
+    return Colors.cyanAccent[100]!;
+  }
   return Colors.blue[900]!;
 }

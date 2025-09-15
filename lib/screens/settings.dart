@@ -34,22 +34,39 @@ class _SettingsState extends State<Settings> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Settings', style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
-        backgroundColor: isDarkMode ? Colors.lightBlue[600] : Colors.lightBlue[100],
+        title: Text(
+          'Settings',
+          style: TextStyle(
+            color: isDarkMode ? Colors.green[300] : Colors.white,
+            fontSize: 25,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: isDarkMode ? Colors.blueGrey[800] : Colors.green[300],
       ),
-      backgroundColor: isDarkMode ? Colors.lightBlue[900] : Colors.white,
+      backgroundColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
       body: Padding(
         padding: EdgeInsets.fromLTRB(10, 10, 0, 10),
         child: Row(
           children: [
-            Text('Light Mode', style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
+            Text(
+              'Light Mode',
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+            ),
             Switch(
               value: isDarkMode,
               onChanged: (value) {
                 toggleTheme(value);
               },
+              activeThumbColor: Colors.green, // Thumb color when ON
+              activeTrackColor: Colors.green[200], // Track color when ON
+              inactiveThumbColor: Colors.grey, // Thumb color when OFF
+              inactiveTrackColor: Colors.grey[200], // Track color when OFF
             ),
-            Text('Dark Mode', style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
+            Text(
+              'Dark Mode',
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+            ),
           ],
         ),
       ),

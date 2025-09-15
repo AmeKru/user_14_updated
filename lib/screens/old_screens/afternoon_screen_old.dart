@@ -6,28 +6,28 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:user_14_updated/amplifyconfiguration.dart';
-import 'package:user_14_updated/data/getData.dart';
+import 'package:user_14_updated/data/get_data.dart';
 import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/models/ModelProvider.dart';
-import 'package:user_14_updated/services/bookingConfirmation.dart';
-import 'package:user_14_updated/services/bookingService.dart';
-import 'package:user_14_updated/services/sharedPreference.dart';
-import 'package:user_14_updated/utils/styling.dart';
-import 'package:user_14_updated/utils/textStyles.dart';
+import 'package:user_14_updated/models/model_provider.dart';
+import 'package:user_14_updated/services/booking_confirmation.dart';
+import 'package:user_14_updated/services/booking_service.dart';
+import 'package:user_14_updated/services/shared_preference.dart';
+import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
+import 'package:user_14_updated/utils/text_styles_booking_confirmation.dart';
 import 'package:uuid/uuid.dart';
 
-class Afternoon_Screen extends StatefulWidget {
+class AfternoonScreen extends StatefulWidget {
   final Function(int) updateSelectedBox;
   static int eveningService = 15;
   final bool isDarkMode;
 
-  Afternoon_Screen({required this.updateSelectedBox, required this.isDarkMode});
+  AfternoonScreen({required this.updateSelectedBox, required this.isDarkMode});
 
   @override
-  _Afternoon_ScreenState createState() => _Afternoon_ScreenState();
+  _AfternoonScreenState createState() => _AfternoonScreenState();
 }
 
-class _Afternoon_ScreenState extends State<Afternoon_Screen> {
+class _AfternoonScreenState extends State<AfternoonScreen> {
   int selectedBox = 0; // Default to no selection
   int? bookedTripIndexKAP;
   int? bookedTripIndexCLE;
@@ -457,6 +457,7 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                       '${selectedBox == 1 ? bookedTripIndexKAP! + 1 : bookedTripIndexCLE! + 1}',
                   // size: 0.15,
                   size: 0.30,
+                  darkText: true,
                 ),
                 BookingConfirmationText(
                   label: 'Time: ',
@@ -464,18 +465,21 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                       '${formatTime(getDepartureTimes()[selectedBox == 1 ? bookedTripIndexKAP! : bookedTripIndexCLE!])}',
                   // size: 0.31,
                   size: 0.30,
+                  darkText: true,
                 ),
                 BookingConfirmationText(
                   label: 'Station: ',
                   value: '${selectedBox == 1 ? 'KAP' : 'CLE'}',
                   // size: 0.26,
                   size: 0.30,
+                  darkText: true,
                 ),
                 BookingConfirmationText(
                   label: 'Bus Stop: ',
                   value: '$selectedBusStop',
                   // size: 0.23,
                   size: 0.30,
+                  darkText: true,
                 ),
               ],
             ),
@@ -533,7 +537,11 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                             updateSelectedBox(1);
                           });
                         },
-                        child: MRT_Box(box: selectedBox, MRT: 'KAP'),
+                        child: MRT_Box(
+                          box: selectedBox,
+                          MRT: 'KAP',
+                          isDarkMode: widget.isDarkMode,
+                        ),
                       ),
                     ),
                     SizedBox(width: 8),
@@ -544,7 +552,11 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                             updateSelectedBox(2);
                           });
                         },
-                        child: MRT_Box(box: selectedBox, MRT: 'CLE'),
+                        child: MRT_Box(
+                          box: selectedBox,
+                          MRT: 'CLE',
+                          isDarkMode: widget.isDarkMode,
+                        ),
                       ),
                     ),
                   ],
@@ -567,6 +579,7 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                       isDarkMode: widget.isDarkMode,
                       showBusStopSelectionBottomSheet:
                           showBusStopSelectionBottomSheet,
+                      selectedBusStop: selectedStation,
                       onPressedConfirm: () {
                         setState(() {
                           confirmationPressed = true;
@@ -589,7 +602,7 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                       bookedTripIndexKAP: data['bookedTripIndexKAP'],
                       bookedTripIndexCLE: data['bookedTripIndexCLE'],
                       getDepartureTimes: getDepartureTimes,
-                      BusStop: data['busStop'],
+                      busStop: data['busStop'],
                       isDarkMode: widget.isDarkMode,
                       onCancel: () {
                         setState(() {
@@ -642,7 +655,11 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                           updateSelectedBox(1);
                         });
                       }, // Update CLE
-                      child: MRT_Box(box: selectedBox, MRT: 'KAP'),
+                      child: MRT_Box(
+                        box: selectedBox,
+                        MRT: 'KAP',
+                        isDarkMode: widget.isDarkMode,
+                      ),
                     ),
                   ),
 
@@ -654,7 +671,11 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                           updateSelectedBox(2);
                         });
                       }, // Update CLE
-                      child: MRT_Box(box: selectedBox, MRT: 'CLE'),
+                      child: MRT_Box(
+                        box: selectedBox,
+                        MRT: 'CLE',
+                        isDarkMode: widget.isDarkMode,
+                      ),
                     ),
                   ),
                 ],
@@ -672,7 +693,7 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                       bookedTripIndexKAP: bookedTripIndexKAP,
                       bookedTripIndexCLE: bookedTripIndexCLE,
                       getDepartureTimes: getDepartureTimes,
-                      BusStop: selectedBusStop,
+                      busStop: selectedBusStop,
                       isDarkMode: widget.isDarkMode,
                       onCancel: () {
                         setState(() {
@@ -718,6 +739,7 @@ class _Afternoon_ScreenState extends State<Afternoon_Screen> {
                       isDarkMode: widget.isDarkMode,
                       showBusStopSelectionBottomSheet:
                           showBusStopSelectionBottomSheet,
+                      selectedBusStop: selectedStation,
                       onPressedConfirm: () {
                         setState(() {
                           confirmationPressed = true;

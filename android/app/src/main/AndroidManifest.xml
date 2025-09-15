@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    ///////////////////////////////////////////////////////////////
+    <uses-permission android:name="android.permission.INTERNET"/>
+    //^just there so emulated device has internet access
+    ///////////////////////////////////////////////////////////////
+
     <application
         android:label="user_14_updated"
         android:name="${applicationName}"

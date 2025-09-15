@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/utils/getTime.dart';
+import 'package:user_14_updated/utils/get_time.dart';
 
-class Calculate_MorningBus {
+class CalculateMorningBus {
   static Widget buildMorningETADisplay(String text, {String ETA = ''}) {
-    return Container(
+    return SizedBox(
       width: 350,
       child: Card(
         color: Colors.lightBlue[50],
@@ -30,8 +31,8 @@ class Calculate_MorningBus {
   }
 
   static Widget getMorningETA(List<DateTime> busArrivalTimes) {
-    final _timeService = TimeService();
-    DateTime currentTime = _timeService.time_now ?? DateTime.now();
+    final timeService = TimeService();
+    DateTime currentTime = timeService.timeNow ?? DateTime.now();
     currentTime = DateTime(
       currentTime.year,
       currentTime.month,
@@ -39,14 +40,19 @@ class Calculate_MorningBus {
       currentTime.hour,
       currentTime.minute,
     );
-    print('Current Time: $currentTime');
-    print('Bus Timing List: $busArrivalTimes');
+    if (kDebugMode) {
+      print('Current Time: $currentTime');
+      print('Bus Timing List: $busArrivalTimes');
+    }
 
     List<DateTime> upcomingArrivalTimes = busArrivalTimes
         .where((time) => time.isAfter(currentTime))
         .toList();
-    print('Upcoming Arrival Times: $upcomingArrivalTimes');
-    print(upcomingArrivalTimes.isEmpty);
+
+    if (kDebugMode) {
+      print('Upcoming Arrival Times: $upcomingArrivalTimes');
+      print(upcomingArrivalTimes.isEmpty);
+    }
 
     if (upcomingArrivalTimes.isEmpty) {
       if (selectedMRT == 1) {
@@ -94,6 +100,6 @@ class GetMorningETA extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Calculate_MorningBus.getMorningETA(busArrivalTimes);
+    return CalculateMorningBus.getMorningETA(busArrivalTimes);
   }
 }

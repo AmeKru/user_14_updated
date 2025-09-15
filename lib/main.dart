@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'data/getData.dart';
-import 'screens/mapPage.dart';
+import 'data/get_data.dart';
+import 'screens/map_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +30,7 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: isDarkMode ? ThemeData.dark() : ThemeData.light(),
       initialRoute: '/home',
-      routes: {'/home': (context) => Map_Page()},
+      routes: {'/home': (context) => MapPage()},
     );
   }
 }

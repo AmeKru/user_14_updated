@@ -1,25 +1,55 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+//////////////////////////////////////////////////////////////
+// Service class for handling location and compass functionality.
+
 class LocationService {
+  //////////////////////////////////////////////////////////////
+  // Retrieves the current GPS location of the device as a [LatLng].
+  //
+  // - Requests location permission if not already granted.
+  // - Uses high accuracy mode for better precision.
+  // - Returns `null` if location retrieval fails.
+
   Future<LatLng?> getCurrentLocation() async {
     try {
+      // Ensure permissions are checked and requested
       await Geolocator.checkPermission();
       await Geolocator.requestPermission();
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+
+      // Updated: Use LocationSettings instead of deprecated desiredAccuracy
+      final locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.high, // Same as old desiredAccuracy
+        distanceFilter: 0, // Always report location changes
       );
+
+      // Get current position with the specified settings
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: locationSettings,
+      );
+
+      // Convert to LatLng for map usage
       return LatLng(position.latitude, position.longitude);
     } catch (e) {
-      print('Error getting current location: $e');
+      if (kDebugMode) {
+        print('Error getting current location: $e');
+      }
       return null;
     }
   }
+
+  //////////////////////////////////////////////////////////////
+  // Initializes the compass sensor and listens for heading changes.
+  //
+  // - [updateHeading] is a callback that receives the new heading in degrees.
+  // - Heading is `0.0` if unavailable.
 
   void initCompass(Function(double) updateHeading) {
     FlutterCompass.events?.listen((CompassEvent event) {
@@ -27,6 +57,13 @@ class LocationService {
     });
   }
 }
+
+//////////////////////////////////////////////////////////////
+// A custom painter that draws a compass arc and an arrow indicating direction.
+//
+// - [direction]: The current heading in degrees.
+// - [arcStartAngle]: The starting angle of the arc in degrees.
+// - [arcSweepAngle]: The sweep (length) of the arc in degrees.
 
 class CompassPainter extends CustomPainter {
   final double direction;
@@ -41,11 +78,12 @@ class CompassPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Calculate center and radius for the compass
     final centerX = size.width / 2;
     final centerY = size.height / 2;
     final radius = size.width / 5;
 
-    // Draw the blue arc indicating the direction
+    // === Draw the blue arc indicating the direction range ===
     Paint paint = Paint()
       ..color = Colors.blue.withOpacity(0.5)
       ..strokeWidth = 20
@@ -54,18 +92,19 @@ class CompassPainter extends CustomPainter {
 
     canvas.drawArc(
       Rect.fromCircle(center: Offset(centerX, centerY), radius: radius),
-      _toRadians(arcStartAngle),
-      _toRadians(arcSweepAngle),
+      _toRadians(arcStartAngle), // Convert start angle to radians
+      _toRadians(arcSweepAngle), // Convert sweep angle to radians
       false,
       paint,
     );
 
-    // Draw the arrow indicating the exact direction
+    // === Draw the arrow indicating the exact heading ===
     Paint arrowPaint = Paint()
       ..color = Colors.blue
       ..strokeWidth = 2
       ..style = PaintingStyle.fill;
 
+    // Arrow base (far end) position
     double arrowLength = radius * 2.5;
     double arrowAngle = _toRadians(direction);
     Offset arrowBase = Offset(
@@ -73,6 +112,7 @@ class CompassPainter extends CustomPainter {
       centerY + arrowLength * math.sin(arrowAngle),
     );
 
+    // Arrow tip (near center) position
     double arrowTipLength = radius * 0.1;
     double arrowTipAngle = _toRadians(direction - 180);
     Offset arrowTip = Offset(
@@ -80,6 +120,7 @@ class CompassPainter extends CustomPainter {
       centerY + arrowTipLength * math.sin(arrowTipAngle),
     );
 
+    // Draw arrow line and tip circle
     double arrowWidth = 10;
     canvas.drawLine(arrowBase, arrowTip, arrowPaint);
     canvas.drawCircle(arrowTip, arrowWidth / 2, arrowPaint);
@@ -87,8 +128,12 @@ class CompassPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    // Always repaint when new data is available
     return true;
   }
+
+  //////////////////////////////////////////////////////////////
+  // Converts degrees to radians for drawing calculations.
 
   double _toRadians(double degrees) {
     return degrees * math.pi / 180;

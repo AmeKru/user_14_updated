@@ -7,25 +7,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart' as latlng;
 import 'package:latlong2/latlong.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/screens/afternoonScreen.dart';
+import 'package:user_14_updated/screens/afternoon_screen.dart';
 import 'package:user_14_updated/screens/info.dart';
-import 'package:user_14_updated/screens/newsAnnouncement.dart';
+import 'package:user_14_updated/screens/news_announcement.dart';
 import 'package:user_14_updated/screens/settings.dart';
-import 'package:user_14_updated/services/getLocation.dart';
-import 'package:user_14_updated/services/mqtt.dart';
-import 'package:user_14_updated/utils/markerColour.dart';
+import 'package:user_14_updated/services/get_location.dart';
+import 'package:user_14_updated/services/old_services/mqtt_old.dart';
+import 'package:user_14_updated/utils/marker_colour.dart';
 
-class Map_Page extends StatefulWidget {
-  const Map_Page({super.key});
+class MapPage extends StatefulWidget {
+  const MapPage({super.key});
 
   @override
-  State<Map_Page> createState() => _Map_PageState();
+  State<MapPage> createState() => _MapPageState();
 }
 
-class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
+class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   Timer? _timer;
   int selectedBox = 0;
   LatLng? currentLocation;
@@ -137,8 +138,8 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
         .initState(); // Assuming you have this function in your MQTT_Connect class.
 
     // Subscribe to the ValueNotifier for bus location updates
-    // BUS 1
-    // BUS 1
+
+    ///////////////////////////////////////////////////////////////
     // BUS 1
     MQTT_Connect.bus1LocationNotifier.addListener(() {
       setState(() {
@@ -175,11 +176,9 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
       });
     });
     // BUS 1
-    // BUS 1
-    // BUS 1
+    ///////////////////////////////////////////////////////////////
 
-    // BUS 2
-    // BUS 2
+    ///////////////////////////////////////////////////////////////
     // BUS 2
     MQTT_Connect.bus2LocationNotifier.addListener(() {
       setState(() {
@@ -216,11 +215,9 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
       });
     });
     // BUS 2
-    // BUS 2
-    // BUS 2
+    ///////////////////////////////////////////////////////////////
 
-    // BUS 3
-    // BUS 3
+    ///////////////////////////////////////////////////////////////
     // BUS 3
     MQTT_Connect.bus3LocationNotifier.addListener(() {
       setState(() {
@@ -257,8 +254,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
       });
     });
     // BUS 3
-    // BUS 3
-    // BUS 3
+    ///////////////////////////////////////////////////////////////
   }
 
   // void _getLocation() {
@@ -343,33 +339,68 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  Future<void> fetchRoute(List<LatLng> waypoints) async {
-    // LatLng start = LatLng(1.3327930713846318, 103.77771893587253);
+  //Future<void> fetchRoute(List<LatLng> waypoints) async {
+  // LatLng start = LatLng(1.3327930713846318, 103.77771893587253);
+  //String waypointsStr = waypoints
+  //      .map((point) => '${point.longitude},${point.latitude}')
+  //      .join(';');
+  // TODO: Currently set to morning route, add additional for afternoon route
+  //  var url = Uri.parse(
+  //  'http://router.project-osrm.org/route/v1/foot/${waypointsStr}?overview=simplified&steps=true&continue_straight=true',
+  //);
+  //  var response = await http.get(url);
+
+  // if (response.statusCode == 200) {
+  // setState(() {
+  // routepoints.clear();
+  //routepoints.add(start);
+  // var data = jsonDecode(response.body);
+
+  //if (data['routes'] != null) {
+  //String encodedPolyline = data['routes'][0]['geometry'];
+  // List<LatLng> decodedCoordinates = PolylinePoints.decodePolyline(
+  // encodedPolyline,
+  //   ).map((point) => LatLng(point.latitude, point.longitude)).toList();
+  // routepoints.addAll(decodedCoordinates);
+  //}
+  // });
+  //}
+  //}
+
+  ///////////////////////////////////////////////////////////////
+  // Needed to be able to load map, need to check how this works
+
+  Future<void> fetchRoute(List<latlng.LatLng> waypoints) async {
+    // OSRM expects lon,lat order in the URL
     String waypointsStr = waypoints
         .map((point) => '${point.longitude},${point.latitude}')
         .join(';');
-    // TODO: Currently set to morning route, add additional for afternoon route
-    var url = Uri.parse(
-      'http://router.project-osrm.org/route/v1/foot/${waypointsStr}?overview=simplified&steps=true&continue_straight=true',
+
+    final url = Uri.parse(
+      'http://router.project-osrm.org/route/v1/foot/$waypointsStr'
+      '?overview=simplified&steps=true&continue_straight=true',
     );
-    var response = await http.get(url);
+
+    final response = await http.get(url);
 
     if (response.statusCode == 200) {
-      setState(() {
-        routepoints.clear();
-        //routepoints.add(start);
-        var data = jsonDecode(response.body);
+      final data = jsonDecode(response.body);
 
-        if (data['routes'] != null) {
-          String encodedPolyline = data['routes'][0]['geometry'];
-          List<LatLng> decodedCoordinates = PolylinePoints.decodePolyline(
-            encodedPolyline,
-          ).map((point) => LatLng(point.latitude, point.longitude)).toList();
-          routepoints.addAll(decodedCoordinates);
-        }
-      });
+      if (data['routes'] != null && data['routes'].isNotEmpty) {
+        final encodedPolyline = data['routes'][0]['geometry'];
+
+        final points = PolylinePoints.decodePolyline(encodedPolyline);
+
+        setState(() {
+          routepoints.clear();
+          routepoints.addAll(
+            points.map((p) => latlng.LatLng(p.latitude, p.longitude)).toList(),
+          );
+        });
+      }
     }
   }
+  ///////////////////////////////////////////////////////////////
 
   void _onPanelOpened() {
     setState(() {
@@ -386,7 +417,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     // Widget displayPage = Morning_Screen(updateSelectedBox: updateSelectedBox);
-    Widget displayPage = Afternoon_Screen(
+    Widget displayPage = AfternoonScreen(
       updateSelectedBox: updateSelectedBox,
       isDarkMode: _isDarkMode,
     );
@@ -449,23 +480,25 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       }
                     : null,
               ),
-              PolylineLayer(
-                //polylineCulling: false,
-                polylines: [
-                  Polyline(
-                    // points: now.hour > startAfternoonService ? routePointsAM : routePointsPM,
-                    points: routepoints,
-                    //points: ENT_TO_B23,
-                    color: Colors.blue,
-                    strokeWidth: 5,
-                    // Define a single StrokePattern
-                    pattern: StrokePattern.dashed(
-                      segments: [1, 7],
-                      patternFit: PatternFit.scaleUp,
+
+              ///////////////////////////////////////////////////////////////
+              // Check necessary, so map loads properly
+              if (routepoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: routepoints,
+                      color: Colors.blue,
+                      strokeWidth: 5,
+                      pattern: StrokePattern.dashed(
+                        segments: [1, 7],
+                        patternFit: PatternFit.scaleUp,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+
+              ///////////////////////////////////////////////////////////////
               MarkerLayer(
                 markers: [
                   Marker(
@@ -493,7 +526,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('ENT', busIndex),
+                        color: getMarkerColor('ENT', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -701,7 +734,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('B23', busIndex),
+                        color: getMarkerColor('B23', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -731,7 +764,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('SPH', busIndex),
+                        color: getMarkerColor('SPH', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -763,7 +796,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('SIT', busIndex),
+                        color: getMarkerColor('SIT', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -793,7 +826,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('B44', busIndex),
+                        color: getMarkerColor('B44', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -823,7 +856,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('B37', busIndex),
+                        color: getMarkerColor('B37', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -853,7 +886,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('MAP', busIndex),
+                        color: getMarkerColor('MAP', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -885,7 +918,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('HSC', busIndex),
+                        color: getMarkerColor('HSC', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -917,7 +950,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('LCT', busIndex),
+                        color: getMarkerColor('LCT', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -947,7 +980,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       child: Icon(
                         CupertinoIcons.location_circle_fill,
                         // color: Colors.red,
-                        color: getMarkerColor('B72', busIndex),
+                        color: getMarkerColor('B72', busIndex, _isDarkMode),
                         size: (25),
                       ),
                     ),
@@ -973,7 +1006,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                Information_Page(isDarkMode: _isDarkMode),
+                                InformationPage(isDarkMode: _isDarkMode),
                           ),
                         );
                       },
@@ -1060,7 +1093,7 @@ class _Map_PageState extends State<Map_Page> with WidgetsBindingObserver {
                       ),
                       displayPage,
                       SizedBox(height: 16),
-                      News_Announcement_Widget(isDarkMode: _isDarkMode),
+                      NewsAnnouncementWidget(isDarkMode: _isDarkMode),
                       SizedBox(height: 20),
                     ],
                   ),

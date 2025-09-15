@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import '../data/getData.dart';
+import 'package:user_14_updated/data/get_data.dart';
 
-class Information_Page extends StatefulWidget {
+class InformationPage extends StatefulWidget {
   final bool isDarkMode;
 
-  const Information_Page({required this.isDarkMode});
+  const InformationPage({super.key, required this.isDarkMode});
 
   @override
-  State<Information_Page> createState() => _Information_PageState();
+  State<InformationPage> createState() => _InformationPageState();
 }
 
-class _Information_PageState extends State<Information_Page> {
-  BusData _BusData = BusData();
+class _InformationPageState extends State<InformationPage> {
+  BusData busData = BusData();
   bool _isLoading = true;
 
   @override
@@ -21,7 +21,7 @@ class _Information_PageState extends State<Information_Page> {
   }
 
   Future<void> _loadData() async {
-    await _BusData.loadData();
+    await busData.loadData();
     setState(() {
       _isLoading = false;
     });
@@ -31,81 +31,84 @@ class _Information_PageState extends State<Information_Page> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: widget.isDarkMode ? Colors.lightBlue[600] : Colors.lightBlue[100],
+        backgroundColor: widget.isDarkMode ? Colors.blueGrey[800] : Colors.cyan,
         title: Text(
           'Information',
           style: TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.bold,
-              color: widget.isDarkMode ? Colors.white : Colors.black
+            fontSize: 25,
+            fontWeight: FontWeight.bold,
+            color: widget.isDarkMode ? Colors.cyan[200] : Colors.white,
           ),
         ),
       ),
       body: Container(
-        color: widget.isDarkMode ? Colors.lightBlue[900]: Colors.white,
+        color: widget.isDarkMode ? Colors.blueGrey[900] : Colors.white,
+        width: double.infinity,
+        height: double.infinity,
         child: _isLoading
             ? Center(child: CircularProgressIndicator())
             : SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(13, 15, 15, 8),
-            child: Column(
-              children: [
-                _buildScheduleSection(
-                  'Morning Schedule for KAP MRT station to NP campus',
-                  _BusData.KAPArrivalTime,
-                  2,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(13, 15, 15, 8),
+                  child: Column(
+                    children: [
+                      _buildScheduleSection(
+                        'Morning Schedule for KAP MRT station to NP campus',
+                        busData.KAPArrivalTime,
+                        2,
+                      ),
+                      SizedBox(height: 50.0),
+                      _buildScheduleSection(
+                        'Morning Schedule for CLE MRT station to NP campus',
+                        busData.CLEArrivalTime,
+                        1,
+                      ),
+                      SizedBox(height: 50.0),
+                      _buildScheduleSection(
+                        'Afternoon Schedule for KAP MRT station to NP campus',
+                        busData.KAPDepartureTime,
+                        2,
+                      ),
+                      SizedBox(height: 50.0),
+                      _buildScheduleSection(
+                        'Afternoon Schedule for CLE MRT station to NP campus',
+                        busData.CLEDepartureTime,
+                        1,
+                      ),
+                      SizedBox(height: 10),
+                    ],
+                  ),
                 ),
-                SizedBox(height: 50.0),
-                _buildScheduleSection(
-                  'Morning Schedule for CLE MRT station to NP campus',
-                  _BusData.CLEArrivalTime,
-                  1,
-                ),
-                SizedBox(height: 50.0),
-                _buildScheduleSection(
-                  'Afternoon Schedule for KAP MRT station to NP campus',
-                  _BusData.KAPDepartureTime,
-                  2,
-                ),
-                SizedBox(height: 50.0),
-                _buildScheduleSection(
-                  'Afternoon Schedule for CLE MRT station to NP campus',
-                  _BusData.CLEDepartureTime,
-                  1,
-                ),
-                SizedBox(height: 10),
-              ],
-            ),
-          ),
-        ),
+              ),
       ),
     );
   }
 
-  Widget _buildScheduleSection(String title, List<DateTime> times, int columns) {
+  Widget _buildScheduleSection(
+    String title,
+    List<DateTime> times,
+    int columns,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
           style: TextStyle(
-              fontSize: 20.0,
-              color: widget.isDarkMode ? Colors.white: Colors.black
+            fontSize: 20.0,
+            color: widget.isDarkMode ? Colors.white : Colors.black,
           ),
         ),
         SizedBox(height: 10),
         Table(
           columnWidths: columns == 2
               ? {
-            0: FlexColumnWidth(1),
-            1: FlexColumnWidth(2),
-            2: FlexColumnWidth(1),
-            3: FlexColumnWidth(2),
-          }
-              : {
-            0: FlexColumnWidth(1),
-            1: FlexColumnWidth(2),
-          },
+                  0: FlexColumnWidth(1),
+                  1: FlexColumnWidth(2),
+                  2: FlexColumnWidth(1),
+                  3: FlexColumnWidth(2),
+                }
+              : {0: FlexColumnWidth(1), 1: FlexColumnWidth(2)},
           border: TableBorder.all(
             color: widget.isDarkMode ? Colors.white : Colors.black,
           ),
@@ -120,14 +123,23 @@ class _Information_PageState extends State<Information_Page> {
     List<TableRow> rows = [];
 
     if (columns == 2) {
-      rows.add(_buildTableRow(['Trip', 'Bus A Departure Time', 'Trip', 'Bus B Departure Time']));
+      rows.add(
+        _buildTableRow([
+          'Trip',
+          'Bus A Departure Time',
+          'Trip',
+          'Bus B Departure Time',
+        ]),
+      );
       for (int i = 0; i < times.length; i += 2) {
-        rows.add(_buildTableRow([
-          (i + 1).toString(),
-          _formatTime(times[i]),
-          if (i + 1 < times.length) (i + 2).toString() else '',
-          if (i + 1 < times.length) _formatTime(times[i + 1]) else '',
-        ]));
+        rows.add(
+          _buildTableRow([
+            (i + 1).toString(),
+            _formatTime(times[i]),
+            if (i + 1 < times.length) (i + 2).toString() else '',
+            if (i + 1 < times.length) _formatTime(times[i + 1]) else '',
+          ]),
+        );
       }
     } else if (columns == 1) {
       rows.add(_buildTableRow(['Trip', 'Bus A Departure Time']));
@@ -148,12 +160,16 @@ class _Information_PageState extends State<Information_Page> {
       children: data
           .map(
             (item) => Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Text(item, textAlign: TextAlign.center, style: TextStyle(
-              color: widget.isDarkMode ? Colors.white: Colors.black
-          ),),
-        ),
-      )
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                item,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: widget.isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+            ),
+          )
           .toList(),
     );
   }
