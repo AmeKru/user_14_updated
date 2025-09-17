@@ -95,7 +95,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
     });
 
     // Debug: print list of bus stops from BusData
-    debugPrint('BusStop list: ${_busData.BusStop}');
+    debugPrint('BusStop list: ${_busData.busStop}');
   }
 
   //////////////////////////////////////////////////////////////
@@ -391,9 +391,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _busData.BusStop.length - 2,
+                  itemCount: _busData.busStop.length - 2,
                   itemBuilder: (_, index) {
-                    final stopName = _busData.BusStop[index + 2];
+                    final stopName = _busData.busStop[index + 2];
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -696,6 +696,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                           showBusStopSelectionBottomSheet,
                       selectedBusStop: selectedBusStop,
                       onPressedConfirm: () {
+                        saveBusIndex(busIndex);
                         // When confirm is pressed → create booking and show confirmation dialog
                         setState(() {
                           confirmationPressed = true;
@@ -723,6 +724,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       onCancel: () {
                         // Cancel booking → delete from backend and clear saved data
                         setState(() {
+                          saveBusIndex(0);
                           confirmationPressed = false;
                           if (data['bookedTripIndexCLE'] != null ||
                               data['bookedTripIndexKAP'] != null) {
@@ -787,6 +789,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       busStop: selectedBusStop,
                       isDarkMode: widget.isDarkMode,
                       onCancel: () {
+                        saveBusIndex(0);
                         // Cancel booking → reset confirmation state and delete booking if exists
                         setState(() {
                           confirmationPressed = false;
@@ -826,6 +829,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       selectedBusStop: selectedBusStop,
                       onPressedConfirm: () {
                         // Confirm booking → create booking in backend and show confirmation dialog
+                        saveBusIndex(busIndex);
                         setState(() {
                           confirmationPressed = true;
                           createBooking(

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/shared_preference.dart';
+
 class Settings extends StatefulWidget {
   final bool isDarkMode;
   final ValueChanged<bool> onThemeChanged;
@@ -28,12 +30,18 @@ class _SettingsState extends State<Settings> {
       isDarkMode = value;
     });
     widget.onThemeChanged(value);
+    saveDarkMode(isDarkMode);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: isDarkMode
+              ? Colors.green[300]
+              : Colors.white, // Arrow back color
+        ),
         title: Text(
           'Settings',
           style: TextStyle(

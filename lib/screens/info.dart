@@ -31,6 +31,11 @@ class _InformationPageState extends State<InformationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: widget.isDarkMode
+              ? Colors.cyan[200]
+              : Colors.white, // Arrow back color
+        ),
         backgroundColor: widget.isDarkMode ? Colors.blueGrey[800] : Colors.cyan,
         title: Text(
           'Information',

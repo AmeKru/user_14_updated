@@ -53,7 +53,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
         _showBookingService = false;
       });
     });
-    print('Printing BusStop: ${_BusData.BusStop}');
+    print('Printing BusStop: ${_BusData.busStop}');
   }
 
   Future<Map<String, dynamic>?> loadBookingData() async {
@@ -323,7 +323,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
-                  itemCount: _BusData.BusStop.length - 2,
+                  itemCount: _BusData.busStop.length - 2,
                   itemBuilder: (BuildContext context, int index) {
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
@@ -334,7 +334,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                         ),
                         child: ListTile(
                           title: Text(
-                            _BusData.BusStop[index + 2],
+                            _BusData.busStop[index + 2],
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontWeight: FontWeight.w900,
@@ -342,7 +342,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                           ),
                           onTap: () {
                             setState(() {
-                              selectedBusStop = _BusData.BusStop[index + 2];
+                              selectedBusStop = _BusData.busStop[index + 2];
                               print("selectedbusStop = ${selectedBusStop}");
                               busIndex = index + 2;
                               print("bus index = {busIndex}");

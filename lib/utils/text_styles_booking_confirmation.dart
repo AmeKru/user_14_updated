@@ -29,40 +29,47 @@ class BookingConfirmationText extends StatelessWidget {
   });
 
   @override
+  @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Container(
+      width: double.infinity, // ✅ Forces full horizontal width
+      alignment: Alignment.center, // ✅ Aligns Row content to center
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        // ✅ Centers children inside Row
+        crossAxisAlignment: CrossAxisAlignment.center,
 
-      children: [
-        SizedBox(width: MediaQuery.of(context).size.width * size * 0.1),
-        // Fixed-size box for the label
-        SizedBox(
-          height: 25, // Fixed height for alignment
-          width: 200, // Fixed width so labels align vertically in a list
-          child: Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 17,
-              color: darkText ? Colors.blueGrey[900]! : Colors.white,
+        children: [
+          // Fixed-size box for the label
+          SizedBox(
+            height: 25, // Fixed height for alignment
+            width: 100, // Fixed width so labels align vertically in a list
+            child: Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                fontSize: 17,
+                color: darkText ? Colors.blueGrey[900]! : Colors.white,
+              ),
             ),
           ),
-        ),
+          SizedBox(width: MediaQuery.of(context).size.width * 0.3),
 
-        // Dynamic horizontal spacing between label and value
-        SizedBox(width: MediaQuery.of(context).size.width * size * 0.5),
-
-        // The value text
-        Text(
-          value,
-          style: TextStyle(
-            fontFamily: 'Roboto',
-            fontSize: 17,
-            color: darkText ? Colors.blueGrey[900]! : Colors.white,
+          // Fixed-size box for the value
+          SizedBox(
+            height: 25,
+            width: 100, // Same width as label for clean alignment
+            child: Text(
+              value,
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                fontSize: 17,
+                color: darkText ? Colors.blueGrey[900]! : Colors.white,
+              ),
+            ),
           ),
-        ),
-        SizedBox(width: MediaQuery.of(context).size.width * size * 0.1),
-      ],
+        ],
+      ),
     );
   }
 }

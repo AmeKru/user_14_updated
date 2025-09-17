@@ -99,9 +99,14 @@ class _BookingServiceState extends State<BookingService> {
   // Checks if the user can confirm a booking.
   // Returns true if a trip index is selected for the current station.
   bool canConfirm() {
+    if (widget.selectedBox == 1
+        ? widget.bookedTripIndexKAP == null
+        : widget.bookedTripIndexCLE == null) {
+      busIndex = 0;
+    }
     return widget.selectedBox == 1
-        ? widget.bookedTripIndexKAP != null
-        : widget.bookedTripIndexCLE != null;
+        ? widget.bookedTripIndexKAP != null && busIndex != 0
+        : widget.bookedTripIndexCLE != null && busIndex != 0;
   }
 
   @override
@@ -124,7 +129,7 @@ class _BookingServiceState extends State<BookingService> {
 
     // CHOICE: This timer runs every 100ms — very frequent.
     // Consider increasing interval to reduce load if not strictly necessary.
-    _timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+    _timer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
       _updateBookingCounts();
     });
   }
@@ -262,8 +267,10 @@ class _BookingServiceState extends State<BookingService> {
                   List CLEDepartureTIME = widget.CLEDepartureTime;
 
                   // Whether this trip is currently booked for each station
-                  bool isBookedKAP = index == widget.bookedTripIndexKAP;
-                  bool isBookedCLE = index == widget.bookedTripIndexCLE;
+                  bool isBookedKAP =
+                      (index == widget.bookedTripIndexKAP) && busIndex != 0;
+                  bool isBookedCLE =
+                      (index == widget.bookedTripIndexCLE) && busIndex != 0;
 
                   // Whether user can book (no trip booked yet for selected station)
                   bool canBook = widget.selectedBox == 1
@@ -292,7 +299,7 @@ class _BookingServiceState extends State<BookingService> {
                                           ? Colors.blueGrey[800]
                                           : Colors.grey[300])
                                     : (widget.isDarkMode
-                                          ? Colors.blueGrey[700]
+                                          ? Colors.blueGrey[600]
                                           : Colors.blue[50]),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(
@@ -321,7 +328,7 @@ class _BookingServiceState extends State<BookingService> {
                                       SizedBox(
                                         width:
                                             MediaQuery.of(context).size.width *
-                                            0.1,
+                                            0.04,
                                       ),
 
                                       Row(
@@ -329,16 +336,16 @@ class _BookingServiceState extends State<BookingService> {
                                             MainAxisAlignment.center,
                                         children: [
                                           Text(
-                                            ' Departure Trip ${index + 1}',
+                                            'Departure Trip ${index + 1}',
                                             style: TextStyle(
                                               fontFamily: 'Roboto',
                                               fontWeight: FontWeight.bold,
                                               color: isFull
                                                   ? (widget.isDarkMode
-                                                        ? Colors.blueGrey[200]
+                                                        ? Colors.blueGrey[400]
                                                         : Colors.grey[600])
                                                   : (widget.isDarkMode
-                                                        ? Colors.blueGrey[50]
+                                                        ? Colors.white
                                                         : Colors.black),
                                             ),
                                           ),
@@ -348,7 +355,7 @@ class _BookingServiceState extends State<BookingService> {
                                                 MediaQuery.of(
                                                   context,
                                                 ).size.width *
-                                                0.1,
+                                                0.04,
                                           ),
 
                                           // Vertical divider
@@ -359,10 +366,10 @@ class _BookingServiceState extends State<BookingService> {
                                               height: 40,
                                               color: isFull
                                                   ? (widget.isDarkMode
-                                                        ? Colors.blueGrey[200]
+                                                        ? Colors.blueGrey[500]
                                                         : Colors.grey[600])
                                                   : (widget.isDarkMode
-                                                        ? Colors.blueGrey[300]
+                                                        ? Colors.blueGrey[200]
                                                         : Colors.blueGrey[500]),
                                             ),
                                           ),
@@ -372,7 +379,7 @@ class _BookingServiceState extends State<BookingService> {
                                                 MediaQuery.of(
                                                   context,
                                                 ).size.width *
-                                                0.1,
+                                                0.04,
                                           ),
 
                                           // Departure time
@@ -383,10 +390,10 @@ class _BookingServiceState extends State<BookingService> {
                                               fontWeight: FontWeight.bold,
                                               color: isFull
                                                   ? (widget.isDarkMode
-                                                        ? Colors.blueGrey[200]
-                                                        : Colors.grey[400])
+                                                        ? Colors.blueGrey[400]
+                                                        : Colors.grey[600])
                                                   : (widget.isDarkMode
-                                                        ? Colors.blueGrey[50]
+                                                        ? Colors.white
                                                         : Colors.black),
                                             ),
                                           ),
@@ -396,7 +403,7 @@ class _BookingServiceState extends State<BookingService> {
                                                 MediaQuery.of(
                                                   context,
                                                 ).size.width *
-                                                0.1,
+                                                0.04,
                                           ),
 
                                           // Vertical divider
@@ -407,10 +414,10 @@ class _BookingServiceState extends State<BookingService> {
                                               height: 40,
                                               color: isFull
                                                   ? (widget.isDarkMode
-                                                        ? Colors.blueGrey[200]
+                                                        ? Colors.blueGrey[500]
                                                         : Colors.grey[600])
                                                   : (widget.isDarkMode
-                                                        ? Colors.blueGrey[300]
+                                                        ? Colors.blueGrey[200]
                                                         : Colors.blueGrey[500]),
                                             ),
                                           ),
@@ -420,7 +427,7 @@ class _BookingServiceState extends State<BookingService> {
                                                 MediaQuery.of(
                                                   context,
                                                 ).size.width *
-                                                0.1,
+                                                0.03,
                                           ),
 
                                           if (canConfirm())
@@ -431,10 +438,10 @@ class _BookingServiceState extends State<BookingService> {
                                                 fontWeight: FontWeight.bold,
                                                 color: isFull
                                                     ? (widget.isDarkMode
-                                                          ? Colors.blueGrey[200]
+                                                          ? Colors.blueGrey[400]
                                                           : Colors.grey[400])
                                                     : (widget.isDarkMode
-                                                          ? Colors.blueGrey[50]
+                                                          ? Colors.white
                                                           : Colors.black),
                                               ),
                                             ),

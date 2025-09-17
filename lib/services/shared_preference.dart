@@ -2,6 +2,23 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 ///////////////////////////////////////////////////////////////
+// Save dark Mode, so user does not have to turn it one every time
+// the App reopens
+
+Future<void> saveDarkMode(bool value) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('isDarkMode', value);
+}
+
+///////////////////////////////////////////////////////////////
+// Saves the last selected Bus Index
+
+Future<void> saveBusIndex(int index) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt('busIndex', index);
+}
+
+///////////////////////////////////////////////////////////////
 // A service class to handle saving, retrieving, and clearing
 // booking-related data using [SharedPreferences].
 //

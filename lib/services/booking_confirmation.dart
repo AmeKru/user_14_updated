@@ -12,19 +12,6 @@ import 'package:user_14_updated/utils/loading.dart';
 import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
 import 'package:user_14_updated/utils/text_styles_booking_confirmation.dart';
 
-/// =====================
-/// CHANGE SUMMARY:
-/// 1. CHANGED: Removed unused variables (ColorValues, randomNum, timer, _loading, departureSeconds) to clean up state.
-/// 2. CHANGED: Removed redundant widget.KAPDepartureTime and widget.CLEDepartureTime calls in initState (they had no effect).
-/// 3. CHANGED: Used the already-declared `uri` variable in getTime() instead of re-parsing the same string twice.
-/// 4. CHANGED: Removed unnecessary null check for bookedTime (it can’t be null if bookedTripIndex is non-null).
-/// 5. CHANGED: Used const where possible for widgets (e.g., SizedBox, Text, Icon) to reduce rebuild cost.
-/// 6. CHANGED: Removed unused `darkText` and `isAfter3pm` variables in build().
-/// 7. CHANGED: Minor formatting and padding cleanup for readability.
-/// 8. CHANGED: Extracted the booking details card into a separate stateless widget `_BookingDetailsCard` for cleaner build().
-/// 9. CHANGED: Moved the API URL into a top-level constant `timeApiUrl` for easier maintenance.
-/// =====================
-
 ///////////////////////////////////////////////////////////////
 // This URL returns the current time for the Asia/Singapore timezone.
 /// CHANGED: Moved API URL to a constant for easier maintenance.
@@ -78,26 +65,36 @@ class BookingConfirmation extends StatefulWidget {
 }
 
 class _BookingConfirmationState extends State<BookingConfirmation> {
-  // Interval for manually updating the displayed time
   final Duration timeUpdateInterval = const Duration(seconds: 1);
-
-  // Interval for fetching the current time from the API
   final Duration apiFetchInterval = const Duration(minutes: 3);
 
-  // Tracks how many seconds have passed since the last API fetch
   int secondsElapsed = 0;
-
-  // Timer for updating the clock in real-time
   Timer? _clockTimer;
 
-  // Service for interacting with shared preferences (local storage)
   final SharedPreferenceService prefsService = SharedPreferenceService();
+
+  // CHANGED: Added loading flag to track time fetch status
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+
+    // CHANGED: Save booking data here instead of inside build()
+    prefsService.saveBookingData(
+      widget.selectedBox,
+      widget.bookedTripIndexKAP,
+      widget.bookedTripIndexCLE,
+      widget.busStop,
+    );
+
     // Fetch the current time from the API first
     getTime().then((_) {
+      /// CHANGED: Mark loading complete once time is fetched
+      setState(() {
+        _loading = false;
+      });
+
       // Start a periodic timer to update the time every second
       _clockTimer = Timer.periodic(timeUpdateInterval, (timer) {
         updateTimeManually(); // Increment time locally
@@ -114,17 +111,11 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 
   @override
   void dispose() {
-    // Cancel the timer to prevent memory leaks when widget is disposed
     _clockTimer?.cancel();
     super.dispose();
   }
 
-  ///////////////////////////////////////////////////////////////
-  // This creates a "synced random" color that changes predictably
-  // depending on the departure time and the current time.
-
   Color? generateColor(DateTime departureTime, int selectedTripNo) {
-    // Predefined list of possible colors
     final List<Color?> colors = [
       Colors.red[100],
       Colors.yellow[200],
@@ -138,17 +129,11 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
       Colors.limeAccent[100],
     ];
 
-    // Convert departure time to total seconds since midnight
     final int departureSeconds =
         departureTime.hour * 3600 + departureTime.minute * 60;
-
-    // Combine departure seconds with the current second
     final int combinedSeconds = timeNow!.second + departureSeconds;
-
-    // Round to the nearest 10 seconds for consistency
     final int roundedSeconds = (combinedSeconds ~/ 10) * 10;
 
-    // Create a DateTime object with the rounded seconds
     final DateTime roundedTime = DateTime(
       timeNow!.year,
       timeNow!.month,
@@ -158,14 +143,10 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
       roundedSeconds,
     );
 
-    // Use the rounded time as a seed for the random generator
     final int seed = roundedTime.millisecondsSinceEpoch ~/ (1000 * 10);
     final Random random = Random(seed);
-
-    // Pick a random index from the colors list (0–9)
     final int syncedRandomNum = random.nextInt(10);
 
-    // Return the selected color
     return colors[syncedRandomNum];
   }
 
@@ -176,15 +157,16 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 
   Future<void> getTime() async {
     try {
-      /// CHANGED: Use constant instead of hardcoding URL twice.
       final uri = Uri.parse(timeApiUrl);
-      final response = await get(uri);
 
-      // Decode the JSON response
+      /// CHANGED: Added timeout to prevent indefinite loading
+      final response = await get(uri).timeout(Duration(seconds: 5));
+
       final Map data = jsonDecode(response.body);
 
       // Extract the datetime string and parse it into a DateTime object
       final String datetime = data['dateTime'];
+
       setState(() {
         timeNow = DateTime.parse(datetime);
       });
@@ -193,12 +175,13 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
       if (kDebugMode) {
         print('Error fetching time: $e');
       }
+
+      /// CHANGED: Fallback to device time if API fails
+      setState(() {
+        timeNow = DateTime.now();
+      });
     }
   }
-
-  ///////////////////////////////////////////////////////////////
-  // Advances [timeNow] manually by [timeUpdateInterval].
-  // This is used between API fetches to keep the clock ticking.
 
   void updateTimeManually() {
     setState(() {
@@ -261,6 +244,8 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                 ),
               ),
               onPressed: () {
+                saveBusIndex(0);
+                busIndex = 0;
                 widget
                     .onCancel(); // Trigger the parent widget's cancel callback
                 prefsService
@@ -291,17 +276,8 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     // Determine the station name based on the selected box.
     final String station = widget.selectedBox == 1 ? 'KAP' : 'CLE';
 
-    // Save booking data persistently so it can be restored later
-    // (e.g., after app restart or navigation).
-    prefsService.saveBookingData(
-      widget.selectedBox,
-      widget.bookedTripIndexKAP,
-      widget.bookedTripIndexCLE,
-      widget.busStop,
-    );
-
-    // If the current time has not yet been fetched or set, show a loading widget.
-    if (timeNow == null) {
+    /// CHANGED: Use loading flag instead of relying on timeNow directly
+    if (_loading || timeNow == null) {
       if (kDebugMode) {
         print('time now = $timeNow'); // Debug log for troubleshooting
       }
@@ -332,10 +308,13 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
         const SizedBox(height: 20),
         // Show evening service bus time only if current hour is after service start
         if (timeNow!.hour > startEveningService)
-          EveningStartPoint.getBusTime(
-            widget.selectedBox,
-            context,
-            widget.isDarkMode,
+          Center(
+            /// CHANGED: Wrap bus time in Center to align it horizontally
+            child: EveningStartPoint.getBusTime(
+              widget.selectedBox,
+              context,
+              widget.isDarkMode,
+            ),
           ),
       ],
     );

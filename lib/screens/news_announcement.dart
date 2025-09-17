@@ -18,7 +18,7 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    newsContent = busData.News;
+    newsContent = busData.news;
     if (kDebugMode) {
       print('Printing _NewsContent: $newsContent');
     }
@@ -74,6 +74,11 @@ class NewsAnnouncement extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        iconTheme: IconThemeData(
+          color: isDarkMode
+              ? Color(0xfffeb041)
+              : Colors.white, // Arrow back color
+        ),
         backgroundColor: isDarkMode ? Colors.blueGrey[800] : Color(0xfffeb041),
         title: Text(
           'NP News Announcements',

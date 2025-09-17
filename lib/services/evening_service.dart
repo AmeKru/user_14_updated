@@ -33,7 +33,7 @@ class EveningStartPoint {
             Container(
               width: MediaQuery.of(context).size.width * 0.4,
               color: isDarkMode
-                  ? Colors.blueGrey[700]
+                  ? Colors.blueGrey[800]
                   : const Color(0xff014689),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10.0, 10.0, 0.0, 10.0),
@@ -55,7 +55,7 @@ class EveningStartPoint {
             // Upcoming bus time container
             Container(
               width: MediaQuery.of(context).size.width * 0.25,
-              color: isDarkMode ? Colors.blueGrey[500] : Colors.lightBlue[50],
+              color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10.0, 10.0, 0.0, 10.0),
                 child: Text(
@@ -76,7 +76,7 @@ class EveningStartPoint {
             // Next-next bus time container
             Container(
               width: MediaQuery.of(context).size.width * 0.25,
-              color: isDarkMode ? Colors.blueGrey[500] : Colors.lightBlue[50],
+              color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(10.0, 10.0, 0.0, 10.0),
                 child: Text(
@@ -105,7 +105,7 @@ class EveningStartPoint {
         1.5; // Interval between buses in minutes (used for estimation)
     BusData _BusData = BusData(); // Data source for bus stops and times
     List<DateTime> busArrivalTimes = []; // Holds the relevant departure times
-    List<String> _busstops = _BusData.BusStop; // List of bus stop names
+    List<String> _busstops = _BusData.busStop; // List of bus stop names
 
     if (kDebugMode) {
       print('Printing busstops: $_busstops');
@@ -181,39 +181,50 @@ class EveningStartPoint {
 
           SizedBox(height: MediaQuery.of(context).size.width * 0.02),
           // Header row for the table
-          Row(
-            children: [
-              SizedBox(width: MediaQuery.of(context).size.width * 0.01),
-              Text(
-                'Bus Stop',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isDarkMode ? Colors.white : Colors.black,
+          Container(
+            width: double.infinity, // Ensures full horizontal stretch
+            padding: EdgeInsets.symmetric(
+              horizontal: 8,
+            ), // Optional: adds side spacing
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween, // Distributes items evenly
+              children: [
+                SizedBox(width: MediaQuery.of(context).size.width * 0.01),
+                Text(
+                  'Bus Stop',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
-              ),
-              SizedBox(width: MediaQuery.of(context).size.width * 0.3),
-              Text(
-                'Upcoming bus(min)',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isDarkMode ? Colors.white : Colors.black,
+                SizedBox(width: MediaQuery.of(context).size.width * 0.23),
+                Text(
+                  'Upcoming bus(min)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
-              ),
-              SizedBox(width: MediaQuery.of(context).size.width * 0.3),
-              Text(
-                'Next bus(min)',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isDarkMode ? Colors.white : Colors.black,
+                SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+                Text(
+                  'Next bus(min)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(width: MediaQuery.of(context).size.width * 0.1),
+              ],
+            ),
           ),
+
           // Loop through bus stops (skipping first 2 and last 2 stops)
-          for (int i = 2; i < (_BusData.BusStop.length) - 2; i++)
+          for (int i = 2; i < (_BusData.busStop.length) - 2; i++)
             buildRowWidget(
               context,
-              _BusData.BusStop[i], // Bus stop name
+              _BusData.busStop[i], // Bus stop name
               nextBusTimeDiff, // Minutes until next bus
               nextNextBusTimeDiff, // Minutes until next-next bus
               i, // Index of the stop

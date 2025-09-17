@@ -8,6 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/screens/afternoon_screen.dart';
@@ -17,6 +18,7 @@ import 'package:user_14_updated/screens/news_announcement.dart';
 import 'package:user_14_updated/screens/settings.dart';
 import 'package:user_14_updated/services/get_location.dart';
 import 'package:user_14_updated/services/mqtt.dart';
+import 'package:user_14_updated/services/shared_preference.dart';
 import 'package:user_14_updated/utils/marker_colour.dart';
 
 ///////////////////////////////////////////////////////////////
@@ -67,7 +69,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   double _heading = 0.0;
   List<LatLng> routePoints = [];
   bool ignoring = false;
-  bool _isDarkMode = false;
+  bool isDarkMode = false;
   DateTime now = DateTime.now();
 
   // Bus1 data
@@ -178,12 +180,63 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _getLocation();
+    _init(); // run everything in order
+  }
+
+  Future<void> _init() async {
+    await _loadInitialData(); // wait for preferences to load
+    _getLocation(); // now safe to run
     _mqttConnect.createState().initState();
     _bindMQTTListeners();
+  }
+
+  Future<void> _loadInitialData() async {
+    final prefsService = SharedPreferenceService();
+
+    // Run all async loads in parallel
+    final results = await Future.wait([
+      prefsService.getBookingData(), // index 0
+      loadDarkMode(), // index 1
+      loadBusIndex(), // index 2
+    ]);
+
+    final bookingData = results[0] as Map<String, dynamic>?;
+    final dark = results[1] as bool;
+    final busIndexLoad = results[2] as int?;
+
+    setState(() {
+      // Load booking data first
+      if (bookingData != null && bookingData.containsKey('selectedBox')) {
+        selectedBox = bookingData['selectedBox'];
+      } else {
+        selectedBox = 0; // default if no booking
+      }
+
+      // Load bus index if not set by booking
+      if (busIndexLoad != null) {
+        busIndex = busIndexLoad;
+      } else if (busIndexLoad == null) {
+        busIndex = 0; // safe default
+      }
+
+      // Load dark mode preference
+      isDarkMode = dark;
+    });
+
+    // Apply selected box logic after state is set
+    updateSelectedBox(selectedBox);
+  }
+
+  Future<bool> loadDarkMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('isDarkMode') ?? false;
+  }
+
+  Future<int?> loadBusIndex() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('busIndex'); // returns null if not set
   }
 
   ///////////////////////////////////////////////////////////////
@@ -258,7 +311,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   ///////////////////////////////////////////////////////////////
   // toggle Dark mode
 
-  void _toggleTheme(bool value) => setState(() => _isDarkMode = value);
+  void _toggleTheme(bool value) => setState(() => isDarkMode = value);
 
   ///////////////////////////////////////////////////////////////
   // checks which MRT Station is selected by user (KAP or CLE),
@@ -268,9 +321,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     setState(() {
       this.selectedBox = selectedBox;
       if (selectedBox == 1) {
-        fetchRoute(now.hour > 12 ? PM_KAP : AM_KAP);
+        fetchRoute(now.hour > startAfternoonService ? PM_KAP : AM_KAP);
       } else if (selectedBox == 2) {
-        fetchRoute(now.hour > 12 ? PM_CLE : AM_CLE);
+        fetchRoute(now.hour > startAfternoonService ? PM_CLE : AM_CLE);
+      } else {
+        routePoints.clear();
       }
     });
   }
@@ -330,9 +385,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 softWrap: false,
                 style: TextStyle(
                   fontSize: config.isTablet ? 10 : 8,
-                  color: _isDarkMode
-                      ? Colors.cyanAccent[100]
-                      : const Color(0xff014689),
+                  color: getBusMarkerColor(label, selectedBox, isDarkMode),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -340,9 +393,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
               Icon(
                 Icons.directions_bus,
-                color: _isDarkMode
-                    ? Colors.cyanAccent[100]
-                    : const Color(0xff014689),
+                color: getBusMarkerColor(label, selectedBox, isDarkMode),
                 size: config.busIconSize,
               ),
             ],
@@ -404,7 +455,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           flipY: true,
           child: Icon(
             CupertinoIcons.location_circle_fill,
-            color: getMarkerColor(title, busIndex, _isDarkMode),
+            color: getMarkerColor(title, busIndex, isDarkMode),
             size: config.iconSize,
           ),
         ),
@@ -431,12 +482,12 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       ),
       children: [
         Container(
-          color: _isDarkMode ? Colors.black87 : Colors.lightBlueAccent[50],
+          color: isDarkMode ? Colors.black87 : Colors.lightBlueAccent[50],
           child: TileLayer(
             keepBuffer: 4,
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'dev.fleaflet.flutter_map.example',
-            tileBuilder: _isDarkMode
+            tileBuilder: isDarkMode
                 ? (context, widget, tile) => ColorFiltered(
                     colorFilter: const ColorFilter.matrix([
                       -1,
@@ -470,7 +521,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             polylines: [
               Polyline(
                 points: routePoints,
-                color: _isDarkMode ? Colors.cyan : Colors.blue,
+                color: isDarkMode ? Colors.cyan : Colors.blue,
                 strokeWidth: 5,
                 pattern: StrokePattern.dashed(
                   segments: [1, 7],
@@ -489,85 +540,85 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               ENT,
               'ENT',
               'Entrance Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
-            _buildStopMarker(OPP_KAP, 'Opposite KAP', ' ', _isDarkMode, config),
+            _buildStopMarker(OPP_KAP, 'Opposite KAP', ' ', isDarkMode, config),
             _buildStopMarker(
               B23,
               'B23',
               'Block 23 Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               SPH,
               'SPH',
               'Sports Hall Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               B44,
               'B44',
               'Block 44 Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               B37,
               'B37',
               'Block 37 Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               B72,
               'B72',
               'Block 72 Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               MAP,
               'MAP',
               'Makan Place Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               CLE,
               'CLE',
               'Clementi MRT Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               KAP,
               'KAP',
               'King Albert Park\nMRT Bus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               HSC,
               'HSC',
               'School of Health Sciences\nBus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               LCT,
               'LCT',
               'School of Life Sciences & Technology\nBus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
             _buildStopMarker(
               SIT,
               'SIT',
               'Singapore Institute of Technology\nBus Stop',
-              _isDarkMode,
+              isDarkMode,
               config,
             ),
           ],
@@ -603,7 +654,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         alignment: Alignment.topRight,
         radius: 80.0,
         toggleButtonSize: 55,
-        toggleButtonColor: _isDarkMode
+        toggleButtonColor: isDarkMode
             ? Colors.blueGrey[500]
             : const Color(0xff014689),
         toggleButtonIconColor: Colors.white,
@@ -615,11 +666,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             margin: 10.0,
             padding: 10.0,
             icon: Icons.info_rounded,
-            iconColor: _isDarkMode ? Colors.blueGrey[900] : Colors.white,
+            iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => InformationPage(isDarkMode: _isDarkMode),
+                builder: (_) => InformationPage(isDarkMode: isDarkMode),
               ),
             ),
           ),
@@ -629,12 +680,12 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             margin: 10.0,
             padding: 10.0,
             icon: Icons.settings,
-            iconColor: _isDarkMode ? Colors.blueGrey[900] : Colors.white,
+            iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => Settings(
-                  isDarkMode: _isDarkMode,
+                  isDarkMode: isDarkMode,
                   onThemeChanged: _toggleTheme,
                 ),
               ),
@@ -646,11 +697,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             margin: 10.0,
             padding: 10.0,
             icon: Icons.newspaper,
-            iconColor: _isDarkMode ? Colors.blueGrey[900] : Colors.white,
+            iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => NewsAnnouncement(isDarkMode: _isDarkMode),
+                builder: (_) => NewsAnnouncement(isDarkMode: isDarkMode),
               ),
             ),
           ),
@@ -679,7 +730,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           backdropOpacity: 0.5, // adjust darkness
           backdropTapClosesPanel: true, // tap outside to close
           borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-          color: _isDarkMode ? Colors.blueGrey[900]! : Colors.lightBlue[50]!,
+          color: isDarkMode ? Colors.blueGrey[900]! : Colors.lightBlue[50]!,
           onPanelOpened: () => setState(() => ignoring = true),
           onPanelClosed: () {
             setState(() => ignoring = false);
@@ -704,7 +755,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: _isDarkMode
+                      color: isDarkMode
                           ? Colors.blueGrey[700]
                           : const Color(0xff014689), // header color
                       borderRadius: const BorderRadius.vertical(
@@ -720,7 +771,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                             width: 40,
                             height: 3,
                             decoration: BoxDecoration(
-                              color: _isDarkMode
+                              color: isDarkMode
                                   ? Colors.white54
                                   : Colors.black26,
                               borderRadius: BorderRadius.circular(12),
@@ -760,18 +811,18 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   // Main body section
                   Expanded(
                     child: Container(
-                      color: _isDarkMode ? Colors.blueGrey[900] : Colors.white,
+                      color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
                       child: SingleChildScrollView(
                         controller: controller,
                         padding: EdgeInsets.only(
                           bottom: MediaQuery.of(context).padding.bottom,
                         ),
                         child: Column(
-                          mainAxisSize: MainAxisSize.min,
+                          mainAxisSize: MainAxisSize.max,
                           children: [
                             displayPage,
                             const SizedBox(height: 16),
-                            NewsAnnouncementWidget(isDarkMode: _isDarkMode),
+                            NewsAnnouncementWidget(isDarkMode: isDarkMode),
                             const SizedBox(height: 20),
                           ],
                         ),
@@ -784,21 +835,19 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           },
         ),
 
-        // Transparent overlay that catches taps over the collapsed header area.
-        // necessary to be also able to just click on MooBus to open panel
+        // ===== TAP OVERLAY (unchanged) =====
         if (!ignoring)
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             height: 100,
-            // match minHeight exactly
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onTap: () {
                 _panelController.open();
               },
-              child: const SizedBox.expand(), // fully clickable area
+              child: const SizedBox.expand(),
             ),
           ),
       ],
@@ -812,17 +861,17 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     final now = DateTime.now();
 
     // Decide which screen to show based on the current hour
-    final bool isAfternoon = now.hour >= 12;
+    final bool isAfternoon = now.hour >= startAfternoonService;
 
     Widget displayPage = SingleChildScrollView(
       child: isAfternoon
           ? AfternoonScreen(
               updateSelectedBox: updateSelectedBox,
-              isDarkMode: _isDarkMode,
+              isDarkMode: isDarkMode,
             )
           : MorningScreen(
               updateSelectedBox: updateSelectedBox,
-              isDarkMode: _isDarkMode,
+              isDarkMode: isDarkMode,
             ),
     );
 
