@@ -271,6 +271,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       bind(busData.stop, (v) {
         if (busId == 1) Bus1_Stop = v;
         if (busId == 2) Bus2_Stop = v;
+
         if (busId == 3) Bus3_Stop = v;
       });
 
@@ -389,12 +390,12 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 0.5),
 
               Icon(
                 Icons.directions_bus,
                 color: getBusMarkerColor(label, selectedBox, isDarkMode),
-                size: config.busIconSize,
+                size: config.busIconSize * 1.5,
               ),
             ],
           ),
@@ -521,7 +522,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             polylines: [
               Polyline(
                 points: routePoints,
-                color: isDarkMode ? Colors.cyan : Colors.blue,
+                color: isDarkMode ? Colors.cyan : Colors.blue[600]!,
                 strokeWidth: 5,
                 pattern: StrokePattern.dashed(
                   segments: [1, 7],
@@ -533,9 +534,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         MarkerLayer(
           rotate: true,
           markers: [
-            _buildBusMarker('Bus1', Bus1_Location, config),
-            _buildBusMarker('Bus2', Bus2_Location, config),
-            _buildBusMarker('Bus3', Bus3_Location, config),
             _buildStopMarker(
               ENT,
               'ENT',
@@ -621,10 +619,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               isDarkMode,
               config,
             ),
+            _buildBusMarker('Bus1', Bus1_Location, config),
+            _buildBusMarker('Bus2', Bus2_Location, config),
+            _buildBusMarker('Bus3', Bus3_Location, config),
           ],
         ),
         MarkerLayer(
-          rotate: true,
+          rotate: false,
           markers: [
             if (currentLocation != null)
               Marker(

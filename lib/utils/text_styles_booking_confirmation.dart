@@ -32,11 +32,11 @@ class BookingConfirmationText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity, // ✅ Forces full horizontal width
-      alignment: Alignment.center, // ✅ Aligns Row content to center
+      width: double.infinity, //  Forces full horizontal width
+      alignment: Alignment.center, //  Aligns Row content to center
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        // ✅ Centers children inside Row
+        //  Centers children inside Row
         crossAxisAlignment: CrossAxisAlignment.center,
 
         children: [
@@ -53,12 +53,12 @@ class BookingConfirmationText extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: MediaQuery.of(context).size.width * 0.3),
+          SizedBox(width: MediaQuery.of(context).size.width * 0.3 * size),
 
           // Fixed-size box for the value
           SizedBox(
             height: 25,
-            width: 100, // Same width as label for clean alignment
+            width: 50, // 1/2 width as label for cleaner alignment
             child: Text(
               value,
               style: TextStyle(

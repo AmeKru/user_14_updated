@@ -532,7 +532,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                   label: 'Trip Number: ',
                   value:
                       '${selectedBox == 1 ? bookedTripIndexKAP! + 1 : bookedTripIndexCLE! + 1}',
-                  size: 0.50,
+                  size: 0.60,
                   darkText: widget.isDarkMode ? false : true,
                 ),
                 // Departure time display
@@ -543,21 +543,21 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                         ? bookedTripIndexKAP!
                         : bookedTripIndexCLE!],
                   ),
-                  size: 0.50,
+                  size: 0.60,
                   darkText: widget.isDarkMode ? false : true,
                 ),
                 // Station name display
                 BookingConfirmationText(
                   label: 'Station: ',
                   value: selectedBox == 1 ? 'KAP' : 'CLE',
-                  size: 0.50,
+                  size: 0.60,
                   darkText: widget.isDarkMode ? false : true,
                 ),
                 // Bus stop display
                 BookingConfirmationText(
                   label: 'Bus Stop: ',
                   value: selectedBusStop,
-                  size: 0.50,
+                  size: 0.60,
                   darkText: widget.isDarkMode ? false : true,
                 ),
               ],

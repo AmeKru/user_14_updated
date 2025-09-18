@@ -377,7 +377,7 @@ class _BookingDetailsCard extends StatelessWidget {
               BookingConfirmationText(
                 label: 'Trip Number',
                 value: '${bookedTripIndex + 1}',
-                size: 0.5,
+                size: 1,
                 darkText: true,
               ),
               DrawLine(), // Divider line
@@ -386,7 +386,7 @@ class _BookingDetailsCard extends StatelessWidget {
                 label: 'Time',
                 value:
                     '${bookedTime.hour.toString().padLeft(2, '0')}:${bookedTime.minute.toString().padLeft(2, '0')}',
-                size: 0.5,
+                size: 1,
                 darkText: true,
               ),
               DrawLine(),
@@ -394,7 +394,7 @@ class _BookingDetailsCard extends StatelessWidget {
               BookingConfirmationText(
                 label: 'Station',
                 value: station,
-                size: 0.5,
+                size: 1,
                 darkText: true,
               ),
               DrawLine(),
@@ -402,7 +402,7 @@ class _BookingDetailsCard extends StatelessWidget {
               BookingConfirmationText(
                 label: 'Bus Stop',
                 value: busStop,
-                size: 0.5,
+                size: 1,
                 darkText: true,
               ),
               const SizedBox(height: 10),

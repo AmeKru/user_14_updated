@@ -208,7 +208,7 @@ class _BookingServiceState extends State<BookingService> {
                 ),
               ),
 
-              const SizedBox(height: 30),
+              SizedBox(height: 20),
 
               // === Legend Row: Available & Half Full ===
               Row(
@@ -250,7 +250,7 @@ class _BookingServiceState extends State<BookingService> {
                 ],
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 5),
 
               // === List of Departure Trips ===
               ListView.builder(

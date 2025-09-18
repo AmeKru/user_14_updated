@@ -38,15 +38,10 @@ Color getMarkerColor(String markerName, int currentValue, bool darkMode) {
   return Color(0xff002345);
 }
 
-// TODO: check which Bus goes on which route
+// TODO: check which Bus goes on which route (then maybe add highlighted colour to bus on selected route?)
 Color getBusMarkerColor(String busNumber, int selectedBox, bool darkMode) {
-  if (selectedBox == 1 && (busNumber == 'Bus1' || busNumber == 'Bus2')) {
-    return (darkMode ? Color(0xfffeb041) : Colors.pink[700]!);
-  } else if (selectedBox == 2 && busNumber == 'Bus3') {
-    return (darkMode ? Color(0xfffeb041) : Colors.pink[700]!);
-  }
   if (darkMode == true) {
-    return Colors.cyanAccent[100]!;
+    return Color(0xfffeb041);
   }
-  return Color(0xff002345);
+  return Colors.pink[700]!;
 }

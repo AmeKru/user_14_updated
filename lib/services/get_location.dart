@@ -85,7 +85,8 @@ class CompassPainter extends CustomPainter {
 
     // === Draw the blue arc indicating the direction range ===
     Paint paint = Paint()
-      ..color = Colors.blue.withOpacity(0.5)
+      ..color = Colors.blue
+          .withAlpha(128) // 128 out of 255 = 50% opacity
       ..strokeWidth = 20
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;

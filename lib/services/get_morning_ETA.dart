@@ -15,40 +15,74 @@ class CalculateMorningBus {
   // - An ETA message if `ETA` is provided.
 
   static Widget buildMorningETADisplay(
+    context,
     String text,
     bool isDarkMode, {
     String ETA = '',
   }) {
-    return SizedBox(
-      width: 350,
-      child: Card(
-        color: ETA.isNotEmpty
-            ? (isDarkMode ? Colors.blueGrey[700] : const Color(0xff014689))
-            : (isDarkMode ? Colors.blueGrey[800] : Colors.grey[300]),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(0.0)),
-        child: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Column(
-            children: [
-              Icon(
-                Icons.directions_bus,
-                color: ETA.isNotEmpty
-                    ? (isDarkMode ? Colors.blueGrey[50] : Colors.black)
-                    : (isDarkMode ? Colors.blueGrey[200] : Colors.grey[600]),
+    return Center(
+      child: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.9,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 8,
+              height: 57,
+              color: ETA.isNotEmpty
+                  ? (isDarkMode ? Colors.cyanAccent : Color(0xff014689))
+                  : (isDarkMode ? Colors.blueGrey[700] : Colors.grey[400]),
+            ),
+            Card(
+              color: ETA.isNotEmpty
+                  ? (isDarkMode ? Colors.blueGrey[700] : Colors.blue[50])
+                  : (isDarkMode ? Colors.blueGrey[800] : Colors.grey[300]),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(0.0),
               ),
-              Text(
-                ETA.isNotEmpty ? '$text $ETA minutes' : text,
-                style: TextStyle(
-                  fontSize: 15.0,
-                  fontFamily: 'Roboto',
-                  fontWeight: FontWeight.w400,
-                  color: ETA.isNotEmpty
-                      ? (isDarkMode ? Colors.blueGrey[50] : Colors.black)
-                      : (isDarkMode ? Colors.blueGrey[200] : Colors.grey[600]),
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.8,
+                child: Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.directions_bus,
+                        color: ETA.isNotEmpty
+                            ? (isDarkMode ? Colors.cyanAccent : Colors.black)
+                            : (isDarkMode
+                                  ? Colors.blueGrey[200]
+                                  : Colors.grey[600]),
+                      ),
+                      Text(
+                        ETA.isNotEmpty ? '$text $ETA minutes' : text,
+                        style: TextStyle(
+                          fontSize: 15.0,
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.w400,
+                          color: ETA.isNotEmpty
+                              ? (isDarkMode
+                                    ? Colors.blueGrey[50]
+                                    : Colors.black)
+                              : (isDarkMode
+                                    ? Colors.blueGrey[200]
+                                    : Colors.grey[600]),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+            Container(
+              width: 8,
+              height: 57,
+              color: ETA.isNotEmpty
+                  ? (isDarkMode ? Colors.cyanAccent : Color(0xff014689))
+                  : (isDarkMode ? Colors.blueGrey[700] : Colors.grey[400]),
+            ),
+          ],
         ),
       ),
     );
@@ -63,7 +97,11 @@ class CalculateMorningBus {
   //   - "No upcoming buses available" if none remain.
   //   - The next bus ETA (and second next if `selectedMRT == 1`).
 
-  static Widget getMorningETA(List<DateTime> busArrivalTimes, bool darkMode) {
+  static Widget getMorningETA(
+    List<DateTime> busArrivalTimes,
+    bool darkMode,
+    BuildContext context,
+  ) {
     final timeService = TimeService();
     final isDarkMode =
         darkMode; // CHANGED: explicitly store darkMode in local var
@@ -89,8 +127,11 @@ class CalculateMorningBus {
         .toList();
 
     // Helper to build "no buses" message
-    Widget noBusCard() =>
-        buildMorningETADisplay('No upcoming buses available.', isDarkMode);
+    Widget noBusCard() => buildMorningETADisplay(
+      context,
+      'No upcoming buses available.',
+      isDarkMode,
+    );
 
     // Helper to calculate minutes until a bus
     String minutesUntil(DateTime time) =>
@@ -111,9 +152,19 @@ class CalculateMorningBus {
 
     return Column(
       children: [
-        buildMorningETADisplay('Upcoming bus:', ETA: upcomingBus, isDarkMode),
+        buildMorningETADisplay(
+          context,
+          'Upcoming bus:',
+          ETA: upcomingBus,
+          isDarkMode,
+        ),
         if (selectedMRT == 1)
-          buildMorningETADisplay('Next bus:', ETA: nextUpcomingBus, isDarkMode),
+          buildMorningETADisplay(
+            context,
+            'Next bus:',
+            ETA: nextUpcomingBus,
+            isDarkMode,
+          ),
       ],
     );
   }
@@ -180,6 +231,7 @@ class _GetMorningETAState extends State<GetMorningETA> {
     return CalculateMorningBus.getMorningETA(
       widget.busArrivalTimes,
       widget.isDarkMode, // CHANGED: now passing dark mode flag
+      context,
     );
   }
 }

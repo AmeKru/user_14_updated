@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_datastore/amplify_datastore.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:user_14_updated/amplifyconfiguration.dart';
@@ -164,15 +165,21 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
 
     // Debugging: Print out the fetched data
     if (data != null) {
-      print('Booking found: $data');
+      if (kDebugMode) {
+        print('Booking found: $data');
+      }
     } else {
-      print('No booking found');
+      if (kDebugMode) {
+        print('No booking found');
+      }
     }
     return data;
   }
 
   Future<void> Minus(String _MRT, int _TripNo, String _BusStop) async {
-    print('Getting in Minus function');
+    if (kDebugMode) {
+      print('Getting in Minus function');
+    }
     final BOOKINGDETAILS5? bookingToDelete = await Search_Instance(
       _MRT,
       _TripNo,
@@ -181,12 +188,15 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
     if (bookingToDelete != null) {
       final request = ModelMutations.delete(bookingToDelete);
       final response = await Amplify.API.mutate(request: request).response;
-      if (bookingToDelete.MRTStation == 'KAP')
+      if (bookingToDelete.MRTStation == 'KAP') {
         countKAP(bookingToDelete.TripNo, bookingToDelete.BusStop);
-      else
+      } else {
         countCLE(bookingToDelete.TripNo, bookingToDelete.BusStop);
+      }
     } else {
-      print('No booking deleted');
+      if (kDebugMode) {
+        print('No booking deleted');
+      }
     }
   }
 
@@ -211,7 +221,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
         countCLE(bookingToDelete.TripNo, bookingToDelete.BusStop);
       }
     } else {
-      print('No booking found with ID: $BookingID');
+      if (kDebugMode) {
+        print('No booking found with ID: $BookingID');
+      }
     }
   }
 
@@ -607,7 +619,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       onCancel: () {
                         setState(() {
                           confirmationPressed = false;
-                          print('Cancelling the booking...');
+                          if (kDebugMode) {
+                            print('Cancelling the booking...');
+                          }
 
                           if (data['bookedTripIndexCLE'] != null ||
                               data['bookedTripIndexKAP'] != null) {
@@ -615,17 +629,19 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                                 ? data['bookedTripIndexKAP'] + 1
                                 : data['bookedTripIndexCLE'] + 1;
                             // Ensure all necessary variables are non-null
-                            if (selectedStation != null &&
-                                selectedBox != null &&
-                                data['busStop'] != null) {
-                              print(
-                                'Calling Minus with: $selectedStation, $tripNo, ${data['busStop']}',
-                              );
+                            if (data['busStop'] != null) {
+                              if (kDebugMode) {
+                                print(
+                                  'Calling Minus with: $selectedStation, $tripNo, ${data['busStop']}',
+                                );
+                              }
                               Minus(selectedStation, tripNo, data['busStop']);
                             } else {
-                              print(
-                                'One or more values were null: Station: $selectedStation, BusStop: ${data['busStop']}, Box: $selectedBox, Index: $tripNo',
-                              );
+                              if (kDebugMode) {
+                                print(
+                                  'One or more values were null: Station: $selectedStation, BusStop: ${data['busStop']}, Box: $selectedBox, Index: $tripNo',
+                                );
+                              }
                             }
                           }
                         });
@@ -706,18 +722,12 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                                 ? bookedTripIndexKAP! + 1
                                 : bookedTripIndexCLE! + 1;
                             // Ensure all necessary variables are non-null
-                            if (selectedStation != null &&
-                                selectedBox != null &&
-                                selectedBusStop != null) {
+                            if (kDebugMode) {
                               print(
                                 'Calling Minus with: $selectedStation, $tripNo, $selectedBusStop',
                               );
-                              Minus(selectedStation, tripNo, selectedBusStop!);
-                            } else {
-                              print(
-                                'One or more values were null: Station: $selectedStation, BusStop: $selectedBusStop, Box: $selectedBox, Index: $tripNo',
-                              );
                             }
+                            Minus(selectedStation, tripNo, selectedBusStop);
                           }
                         });
                         prefsService.clearBookingData();
