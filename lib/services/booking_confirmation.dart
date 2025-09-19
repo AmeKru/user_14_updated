@@ -24,8 +24,8 @@ class BookingConfirmation extends StatefulWidget {
   final int selectedBox;
 
   // Index of the booked trip for KAP and CLE stops (nullable if not booked)
-  int? bookedTripIndexKAP;
-  int? bookedTripIndexCLE;
+  final int? bookedTripIndexKAP;
+  final int? bookedTripIndexCLE;
 
   // Function to retrieve the list of departure times
   final List<DateTime> Function() getDepartureTimes;
@@ -34,11 +34,11 @@ class BookingConfirmation extends StatefulWidget {
   final VoidCallback onCancel;
 
   // Name of the bus stop (optional)
-  String? busStop;
+  final String? busStop;
 
   // Lists of departure times for KAP and CLE stops
-  final List<DateTime> KAPDepartureTime;
-  final List<DateTime> CLEDepartureTime;
+  final List<DateTime> departureTimeKAP;
+  final List<DateTime> departureTimeCLE;
 
   // Evening service identifier (likely used to determine schedule)
   final int eveningService;
@@ -46,7 +46,7 @@ class BookingConfirmation extends StatefulWidget {
   // Whether the app is currently in dark mode
   final bool isDarkMode;
 
-  BookingConfirmation({
+  const BookingConfirmation({
     super.key,
     required this.selectedBox,
     this.bookedTripIndexKAP,
@@ -54,8 +54,8 @@ class BookingConfirmation extends StatefulWidget {
     required this.getDepartureTimes,
     required this.onCancel,
     this.busStop,
-    required this.KAPDepartureTime,
-    required this.CLEDepartureTime,
+    required this.departureTimeKAP,
+    required this.departureTimeCLE,
     required this.eveningService,
     required this.isDarkMode,
   });

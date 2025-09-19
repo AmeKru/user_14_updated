@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
@@ -31,66 +32,66 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   int selectedBox = 0;
   LatLng? currentLocation;
   double _heading = 0.0;
-  List<LatLng> routepoints = [];
-  int service_time = 9;
+  List<LatLng> routePoints = [];
+  int serviceTime = 9;
   bool ignoring = false;
   bool _isDarkMode = false;
 
-  LatLng? Bus1_Location;
-  String? Bus1_Time;
-  double? Bus1_Speed;
-  String? Bus1_Stop;
-  String? Bus1_ETA;
-  int? Bus1_Count;
+  LatLng? bus1Location;
+  String? bus1Time;
+  double? bus1Speed;
+  String? bus1Stop;
+  String? bus1ETA;
+  int? bus1Count;
 
-  LatLng? Bus2_Location;
-  String? Bus2_Time;
-  double? Bus2_Speed;
-  String? Bus2_Stop;
-  String? Bus2_ETA;
-  int? Bus2_Count;
+  LatLng? bus2Location;
+  String? bus2Time;
+  double? bus2Speed;
+  String? bus2Stop;
+  String? bus2ETA;
+  int? bus2Count;
 
-  LatLng? Bus3_Location;
-  String? Bus3_Time;
-  double? Bus3_Speed;
-  String? Bus3_Stop;
-  String? Bus3_ETA;
-  int? Bus3_Count;
+  LatLng? bus3Location;
+  String? bus3Time;
+  double? bus3Speed;
+  String? bus3Stop;
+  String? bus3ETA;
+  int? bus3Count;
 
-  LocationService _locationService = LocationService();
-  MQTT_Connect _mqttConnect = MQTT_Connect();
+  LocationService locationService = LocationService();
+  ConnectMQTT _mqttConnect = ConnectMQTT();
   DateTime now = DateTime.now();
 
-  LatLng ENT = LatLng(1.332959, 103.777306);
-  LatLng CLE = LatLng(1.313434, 103.765811); // change to test out
-  LatLng KAP = LatLng(1.335844, 103.783160);
-  LatLng B23 = LatLng(1.333801, 103.775738);
-  LatLng SPH = LatLng(1.335110, 103.775464);
-  LatLng SIT = LatLng(1.334510, 103.774504);
-  LatLng B44 = LatLng(1.3329522845882348, 103.77145520892851);
-  LatLng B37 = LatLng(1.332797, 103.773304);
-  LatLng MAP = LatLng(1.332473, 103.774377);
-  LatLng HSC = LatLng(1.330028, 103.774623);
-  LatLng LCT = LatLng(1.330895, 103.774870);
-  LatLng B72 = LatLng(1.3314596165361228, 103.7761976140868);
-  LatLng OPP_KAP = LatLng(1.336274, 103.783146); //OPP KAP
+  LatLng busStopENT = LatLng(1.332959, 103.777306);
+  LatLng busStopCLE = LatLng(1.313434, 103.765811); // change to test out
+  LatLng busStopKAP = LatLng(1.335844, 103.783160);
+  LatLng busStopB23 = LatLng(1.333801, 103.775738);
+  LatLng busStopSPH = LatLng(1.335110, 103.775464);
+  LatLng busStopSIT = LatLng(1.334510, 103.774504);
+  LatLng busStopB44 = LatLng(1.3329522845882348, 103.77145520892851);
+  LatLng busStopB37 = LatLng(1.332797, 103.773304);
+  LatLng busStopMAP = LatLng(1.332473, 103.774377);
+  LatLng busStopHSC = LatLng(1.330028, 103.774623);
+  LatLng busStopLCT = LatLng(1.330895, 103.774870);
+  LatLng busStopB72 = LatLng(1.3314596165361228, 103.7761976140868);
+  LatLng oppositeKAP = LatLng(1.336274, 103.783146); //OPP KAP
 
-  List<LatLng> AM_KAP = [
-    // TODO: currently set to OPPKAP instead of KAP
+  List<LatLng> amKAP = [
+    // TODO: currently set to Opposite KAP instead of KAP
     // LatLng(1.3365156413692888, 103.78278794804254), // KAP
     LatLng(1.335844, 103.783160),
-    LatLng(1.326394, 103.775705), // UTURN
+    LatLng(1.326394, 103.775705), // uTurn
     LatLng(1.3329143792222058, 103.77742909276205), // ENT
     LatLng(1.3324019134469306, 103.7747380910866), // MAP
   ];
 
-  List<LatLng> AM_CLE = [
+  List<LatLng> amCLE = [
     LatLng(1.3153179405495476, 103.76538319080443), // CLE
     LatLng(1.3329143792222058, 103.77742909276205), // ENT
     LatLng(1.3324019134469306, 103.7747380910866), // MAP
   ];
 
-  List<LatLng> PM_KAP = [
+  List<LatLng> pmKAP = [
     LatLng(1.3329143792222058, 103.77742909276205), // ENT
     LatLng(1.3339219201675242, 103.77574132061896), // B23
     LatLng(1.3350826567868576, 103.7754223503998), // SPH
@@ -105,10 +106,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     LatLng(1.3307778258080973, 103.77543148160284), //between hsc and lct
     LatLng(1.3311533369747423, 103.77490110804173), // LCT
     LatLng(1.3312394356934057, 103.77644173403719), // B72
-    LatLng(1.3365156413692888, 103.78278794804254), // OPPKAP
+    LatLng(1.3365156413692888, 103.78278794804254), // Opposite KAP
   ];
 
-  List<LatLng> PM_CLE = [
+  List<LatLng> pmCLE = [
     LatLng(1.3329143792222058, 103.77742909276205), // ENT
     LatLng(1.3339219201675242, 103.77574132061896), // B23
     LatLng(1.3350826567868576, 103.7754223503998), // SPH
@@ -122,7 +123,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     LatLng(1.3307778258080973, 103.77543148160284), //between hsc and lct
     LatLng(1.3311533369747423, 103.77490110804173), // LCT
     LatLng(1.3312394356934057, 103.77644173403719), // B72
-    LatLng(1.331820636037709, 103.77790742890757), //CLE UTURN
+    LatLng(1.331820636037709, 103.77790742890757), //CLE uTurn
     LatLng(1.314967973664341, 103.765121458707), //CLE A
   ];
 
@@ -132,7 +133,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _getLocation();
-    _mqttConnect = MQTT_Connect();
+    _mqttConnect = ConnectMQTT();
     _mqttConnect
         .createState()
         .initState(); // Assuming you have this function in your MQTT_Connect class.
@@ -141,38 +142,38 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
     ///////////////////////////////////////////////////////////////
     // BUS 1
-    MQTT_Connect.bus1LocationNotifier.addListener(() {
+    ConnectMQTT.bus1LocationNotifier.addListener(() {
       setState(() {
-        Bus1_Location = MQTT_Connect.bus1LocationNotifier.value;
+        bus1Location = ConnectMQTT.bus1LocationNotifier.value;
       });
     });
 
-    MQTT_Connect.bus1SpeedNotifier.addListener(() {
+    ConnectMQTT.bus1SpeedNotifier.addListener(() {
       setState(() {
-        Bus1_Speed = MQTT_Connect.bus1SpeedNotifier.value;
+        bus1Speed = ConnectMQTT.bus1SpeedNotifier.value;
       });
     });
-    MQTT_Connect.bus1TimeNotifier.addListener(() {
+    ConnectMQTT.bus1TimeNotifier.addListener(() {
       setState(() {
-        Bus1_Time = MQTT_Connect.bus1TimeNotifier.value;
-      });
-    });
-
-    MQTT_Connect.bus1StopNotifier.addListener(() {
-      setState(() {
-        Bus1_Stop = MQTT_Connect.bus1StopNotifier.value;
+        bus1Time = ConnectMQTT.bus1TimeNotifier.value;
       });
     });
 
-    MQTT_Connect.bus1ETANotifier.addListener(() {
+    ConnectMQTT.bus1StopNotifier.addListener(() {
       setState(() {
-        Bus1_ETA = MQTT_Connect.bus1ETANotifier.value;
+        bus1Stop = ConnectMQTT.bus1StopNotifier.value;
       });
     });
 
-    MQTT_Connect.bus1CountNotifier.addListener(() {
+    ConnectMQTT.bus1ETANotifier.addListener(() {
       setState(() {
-        Bus1_Count = MQTT_Connect.bus1CountNotifier.value;
+        bus1ETA = ConnectMQTT.bus1ETANotifier.value;
+      });
+    });
+
+    ConnectMQTT.bus1CountNotifier.addListener(() {
+      setState(() {
+        bus1Count = ConnectMQTT.bus1CountNotifier.value;
       });
     });
     // BUS 1
@@ -180,38 +181,38 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
     ///////////////////////////////////////////////////////////////
     // BUS 2
-    MQTT_Connect.bus2LocationNotifier.addListener(() {
+    ConnectMQTT.bus2LocationNotifier.addListener(() {
       setState(() {
-        Bus2_Location = MQTT_Connect.bus2LocationNotifier.value;
+        bus2Location = ConnectMQTT.bus2LocationNotifier.value;
       });
     });
 
-    MQTT_Connect.bus2SpeedNotifier.addListener(() {
+    ConnectMQTT.bus2SpeedNotifier.addListener(() {
       setState(() {
-        Bus2_Speed = MQTT_Connect.bus2SpeedNotifier.value;
+        bus2Speed = ConnectMQTT.bus2SpeedNotifier.value;
       });
     });
-    MQTT_Connect.bus2TimeNotifier.addListener(() {
+    ConnectMQTT.bus2TimeNotifier.addListener(() {
       setState(() {
-        Bus2_Time = MQTT_Connect.bus2TimeNotifier.value;
-      });
-    });
-
-    MQTT_Connect.bus2StopNotifier.addListener(() {
-      setState(() {
-        Bus2_Stop = MQTT_Connect.bus2StopNotifier.value;
+        bus2Time = ConnectMQTT.bus2TimeNotifier.value;
       });
     });
 
-    MQTT_Connect.bus2ETANotifier.addListener(() {
+    ConnectMQTT.bus2StopNotifier.addListener(() {
       setState(() {
-        Bus2_ETA = MQTT_Connect.bus2ETANotifier.value;
+        bus2Stop = ConnectMQTT.bus2StopNotifier.value;
       });
     });
 
-    MQTT_Connect.bus2CountNotifier.addListener(() {
+    ConnectMQTT.bus2ETANotifier.addListener(() {
       setState(() {
-        Bus2_Count = MQTT_Connect.bus2CountNotifier.value;
+        bus2ETA = ConnectMQTT.bus2ETANotifier.value;
+      });
+    });
+
+    ConnectMQTT.bus2CountNotifier.addListener(() {
+      setState(() {
+        bus2Count = ConnectMQTT.bus2CountNotifier.value;
       });
     });
     // BUS 2
@@ -219,38 +220,38 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
     ///////////////////////////////////////////////////////////////
     // BUS 3
-    MQTT_Connect.bus3LocationNotifier.addListener(() {
+    ConnectMQTT.bus3LocationNotifier.addListener(() {
       setState(() {
-        Bus3_Location = MQTT_Connect.bus3LocationNotifier.value;
+        bus3Location = ConnectMQTT.bus3LocationNotifier.value;
       });
     });
 
-    MQTT_Connect.bus3SpeedNotifier.addListener(() {
+    ConnectMQTT.bus3SpeedNotifier.addListener(() {
       setState(() {
-        Bus3_Speed = MQTT_Connect.bus3SpeedNotifier.value;
+        bus3Speed = ConnectMQTT.bus3SpeedNotifier.value;
       });
     });
-    MQTT_Connect.bus3TimeNotifier.addListener(() {
+    ConnectMQTT.bus3TimeNotifier.addListener(() {
       setState(() {
-        Bus3_Time = MQTT_Connect.bus3TimeNotifier.value;
-      });
-    });
-
-    MQTT_Connect.bus3StopNotifier.addListener(() {
-      setState(() {
-        Bus3_Stop = MQTT_Connect.bus3StopNotifier.value;
+        bus3Time = ConnectMQTT.bus3TimeNotifier.value;
       });
     });
 
-    MQTT_Connect.bus3ETANotifier.addListener(() {
+    ConnectMQTT.bus3StopNotifier.addListener(() {
       setState(() {
-        Bus3_ETA = MQTT_Connect.bus3ETANotifier.value;
+        bus3Stop = ConnectMQTT.bus3StopNotifier.value;
       });
     });
 
-    MQTT_Connect.bus3CountNotifier.addListener(() {
+    ConnectMQTT.bus3ETANotifier.addListener(() {
       setState(() {
-        Bus3_Count = MQTT_Connect.bus3CountNotifier.value;
+        bus3ETA = ConnectMQTT.bus3ETANotifier.value;
+      });
+    });
+
+    ConnectMQTT.bus3CountNotifier.addListener(() {
+      setState(() {
+        bus3Count = ConnectMQTT.bus3CountNotifier.value;
       });
     });
     // BUS 3
@@ -274,25 +275,29 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
   void _getLocation() {
     // Initial location fetch
-    _locationService.getCurrentLocation().then((location) {
+    locationService.getCurrentLocation().then((location) {
       setState(() {
         currentLocation = location;
-        print('Printing current location: $currentLocation');
+        if (kDebugMode) {
+          print('Printing current location: $currentLocation');
+        }
       });
     });
 
     // Set up periodic location updates
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      _locationService.getCurrentLocation().then((location) {
+      locationService.getCurrentLocation().then((location) {
         setState(() {
           currentLocation = location;
-          print('Updated location: $currentLocation');
+          if (kDebugMode) {
+            print('Updated location: $currentLocation');
+          }
         });
       });
     });
 
     // Compass heading updates
-    _locationService.initCompass((heading) {
+    locationService.initCompass((heading) {
       setState(() {
         _heading = heading;
       });
@@ -313,18 +318,18 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         //fetchRoute(LatLng(1.3359291665604225, 103.78307744418207));
         //fetchAM_KAPRoute();
         if (now.hour > startAfternoonService) {
-          fetchRoute(PM_KAP);
+          fetchRoute(pmKAP);
         } else {
-          fetchRoute(AM_KAP);
+          fetchRoute(amKAP);
         }
       } else if (selectedBox == 2) {
         //CLE
         //fetchRoute(LatLng(1.3157535241817033, 103.76510924418207));
         //fetchAM_CLERoute();
         if (now.hour > startAfternoonService) {
-          fetchRoute(PM_CLE);
+          fetchRoute(pmCLE);
         } else {
-          fetchRoute(AM_CLE);
+          fetchRoute(amCLE);
         }
       }
     });
@@ -352,8 +357,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
   // if (response.statusCode == 200) {
   // setState(() {
-  // routepoints.clear();
-  //routepoints.add(start);
+  // routePoints.clear();
+  //routePoints.add(start);
   // var data = jsonDecode(response.body);
 
   //if (data['routes'] != null) {
@@ -361,7 +366,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   // List<LatLng> decodedCoordinates = PolylinePoints.decodePolyline(
   // encodedPolyline,
   //   ).map((point) => LatLng(point.latitude, point.longitude)).toList();
-  // routepoints.addAll(decodedCoordinates);
+  // routePoints.addAll(decodedCoordinates);
   //}
   // });
   //}
@@ -392,8 +397,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         final points = PolylinePoints.decodePolyline(encodedPolyline);
 
         setState(() {
-          routepoints.clear();
-          routepoints.addAll(
+          routePoints.clear();
+          routePoints.addAll(
             points.map((p) => latlng.LatLng(p.latitude, p.longitude)).toList(),
           );
         });
@@ -483,11 +488,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
               ///////////////////////////////////////////////////////////////
               // Check necessary, so map loads properly
-              if (routepoints.isNotEmpty)
+              if (routePoints.isNotEmpty)
                 PolylineLayer(
                   polylines: [
                     Polyline(
-                      points: routepoints,
+                      points: routePoints,
                       color: Colors.blue,
                       strokeWidth: 5,
                       pattern: StrokePattern.dashed(
@@ -502,7 +507,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               MarkerLayer(
                 markers: [
                   Marker(
-                    point: ENT,
+                    point: busStopENT,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -533,9 +538,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   ),
                   Marker(
                     point:
-                        Bus1_Location ??
+                        bus1Location ??
                         LatLng(1.3323127398440282, 103.774728443874),
-                    child: Container(
+                    child: SizedBox(
                       width: 50,
                       height: 60,
                       child: Column(
@@ -565,9 +570,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   ),
                   Marker(
                     point:
-                        Bus2_Location ??
+                        bus2Location ??
                         LatLng(1.3323127398440282, 103.774728443874),
-                    child: Container(
+                    child: SizedBox(
                       width: 50,
                       height: 60,
                       child: Column(
@@ -597,9 +602,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   ),
                   Marker(
                     point:
-                        Bus3_Location ??
+                        bus3Location ??
                         LatLng(1.3323127398440282, 103.774728443874),
-                    child: Container(
+                    child: SizedBox(
                       width: 50,
                       height: 60,
                       child: Column(
@@ -641,7 +646,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                       ),
                     ),
                   Marker(
-                    point: CLE,
+                    point: busStopCLE,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -672,7 +677,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   ),
                   // color : _isDarkMode ? Colors.blue[900] : Colors.red,
                   Marker(
-                    point: KAP,
+                    point: busStopKAP,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -702,7 +707,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: OPP_KAP,
+                    point: oppositeKAP,
                     child: Icon(
                       CupertinoIcons.location_circle_fill,
                       color: Colors.blue[900],
@@ -710,7 +715,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: B23,
+                    point: busStopB23,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -740,7 +745,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: SPH,
+                    point: busStopSPH,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -770,7 +775,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: SIT,
+                    point: busStopSIT,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -802,7 +807,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: B44,
+                    point: busStopB44,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -832,7 +837,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: B37,
+                    point: busStopB37,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -862,7 +867,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: MAP,
+                    point: busStopMAP,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -892,7 +897,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: HSC,
+                    point: busStopHSC,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -924,7 +929,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: LCT,
+                    point: busStopLCT,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(
@@ -956,7 +961,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                   Marker(
-                    point: B72,
+                    point: busStopB72,
                     child: GestureDetector(
                       onTap: () {
                         showDialog(

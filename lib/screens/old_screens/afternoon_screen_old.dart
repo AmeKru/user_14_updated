@@ -22,24 +22,28 @@ class AfternoonScreen extends StatefulWidget {
   static int eveningService = 15;
   final bool isDarkMode;
 
-  AfternoonScreen({required this.updateSelectedBox, required this.isDarkMode});
+  const AfternoonScreen({
+    super.key,
+    required this.updateSelectedBox,
+    required this.isDarkMode,
+  });
 
   @override
-  _AfternoonScreenState createState() => _AfternoonScreenState();
+  AfternoonScreenState createState() => AfternoonScreenState();
 }
 
-class _AfternoonScreenState extends State<AfternoonScreen> {
+class AfternoonScreenState extends State<AfternoonScreen> {
   int selectedBox = 0; // Default to no selection
   int? bookedTripIndexKAP;
   int? bookedTripIndexCLE;
   bool confirmationPressed = false;
   DateTime currentTime = DateTime.now();
-  String? BookingID;
+  String? bookingID;
   String selectedBusStop = '';
-  BusData _BusData = BusData();
-  List<DateTime> KAP_DT = [];
-  List<DateTime> CLE_DT = [];
-  int _eveningService = 9;
+  BusData busData = BusData();
+  List<DateTime> departureTimeKAP = [];
+  List<DateTime> departureTimeCLE = [];
+  int eveningService = 9;
   SharedPreferenceService prefsService = SharedPreferenceService();
   Future<Map<String, dynamic>?>? futureBookingData;
   bool _showBookingService = false;
@@ -54,7 +58,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
         _showBookingService = false;
       });
     });
-    print('Printing BusStop: ${_BusData.busStop}');
+    if (kDebugMode) {
+      print('Printing BusStop: ${busData.busStop}');
+    }
   }
 
   Future<Map<String, dynamic>?> loadBookingData() async {
@@ -86,16 +92,18 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
     Amplify.addPlugin(amplifyApi);
     Amplify.configure(amplifyconfig);
 
-    print('Amplify configured');
+    if (kDebugMode) {
+      print('Amplify configured');
+    }
   }
 
-  Future<void> create(String _MRTStation, int _TripNo, String _BusStop) async {
+  Future<void> create(String mrtStation, int tripNo, String busStop) async {
     try {
       final model = BOOKINGDETAILS5(
         id: Uuid().v4(),
-        MRTStation: _MRTStation,
-        TripNo: _TripNo,
-        BusStop: _BusStop,
+        MRTStation: mrtStation,
+        TripNo: tripNo,
+        BusStop: busStop,
       );
 
       final request = ModelMutations.create(model);
@@ -109,55 +117,57 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
 
       String id = createdBOOKINGDETAILS5.id;
       setState(() {
-        BookingID = id;
+        bookingID = id;
       });
-      safePrint('Mutation result: $BookingID');
+      safePrint('Mutation result: $bookingID');
     } on ApiException catch (e) {
       safePrint('Mutation failed: $e');
     }
 
-    _MRTStation == 'KAP'
-        ? countKAP(_TripNo, _BusStop)
-        : countCLE(_TripNo, _BusStop);
+    mrtStation == 'KAP' ? countKAP(tripNo, busStop) : countCLE(tripNo, busStop);
   }
 
-  Future<int?> countBooking(String MRT, int TripNo) async {
+  Future<int?> countBooking(String mrt, int tripNo) async {
     int? count;
     try {
       final request = ModelQueries.list(
         BOOKINGDETAILS5.classType,
         where: BOOKINGDETAILS5.MRTSTATION
-            .eq(MRT)
-            .and(BOOKINGDETAILS5.TRIPNO.eq(TripNo)),
+            .eq(mrt)
+            .and(BOOKINGDETAILS5.TRIPNO.eq(tripNo)),
       );
       final response = await Amplify.API.query(request: request).response;
       final data = response.data?.items;
 
       if (data != null) {
         count = data.length;
-        print('$count');
+        if (kDebugMode) {
+          print('$count');
+        }
       } else {
         count = 0;
       }
     } catch (e) {
-      print('$e');
+      if (kDebugMode) {
+        print('$e');
+      }
     }
     return count;
   }
 
-  Future<BOOKINGDETAILS5?> Search_Instance(
-    String MRT,
-    int TripNo,
-    String BusStop,
+  Future<BOOKINGDETAILS5?> searchInstance(
+    String mrt,
+    int tripNo,
+    String busStop,
   ) async {
     final request = ModelQueries.list(
       BOOKINGDETAILS5.classType,
       where: (BOOKINGDETAILS5.MRTSTATION
-          .eq(MRT)
+          .eq(mrt)
           .and(
             BOOKINGDETAILS5.TRIPNO
-                .eq(TripNo)
-                .and(BOOKINGDETAILS5.BUSSTOP.eq(BusStop)),
+                .eq(tripNo)
+                .and(BOOKINGDETAILS5.BUSSTOP.eq(busStop)),
           )),
     );
     final response = await Amplify.API.query(request: request).response;
@@ -176,18 +186,18 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
     return data;
   }
 
-  Future<void> Minus(String _MRT, int _TripNo, String _BusStop) async {
+  Future<void> minus(String mrt, int tripNo, String busStop) async {
     if (kDebugMode) {
       print('Getting in Minus function');
     }
-    final BOOKINGDETAILS5? bookingToDelete = await Search_Instance(
-      _MRT,
-      _TripNo,
-      _BusStop,
+    final BOOKINGDETAILS5? bookingToDelete = await searchInstance(
+      mrt,
+      tripNo,
+      busStop,
     );
     if (bookingToDelete != null) {
-      final request = ModelMutations.delete(bookingToDelete);
-      final response = await Amplify.API.mutate(request: request).response;
+      //final request = ModelMutations.delete(bookingToDelete);
+      //final response = await Amplify.API.mutate(request: request).response;
       if (bookingToDelete.MRTStation == 'KAP') {
         countKAP(bookingToDelete.TripNo, bookingToDelete.BusStop);
       } else {
@@ -203,7 +213,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
   Future<BOOKINGDETAILS5?> readByID() async {
     final request = ModelQueries.list(
       BOOKINGDETAILS5.classType,
-      where: BOOKINGDETAILS5.ID.eq(BookingID),
+      where: BOOKINGDETAILS5.ID.eq(bookingID),
     );
     final response = await Amplify.API.query(request: request).response;
     final data = response.data?.items.firstOrNull;
@@ -213,8 +223,8 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
   Future<void> delete() async {
     final BOOKINGDETAILS5? bookingToDelete = await readByID();
     if (bookingToDelete != null) {
-      final request = ModelMutations.delete(bookingToDelete);
-      final response = await Amplify.API.mutate(request: request).response;
+      //final request = ModelMutations.delete(bookingToDelete);
+      //final response = await Amplify.API.mutate(request: request).response;
       if (bookingToDelete.MRTStation == 'KAP') {
         countKAP(bookingToDelete.TripNo, bookingToDelete.BusStop);
       } else {
@@ -222,22 +232,24 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
       }
     } else {
       if (kDebugMode) {
-        print('No booking found with ID: $BookingID');
+        print('No booking found with ID: $bookingID');
       }
     }
   }
 
-  Future<void> countCLE(int _TripNo, String _BusStop) async {
+  Future<void> countCLE(int tripNo, String busStop) async {
     // Read if there is a row
     final request1 = ModelQueries.list(
       CLEAfternoon.classType,
       where: CLEAfternoon.TRIPNO
-          .eq(_TripNo)
-          .and(CLEAfternoon.BUSSTOP.eq(_BusStop)),
+          .eq(tripNo)
+          .and(CLEAfternoon.BUSSTOP.eq(busStop)),
     );
     final response1 = await Amplify.API.query(request: request1).response;
     final data1 = response1.data?.items.firstOrNull;
-    print('Row found');
+    if (kDebugMode) {
+      print('Row found');
+    }
 
     // If data1 != null delete that row
     if (data1 != null) {
@@ -250,19 +262,21 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
       BOOKINGDETAILS5.classType,
       where: BOOKINGDETAILS5.MRTSTATION
           .eq('CLE')
-          .and(BOOKINGDETAILS5.TRIPNO.eq(_TripNo))
-          .and(BOOKINGDETAILS5.BUSSTOP.eq(_BusStop)),
+          .and(BOOKINGDETAILS5.TRIPNO.eq(tripNo))
+          .and(BOOKINGDETAILS5.BUSSTOP.eq(busStop)),
     );
     final response3 = await Amplify.API.query(request: request3).response;
     final data2 = response3.data?.items;
     final int count = data2?.length ?? 0;
-    print('$count');
+    if (kDebugMode) {
+      print('$count');
+    }
 
     // Create the row if count is greater than 0
     if (count > 0) {
       final model = CLEAfternoon(
-        BusStop: _BusStop,
-        TripNo: _TripNo,
+        BusStop: busStop,
+        TripNo: tripNo,
         Count: count,
       );
       final request4 = ModelMutations.create(model);
@@ -270,17 +284,19 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
     }
   }
 
-  Future<void> countKAP(int _TripNo, String _BusStop) async {
+  Future<void> countKAP(int tripNo, String busStop) async {
     // Read if there is a row
     final request1 = ModelQueries.list(
       KAPAfternoon.classType,
       where: KAPAfternoon.TRIPNO
-          .eq(_TripNo)
-          .and(KAPAfternoon.BUSSTOP.eq(_BusStop)),
+          .eq(tripNo)
+          .and(KAPAfternoon.BUSSTOP.eq(busStop)),
     );
     final response1 = await Amplify.API.query(request: request1).response;
     final data1 = response1.data?.items.firstOrNull;
-    print('Row found');
+    if (kDebugMode) {
+      print('Row found');
+    }
 
     // If data1 != null delete that row
     if (data1 != null) {
@@ -293,19 +309,21 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
       BOOKINGDETAILS5.classType,
       where: BOOKINGDETAILS5.MRTSTATION
           .eq('KAP')
-          .and(BOOKINGDETAILS5.TRIPNO.eq(_TripNo))
-          .and(BOOKINGDETAILS5.BUSSTOP.eq(_BusStop)),
+          .and(BOOKINGDETAILS5.TRIPNO.eq(tripNo))
+          .and(BOOKINGDETAILS5.BUSSTOP.eq(busStop)),
     );
     final response3 = await Amplify.API.query(request: request3).response;
     final data2 = response3.data?.items;
     final int count = data2?.length ?? 0;
-    print('$count');
+    if (kDebugMode) {
+      print('$count');
+    }
 
     // Create the row if count is greater than 0
     if (count > 0) {
       final model = KAPAfternoon(
-        BusStop: _BusStop,
-        TripNo: _TripNo,
+        BusStop: busStop,
+        TripNo: tripNo,
         Count: count,
       );
       final request4 = ModelMutations.create(model);
@@ -335,7 +353,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                 ListView.builder(
                   shrinkWrap: true,
                   physics: NeverScrollableScrollPhysics(),
-                  itemCount: _BusData.busStop.length - 2,
+                  itemCount: busData.busStop.length - 2,
                   itemBuilder: (BuildContext context, int index) {
                     return Padding(
                       padding: const EdgeInsets.fromLTRB(10, 5, 10, 5),
@@ -346,7 +364,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                         ),
                         child: ListTile(
                           title: Text(
-                            _BusData.busStop[index + 2],
+                            busData.busStop[index + 2],
                             style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontWeight: FontWeight.w900,
@@ -354,10 +372,14 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                           ),
                           onTap: () {
                             setState(() {
-                              selectedBusStop = _BusData.busStop[index + 2];
-                              print("selectedbusStop = ${selectedBusStop}");
+                              selectedBusStop = busData.busStop[index + 2];
+                              if (kDebugMode) {
+                                print("selectedBusStop = $selectedBusStop");
+                              }
                               busIndex = index + 2;
-                              print("bus index = {busIndex}");
+                              if (kDebugMode) {
+                                print("bus index = {busIndex}");
+                              }
                             });
                             // Handle bus stop selection here
                             Navigator.pop(context); // Close the bottom sheet
@@ -424,9 +446,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
 
   List<DateTime> getDepartureTimes() {
     if (selectedBox == 1) {
-      return _BusData.KAPDepartureTime;
+      return busData.departureTimeKAP;
     } else {
-      return _BusData.CLEDepartureTime;
+      return busData.departureTimeCLE;
     }
   }
 
@@ -473,22 +495,25 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                 ),
                 BookingConfirmationText(
                   label: 'Time: ',
-                  value:
-                      '${formatTime(getDepartureTimes()[selectedBox == 1 ? bookedTripIndexKAP! : bookedTripIndexCLE!])}',
+                  value: formatTime(
+                    getDepartureTimes()[selectedBox == 1
+                        ? bookedTripIndexKAP!
+                        : bookedTripIndexCLE!],
+                  ),
                   // size: 0.31,
                   size: 0.30,
                   darkText: true,
                 ),
                 BookingConfirmationText(
                   label: 'Station: ',
-                  value: '${selectedBox == 1 ? 'KAP' : 'CLE'}',
+                  value: selectedBox == 1 ? 'KAP' : 'CLE',
                   // size: 0.26,
                   size: 0.30,
                   darkText: true,
                 ),
                 BookingConfirmationText(
                   label: 'Bus Stop: ',
-                  value: '$selectedBusStop',
+                  value: selectedBusStop,
                   // size: 0.23,
                   size: 0.30,
                   darkText: true,
@@ -549,9 +574,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                             updateSelectedBox(1);
                           });
                         },
-                        child: MRT_Box(
+                        child: BoxMRT(
                           box: selectedBox,
-                          MRT: 'KAP',
+                          mrt: 'KAP',
                           isDarkMode: widget.isDarkMode,
                         ),
                       ),
@@ -564,9 +589,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                             updateSelectedBox(2);
                           });
                         },
-                        child: MRT_Box(
+                        child: BoxMRT(
                           box: selectedBox,
-                          MRT: 'CLE',
+                          mrt: 'CLE',
                           isDarkMode: widget.isDarkMode,
                         ),
                       ),
@@ -578,10 +603,10 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
               _showBookingService
                   ? BookingService(
                       departureTimes: getDepartureTimes(),
-                      eveningService: _eveningService,
+                      eveningService: eveningService,
                       selectedBox: selectedBox,
-                      KAPDepartureTime: _BusData.KAPDepartureTime,
-                      CLEDepartureTime: _BusData.CLEDepartureTime,
+                      departureTimeKAP: busData.departureTimeKAP,
+                      departureTimeCLE: busData.departureTimeCLE,
                       bookedTripIndexKAP: bookedTripIndexKAP,
                       bookedTripIndexCLE: bookedTripIndexCLE,
                       updateBookingStatusKAP: updateBookingStatusKAP,
@@ -607,10 +632,10 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       },
                     )
                   : BookingConfirmation(
-                      eveningService: _eveningService,
+                      eveningService: eveningService,
                       selectedBox: selectedBox,
-                      KAPDepartureTime: data['KAPDepartureTime'] ?? [],
-                      CLEDepartureTime: data['CLEDepartureTime'] ?? [],
+                      departureTimeKAP: data['KAPDepartureTime'] ?? [],
+                      departureTimeCLE: data['CLEDepartureTime'] ?? [],
                       bookedTripIndexKAP: data['bookedTripIndexKAP'],
                       bookedTripIndexCLE: data['bookedTripIndexCLE'],
                       getDepartureTimes: getDepartureTimes,
@@ -635,7 +660,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                                   'Calling Minus with: $selectedStation, $tripNo, ${data['busStop']}',
                                 );
                               }
-                              Minus(selectedStation, tripNo, data['busStop']);
+                              minus(selectedStation, tripNo, data['busStop']);
                             } else {
                               if (kDebugMode) {
                                 print(
@@ -671,9 +696,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                           updateSelectedBox(1);
                         });
                       }, // Update CLE
-                      child: MRT_Box(
+                      child: BoxMRT(
                         box: selectedBox,
-                        MRT: 'KAP',
+                        mrt: 'KAP',
                         isDarkMode: widget.isDarkMode,
                       ),
                     ),
@@ -687,9 +712,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                           updateSelectedBox(2);
                         });
                       }, // Update CLE
-                      child: MRT_Box(
+                      child: BoxMRT(
                         box: selectedBox,
-                        MRT: 'CLE',
+                        mrt: 'CLE',
                         isDarkMode: widget.isDarkMode,
                       ),
                     ),
@@ -702,10 +727,10 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
               //showBookingDetails
               confirmationPressed
                   ? BookingConfirmation(
-                      eveningService: _eveningService,
+                      eveningService: eveningService,
                       selectedBox: selectedBox,
-                      KAPDepartureTime: KAP_DT,
-                      CLEDepartureTime: CLE_DT,
+                      departureTimeKAP: departureTimeKAP,
+                      departureTimeCLE: departureTimeCLE,
                       bookedTripIndexKAP: bookedTripIndexKAP,
                       bookedTripIndexCLE: bookedTripIndexCLE,
                       getDepartureTimes: getDepartureTimes,
@@ -714,7 +739,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       onCancel: () {
                         setState(() {
                           confirmationPressed = false;
-                          print('Cancelling the booking...');
+                          if (kDebugMode) {
+                            print('Cancelling the booking...');
+                          }
 
                           if (bookedTripIndexCLE != null ||
                               bookedTripIndexKAP != null) {
@@ -727,7 +754,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                                 'Calling Minus with: $selectedStation, $tripNo, $selectedBusStop',
                               );
                             }
-                            Minus(selectedStation, tripNo, selectedBusStop);
+                            minus(selectedStation, tripNo, selectedBusStop);
                           }
                         });
                         prefsService.clearBookingData();
@@ -736,10 +763,10 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                     )
                   : BookingService(
                       departureTimes: getDepartureTimes(),
-                      eveningService: _eveningService,
+                      eveningService: eveningService,
                       selectedBox: selectedBox,
-                      KAPDepartureTime: _BusData.KAPDepartureTime,
-                      CLEDepartureTime: _BusData.CLEDepartureTime,
+                      departureTimeKAP: busData.departureTimeKAP,
+                      departureTimeCLE: busData.departureTimeCLE,
                       bookedTripIndexKAP: bookedTripIndexKAP,
                       bookedTripIndexCLE: bookedTripIndexCLE,
                       updateBookingStatusKAP: updateBookingStatusKAP,

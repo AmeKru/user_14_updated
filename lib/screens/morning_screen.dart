@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart';
 import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/services/get_morning_ETA.dart';
+import 'package:user_14_updated/services/get_morning_eta.dart';
 import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
 
 class MorningScreen extends StatefulWidget {
@@ -16,10 +16,10 @@ class MorningScreen extends StatefulWidget {
   });
 
   @override
-  _MorningScreenState createState() => _MorningScreenState();
+  MorningScreenState createState() => MorningScreenState();
 }
 
-class _MorningScreenState extends State<MorningScreen> {
+class MorningScreenState extends State<MorningScreen> {
   int selectedBox = 0; // Default: no selection
   final BusData busData = BusData();
 
@@ -68,9 +68,9 @@ class _MorningScreenState extends State<MorningScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () => updateSelectedBox(1),
-                  child: MRT_Box(
+                  child: BoxMRT(
                     box: selectedBox,
-                    MRT: 'KAP',
+                    mrt: 'KAP',
                     isDarkMode: widget.isDarkMode,
                   ),
                 ),
@@ -79,9 +79,9 @@ class _MorningScreenState extends State<MorningScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () => updateSelectedBox(2),
-                  child: MRT_Box(
+                  child: BoxMRT(
                     box: selectedBox,
-                    MRT: 'CLE',
+                    mrt: 'CLE',
                     isDarkMode: widget.isDarkMode,
                   ),
                 ),
@@ -92,7 +92,7 @@ class _MorningScreenState extends State<MorningScreen> {
         const SizedBox(height: 16),
         if (selectedBox != 0)
           GetMorningETA(
-            selectedBox == 1 ? busData.KAPArrivalTime : busData.CLEArrivalTime,
+            selectedBox == 1 ? busData.arrivalTimeKAP : busData.arrivalTimeCLE,
             isDarkMode: widget.isDarkMode,
           ),
       ],

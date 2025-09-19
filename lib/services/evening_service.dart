@@ -101,25 +101,28 @@ class EveningStartPoint {
   // Returns a widget showing the bus arrival times for a given MRT start point (KAP or CLE)
   static Widget getBusTime(int box, BuildContext context, bool isDarkMode) {
     DateTime currentTime = DateTime.now(); // Current time
-    double busInterval =
-        1.5; // Interval between buses in minutes (used for estimation)
-    BusData _BusData = BusData(); // Data source for bus stops and times
+
+    // TODO: Check for use of variable, commented it out for now
+    // Interval between buses in minutes (used for estimation)
+    //double busInterval = 1.5;
+
+    BusData busData = BusData(); // Data source for bus stops and times
     List<DateTime> busArrivalTimes = []; // Holds the relevant departure times
-    List<String> _busstops = _BusData.busStop; // List of bus stop names
+    List<String> busStops = busData.busStop; // List of bus stop names
 
     if (kDebugMode) {
-      print('Printing busstops: $_busstops');
+      print('Printing bus stops: $busStops');
     }
 
-    String? MRT; // Name of the MRT station (KAP or CLE)
+    String? mrt; // Name of the MRT station (KAP or CLE)
 
     // Select departure times and MRT name based on the box value
     if (box == 1) {
-      busArrivalTimes = _BusData.KAPDepartureTime;
-      MRT = 'KAP';
+      busArrivalTimes = busData.departureTimeKAP;
+      mrt = 'KAP';
     } else {
-      busArrivalTimes = _BusData.CLEDepartureTime;
-      MRT = 'CLE';
+      busArrivalTimes = busData.departureTimeCLE;
+      mrt = 'CLE';
     }
     if (kDebugMode) {
       print('printing bus arrival times');
@@ -168,7 +171,7 @@ class EveningStartPoint {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Estimated Arriving Time at $MRT',
+                'Estimated Arriving Time at $mrt',
                 style: TextStyle(
                   fontSize: 23,
                   fontFamily: 'Roboto',
@@ -221,10 +224,10 @@ class EveningStartPoint {
           ),
 
           // Loop through bus stops (skipping first 2 and last 2 stops)
-          for (int i = 2; i < (_BusData.busStop.length) - 2; i++)
+          for (int i = 2; i < (busData.busStop.length) - 2; i++)
             buildRowWidget(
               context,
-              _BusData.busStop[i], // Bus stop name
+              busData.busStop[i], // Bus stop name
               nextBusTimeDiff, // Minutes until next bus
               nextNextBusTimeDiff, // Minutes until next-next bus
               i, // Index of the stop

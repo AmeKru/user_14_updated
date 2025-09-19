@@ -7,10 +7,10 @@ class Settings extends StatefulWidget {
   final ValueChanged<bool> onThemeChanged;
 
   const Settings({
-    Key? key,
+    super.key,
     required this.isDarkMode,
     required this.onThemeChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<Settings> createState() => _SettingsState();

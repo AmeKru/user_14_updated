@@ -4,6 +4,7 @@ import 'dart:async'; // For using Future, async/await, and delayed actions
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_datastore/amplify_datastore.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter/foundation.dart';
 // Flutter UI framework
 import 'package:flutter/material.dart';
 // Local storage for persisting small bits of data
@@ -36,8 +37,8 @@ class AfternoonScreen extends StatefulWidget {
   const AfternoonScreen({
     required this.updateSelectedBox,
     required this.isDarkMode,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<AfternoonScreen> createState() => _AfternoonScreenState();
@@ -95,7 +96,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
     });
 
     // Debug: print list of bus stops from BusData
-    debugPrint('BusStop list: ${_busData.busStop}');
+    if (kDebugMode) {
+      print('BusStop list: ${_busData.busStop}');
+    }
   }
 
   //////////////////////////////////////////////////////////////
@@ -149,9 +152,13 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
         AmplifyAPI(options: APIPluginOptions(modelProvider: provider)),
       );
       await Amplify.configure(amplifyconfig);
-      debugPrint('Amplify configured');
+      if (kDebugMode) {
+        print('Amplify configured');
+      }
     } catch (e) {
-      debugPrint('Amplify configuration error: $e');
+      if (kDebugMode) {
+        print('Amplify configuration error: $e');
+      }
     }
   }
 
@@ -218,10 +225,14 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
 
       // Count the number of matching bookings
       final count = response.data?.items.length ?? 0;
-      debugPrint('Booking count for $mrt trip $tripNo: $count');
+      if (kDebugMode) {
+        print('Booking count for $mrt trip $tripNo: $count');
+      }
       return count;
     } catch (e) {
-      debugPrint('Error counting bookings: $e');
+      if (kDebugMode) {
+        print('Error counting bookings: $e');
+      }
       return null;
     }
   }
@@ -249,9 +260,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
 
     // Get the first booking in the result set, if any
     final booking = response.data?.items.firstOrNull;
-    debugPrint(
-      booking != null ? 'Booking found: $booking' : 'No booking found',
-    );
+    if (kDebugMode) {
+      print(booking != null ? 'Booking found: $booking' : 'No booking found');
+    }
     return booking;
   }
 
@@ -274,7 +285,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
       // Update passenger count for the trip after deletion
       _updateCount(mrt == 'KAP', booking.TripNo, booking.BusStop);
     } else {
-      debugPrint('No booking to delete for $mrt trip $tripNo');
+      if (kDebugMode) {
+        print('No booking to delete for $mrt trip $tripNo');
+      }
     }
   }
 
@@ -319,7 +332,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
         booking.BusStop,
       );
     } else {
-      debugPrint('No booking found with ID: $bookingID');
+      if (kDebugMode) {
+        print('No booking found with ID: $bookingID');
+      }
     }
   }
 
@@ -371,69 +386,77 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
   void showBusStopSelectionBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent, // so we can round corners
       builder: (_) {
-        return Container(
-          color: widget.isDarkMode ? Colors.blueGrey[900] : Colors.white,
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                const SizedBox(height: 5),
-                Text(
-                  'Choose bus stop:',
-                  style: TextStyle(
-                    fontFamily: 'Roboto',
-                    fontSize: 20,
-                    color: widget.isDarkMode ? Colors.white : Colors.black,
+        return FractionallySizedBox(
+          heightFactor: 0.8, // finite height for the sheet
+          child: Material(
+            color: widget.isDarkMode ? Colors.blueGrey[900] : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.max, // fill vertical space
+                children: [
+                  const SizedBox(height: 10),
+                  Text(
+                    'Choose bus stop:',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontSize: 20,
+                      color: widget.isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 5),
-                // List of bus stops (skipping the first two entries)
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _busData.busStop.length - 2,
-                  itemBuilder: (_, index) {
-                    final stopName = _busData.busStop[index + 2];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          //border: Border.all(),
-                          borderRadius: BorderRadius.circular(5),
-                          color: widget.isDarkMode
-                              ? Colors.blueGrey[800]
-                              : Colors.blue[50],
-                        ),
-                        child: ListTile(
-                          textColor: widget.isDarkMode
-                              ? Colors.cyanAccent
-                              : Colors.black,
-                          title: Text(
-                            stopName,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontFamily: 'Roboto',
-                              fontWeight: FontWeight.w900,
+                  const SizedBox(height: 10),
+                  // Give the list bounded height via Expanded
+                  Expanded(
+                    child: ListView.builder(
+                      // no shrinkWrap, no NeverScrollablePhysics
+                      itemCount: _busData.busStop.length - 2,
+                      itemBuilder: (_, index) {
+                        final stopName = _busData.busStop[index + 2];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          child: Material(
+                            color: widget.isDarkMode
+                                ? Colors.blueGrey[800]
+                                : Colors.blue[50],
+                            borderRadius: BorderRadius.circular(5),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(5),
+                              onTap: () {
+                                setState(() {
+                                  selectedBusStop = stopName;
+                                  busIndex = index + 2;
+                                });
+                                Navigator.pop(context);
+                              },
+                              child: ListTile(
+                                title: Text(
+                                  stopName,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontFamily: 'Roboto',
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                textColor: widget.isDarkMode
+                                    ? Colors.cyanAccent
+                                    : Colors.black,
+                                // No trailing/leading to keep it simple
+                              ),
                             ),
                           ),
-                          onTap: () {
-                            setState(() {
-                              selectedBusStop = stopName;
-                              busIndex = index + 2;
-                              debugPrint("Selected bus stop: $selectedBusStop");
-                              debugPrint("Bus index: $busIndex");
-                            });
-                            Navigator.pop(context); // Close the bottom sheet
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -471,7 +494,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
   // If `selectedBox` is 1 → return KAP departure times, otherwise return CLE departure times.
 
   List<DateTime> getDepartureTimes() =>
-      selectedBox == 1 ? _busData.KAPDepartureTime : _busData.CLEDepartureTime;
+      selectedBox == 1 ? _busData.departureTimeKAP : _busData.departureTimeCLE;
 
   //////////////////////////////////////////////////////////////
   // Formats a DateTime into a string in HH:mm format with leading zeros.
@@ -598,9 +621,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () => updateSelectedBox(1), // Select KAP
-              child: MRT_Box(
+              child: BoxMRT(
                 box: selectedBox,
-                MRT: 'KAP',
+                mrt: 'KAP',
                 isDarkMode: widget.isDarkMode,
               ),
             ),
@@ -610,9 +633,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () => updateSelectedBox(2), // Select CLE
-              child: MRT_Box(
+              child: BoxMRT(
                 box: selectedBox,
-                MRT: 'CLE',
+                mrt: 'CLE',
                 isDarkMode: widget.isDarkMode,
               ),
             ),
@@ -633,15 +656,15 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
       builder: (context, snapshot) {
         // 1. While waiting for the future to complete → show loading spinner
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          SizedBox.expand(
+            child: Scaffold(body: Center(child: CircularProgressIndicator())),
           );
         }
 
         // 2. If there was an error loading the data → show error message
         if (snapshot.hasError) {
-          return const Scaffold(
-            body: Center(child: Text('Error loading data')),
+          return const Expanded(
+            child: Scaffold(body: Center(child: Text('Error loading data'))),
           );
         }
 
@@ -683,8 +706,8 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       departureTimes: getDepartureTimes(),
                       eveningService: _eveningService,
                       selectedBox: selectedBox,
-                      KAPDepartureTime: _busData.KAPDepartureTime,
-                      CLEDepartureTime: _busData.CLEDepartureTime,
+                      departureTimeKAP: _busData.departureTimeKAP,
+                      departureTimeCLE: _busData.departureTimeCLE,
                       bookedTripIndexKAP: bookedTripIndexKAP,
                       bookedTripIndexCLE: bookedTripIndexCLE,
                       updateBookingStatusKAP: updateBookingStatusKAP,
@@ -714,8 +737,8 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                   : BookingConfirmation(
                       eveningService: _eveningService,
                       selectedBox: selectedBox,
-                      KAPDepartureTime: data['KAPDepartureTime'] ?? [],
-                      CLEDepartureTime: data['CLEDepartureTime'] ?? [],
+                      departureTimeKAP: data['KAPDepartureTime'] ?? [],
+                      departureTimeCLE: data['CLEDepartureTime'] ?? [],
                       bookedTripIndexKAP: data['bookedTripIndexKAP'],
                       bookedTripIndexCLE: data['bookedTripIndexCLE'],
                       getDepartureTimes: getDepartureTimes,
@@ -781,8 +804,8 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                   ? BookingConfirmation(
                       eveningService: _eveningService,
                       selectedBox: selectedBox,
-                      KAPDepartureTime: kapDT, // departure times for KAP
-                      CLEDepartureTime: cleDT, // departure times for CLE
+                      departureTimeKAP: kapDT, // departure times for KAP
+                      departureTimeCLE: cleDT, // departure times for CLE
                       bookedTripIndexKAP: bookedTripIndexKAP,
                       bookedTripIndexCLE: bookedTripIndexCLE,
                       getDepartureTimes: getDepartureTimes,
@@ -815,8 +838,8 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       departureTimes: getDepartureTimes(),
                       eveningService: _eveningService,
                       selectedBox: selectedBox,
-                      KAPDepartureTime: _busData.KAPDepartureTime,
-                      CLEDepartureTime: _busData.CLEDepartureTime,
+                      departureTimeKAP: _busData.departureTimeKAP,
+                      departureTimeCLE: _busData.departureTimeCLE,
                       bookedTripIndexKAP: bookedTripIndexKAP,
                       bookedTripIndexCLE: bookedTripIndexCLE,
                       updateBookingStatusKAP: updateBookingStatusKAP,

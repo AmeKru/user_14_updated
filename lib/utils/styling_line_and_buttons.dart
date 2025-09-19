@@ -34,15 +34,15 @@ class DrawLine extends StatelessWidget {
 // - Whether this box is currently selected (`box` matches `chosen`)
 // - Whether dark mode is enabled (`isDarkMode`)
 
-class MRT_Box extends StatelessWidget {
+class BoxMRT extends StatelessWidget {
   final int box; // The currently selected box index from parent
-  final String MRT; // The MRT station name ("KAP" or "CLE")
+  final String mrt; // The MRT station name ("KAP" or "CLE")
   final bool isDarkMode; // Whether dark mode is enabled
 
-  const MRT_Box({
+  const BoxMRT({
     super.key,
     required this.box,
-    required this.MRT,
+    required this.mrt,
     required this.isDarkMode,
   });
 
@@ -50,7 +50,7 @@ class MRT_Box extends StatelessWidget {
   Widget build(BuildContext context) {
     // Determine the index number for this MRT station
     // KAP is assigned 1, CLE is assigned 2
-    int chosen = MRT == 'KAP' ? 1 : 2;
+    int chosen = mrt == 'KAP' ? 1 : 2;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 0), // No animation delay
@@ -65,7 +65,7 @@ class MRT_Box extends StatelessWidget {
               : (isDarkMode ? Colors.blueGrey[800] : Colors.blue[100]),
           child: Center(
             child: Text(
-              MRT, // Display the MRT station name
+              mrt, // Display the MRT station name
               style: box == chosen
                   // Selected style: white, larger, bold
                   ? const TextStyle(

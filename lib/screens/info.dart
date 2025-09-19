@@ -59,25 +59,25 @@ class _InformationPageState extends State<InformationPage> {
                     children: [
                       _buildScheduleSection(
                         'Morning Schedule for KAP MRT station to NP campus',
-                        busData.KAPArrivalTime,
+                        busData.arrivalTimeKAP,
                         2,
                       ),
                       SizedBox(height: 50.0),
                       _buildScheduleSection(
                         'Morning Schedule for CLE MRT station to NP campus',
-                        busData.CLEArrivalTime,
+                        busData.arrivalTimeCLE,
                         1,
                       ),
                       SizedBox(height: 50.0),
                       _buildScheduleSection(
                         'Afternoon Schedule for KAP MRT station to NP campus',
-                        busData.KAPDepartureTime,
+                        busData.departureTimeKAP,
                         2,
                       ),
                       SizedBox(height: 50.0),
                       _buildScheduleSection(
                         'Afternoon Schedule for CLE MRT station to NP campus',
-                        busData.CLEDepartureTime,
+                        busData.departureTimeCLE,
                         1,
                       ),
                       SizedBox(height: 10),

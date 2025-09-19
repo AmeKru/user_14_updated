@@ -10,10 +10,10 @@ class BusData {
   factory BusData() => _instance;
   BusData._internal();
 
-  final List<DateTime> KAPArrivalTime = [];
-  final List<DateTime> CLEArrivalTime = [];
-  final List<DateTime> KAPDepartureTime = [];
-  final List<DateTime> CLEDepartureTime = [];
+  final List<DateTime> arrivalTimeKAP = [];
+  final List<DateTime> arrivalTimeCLE = [];
+  final List<DateTime> departureTimeKAP = [];
+  final List<DateTime> departureTimeCLE = [];
   final List<String> busStop = [];
   String news = '';
   bool isDataLoaded = false;
@@ -42,7 +42,7 @@ class BusData {
     }
   }
 
-  Future<void> NPNews() async {
+  Future<void> npAnnouncements() async {
     try {
       Response response = await get(
         Uri.parse(
@@ -59,7 +59,7 @@ class BusData {
     }
   }
 
-  Future<void> KAP_AT() async {
+  Future<void> arrivalTimesKAP() async {
     try {
       http.Response response = await http.get(
         Uri.parse(
@@ -74,7 +74,7 @@ class BusData {
         final parts = timeStr.split(':');
         final hour = int.parse(parts[0]);
         final minute = int.parse(parts[1]);
-        KAPArrivalTime.add(
+        arrivalTimeKAP.add(
           DateTime(
             DateTime.now().year,
             DateTime.now().month,
@@ -91,7 +91,7 @@ class BusData {
     }
   }
 
-  Future<void> CLE_AT() async {
+  Future<void> arrivalTimesCLE() async {
     try {
       http.Response response = await http.get(
         Uri.parse(
@@ -106,7 +106,7 @@ class BusData {
         final parts = timeStr.split(':');
         final hour = int.parse(parts[0]);
         final minute = int.parse(parts[1]);
-        CLEArrivalTime.add(
+        arrivalTimeCLE.add(
           DateTime(
             DateTime.now().year,
             DateTime.now().month,
@@ -123,7 +123,7 @@ class BusData {
     }
   }
 
-  Future<void> KAP_DT() async {
+  Future<void> departureTimesKAP() async {
     try {
       http.Response response = await http.get(
         Uri.parse(
@@ -138,7 +138,7 @@ class BusData {
         final parts = timeStr.split(':');
         final hour = int.parse(parts[0]);
         final minute = int.parse(parts[1]);
-        KAPDepartureTime.add(
+        departureTimeKAP.add(
           DateTime(
             DateTime.now().year,
             DateTime.now().month,
@@ -155,7 +155,7 @@ class BusData {
     }
   }
 
-  Future<void> CLE_DT() async {
+  Future<void> departureTimesCLE() async {
     try {
       http.Response response = await http.get(
         Uri.parse(
@@ -170,7 +170,7 @@ class BusData {
         final parts = timeStr.split(':');
         final hour = int.parse(parts[0]);
         final minute = int.parse(parts[1]);
-        CLEDepartureTime.add(
+        departureTimeCLE.add(
           DateTime(
             DateTime.now().year,
             DateTime.now().month,
@@ -189,13 +189,13 @@ class BusData {
 
   Future<void> loadData() async {
     if (!isDataLoaded) {
-      await KAP_AT();
-      await CLE_AT();
-      await KAP_DT();
-      await CLE_DT();
-      await NPNews();
+      await arrivalTimesKAP();
+      await arrivalTimesCLE();
+      await departureTimesKAP();
+      await departureTimesCLE();
+      await npAnnouncements();
       await busStops();
-      await BusData();
+      BusData();
       isDataLoaded = true;
     }
   }

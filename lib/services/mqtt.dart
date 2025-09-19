@@ -33,8 +33,8 @@ class BusData {
 //
 // Displays bus markers on a map based on live location updates.
 
-class MQTT_Connect extends StatefulWidget {
-  const MQTT_Connect({Key? key}) : super(key: key);
+class ConnectMQTT extends StatefulWidget {
+  const ConnectMQTT({super.key});
 
   //////////////////////////////////////////////////////////////
   // Static map of bus IDs to their [BusData] instances.
@@ -47,10 +47,10 @@ class MQTT_Connect extends StatefulWidget {
   };
 
   @override
-  _MQTT_ConnectState createState() => _MQTT_ConnectState();
+  ConnectMQTTState createState() => ConnectMQTTState();
 }
 
-class _MQTT_ConnectState extends State<MQTT_Connect> {
+class ConnectMQTTState extends State<ConnectMQTT> {
   String uniqueID = 'MyPC_24092024'; // Example identifier
 
   // MQTT client configured for AWS IoT endpoint
@@ -101,7 +101,9 @@ class _MQTT_ConnectState extends State<MQTT_Connect> {
   bool debugMode = true;
   void logDebug(String message) {
     if (debugMode) {
-      print("[${DateTime.now().toIso8601String()}] $message");
+      if (kDebugMode) {
+        print("[${DateTime.now().toIso8601String()}] $message");
+      }
     }
   }
 
@@ -115,7 +117,7 @@ class _MQTT_ConnectState extends State<MQTT_Connect> {
   Widget build(BuildContext context) {
     // Dynamically render markers for all buses based on their live location
     return Stack(
-      children: MQTT_Connect.buses.entries.map((entry) {
+      children: ConnectMQTT.buses.entries.map((entry) {
         final busId = entry.key;
         final busData = entry.value;
 
@@ -215,9 +217,9 @@ class _MQTT_ConnectState extends State<MQTT_Connect> {
 
         // Subscribe to all topics for all buses
         topics.forEach((_, topicMap) {
-          topicMap.values.forEach((topic) {
+          for (var topic in topicMap.values) {
             client.subscribe(topic, MqttQos.atMostOnce);
-          });
+          }
         });
 
         // Listen for incoming messages
@@ -276,11 +278,11 @@ class _MQTT_ConnectState extends State<MQTT_Connect> {
 
       switch (type) {
         case 'time':
-          MQTT_Connect.buses[busId]!.time.value = _safeGet(data, 'Time');
+          ConnectMQTT.buses[busId]!.time.value = _safeGet(data, 'Time');
           break;
         case 'speed':
-          MQTT_Connect.buses[busId]!.speed.value =
-              double.tryParse(_safeGet(data, 'speed_kmph')) ?? 0;
+          ConnectMQTT.buses[busId]!.speed.value =
+              double.tryParse(_safeGet(data, 'speed_kmPh')) ?? 0;
           break;
         case 'loc':
           // Parse latitude and longitude from the payload
@@ -288,12 +290,12 @@ class _MQTT_ConnectState extends State<MQTT_Connect> {
           final lon = double.tryParse(_safeGet(data, 'lon')) ?? 0;
 
           // Update the bus's location ValueNotifier so the map marker moves
-          MQTT_Connect.buses[busId]!.location.value = LatLng(lat, lon);
+          ConnectMQTT.buses[busId]!.location.value = LatLng(lat, lon);
           break;
 
         case 'stop':
           // Update the next bus stop name
-          MQTT_Connect.buses[busId]!.stop.value = _safeGet(
+          ConnectMQTT.buses[busId]!.stop.value = _safeGet(
             data,
             'next_bus_stop',
           );
@@ -305,7 +307,7 @@ class _MQTT_ConnectState extends State<MQTT_Connect> {
           final sec = _safeGet(data, 'eta_seconds');
 
           // Handle special cases for ETA display
-          MQTT_Connect.buses[busId]!.eta.value =
+          ConnectMQTT.buses[busId]!.eta.value =
               (min == 'Calculating...' || sec == 'Calculating...')
               ? 'Calculating...'
               : (min == 'N/A' || sec == 'N/A')
@@ -315,7 +317,7 @@ class _MQTT_ConnectState extends State<MQTT_Connect> {
 
         case 'count':
           // Update passenger count
-          MQTT_Connect.buses[busId]!.count.value =
+          ConnectMQTT.buses[busId]!.count.value =
               int.tryParse(_safeGet(data, 'passenger_count')) ?? 0;
           break;
       }
@@ -359,7 +361,7 @@ class _MQTT_ConnectState extends State<MQTT_Connect> {
   }
 
   //////////////////////////////////////////////////////////////
-  // Called when a PINGRESP (pong) is received from the broker.
+  // Called when a PING RESP (pong) is received from the broker.
 
   void pong() {
     logDebug('Ping response client callback invoked');

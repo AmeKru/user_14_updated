@@ -1,34 +1,43 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart';
 import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/services/get_morning_ETA.dart';
+import 'package:user_14_updated/services/get_morning_eta.dart';
 import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
 
 class MorningScreen extends StatefulWidget {
   final Function(int) updateSelectedBox;
   final bool isDarkMode;
 
-  MorningScreen({required this.updateSelectedBox, required this.isDarkMode});
+  const MorningScreen({
+    super.key,
+    required this.updateSelectedBox,
+    required this.isDarkMode,
+  });
 
   @override
-  _MorningScreenState createState() => _MorningScreenState();
+  MorningScreenState createState() => MorningScreenState();
 }
 
-class _MorningScreenState extends State<MorningScreen> {
+class MorningScreenState extends State<MorningScreen> {
   int selectedBox = 1;
-  BusData _BusData = BusData();
-  bool _isDarkMode = false;
+  final BusData _busData = BusData();
 
-  void _toggleTheme(bool value) {
-    setState(() {
-      _isDarkMode = value;
-    });
-  }
+  // Not used here
+  // bool _isDarkMode = false;
+
+  //void _toggleTheme(bool value) {
+  //  setState(() {
+  //    _isDarkMode = value;
+  //  });
+  // }
 
   void updateSelectedBox(int box) {
     setState(() {
       selectedBox = box;
-      print('Printing selectedbox = $box');
+      if (kDebugMode) {
+        print('Printing selected box = $box');
+      }
     });
     widget.updateSelectedBox(box);
   }
@@ -48,9 +57,9 @@ class _MorningScreenState extends State<MorningScreen> {
                     updateSelectedBox(1);
                     selectedMRT = 1;
                   }, // Update CLE
-                  child: MRT_Box(
+                  child: BoxMRT(
                     box: selectedBox,
-                    MRT: 'KAP',
+                    mrt: 'KAP',
                     isDarkMode: widget.isDarkMode,
                   ),
                 ),
@@ -63,9 +72,9 @@ class _MorningScreenState extends State<MorningScreen> {
                     updateSelectedBox(2);
                     selectedMRT = 2;
                   }, // Update CLE
-                  child: MRT_Box(
+                  child: BoxMRT(
                     box: selectedBox,
-                    MRT: 'CLE',
+                    mrt: 'CLE',
                     isDarkMode: widget.isDarkMode,
                   ),
                 ),
@@ -75,7 +84,7 @@ class _MorningScreenState extends State<MorningScreen> {
         ),
         SizedBox(height: 16),
         GetMorningETA(
-          selectedBox == 1 ? _BusData.KAPArrivalTime : _BusData.CLEArrivalTime,
+          selectedBox == 1 ? _busData.arrivalTimeKAP : _busData.arrivalTimeCLE,
           isDarkMode: widget.isDarkMode,
         ),
       ],

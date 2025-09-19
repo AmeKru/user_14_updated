@@ -33,14 +33,14 @@ class BookingService extends StatefulWidget {
   final Function(int index, bool newValue) updateBookingStatusCLE;
 
   // Function to count bookings for a given MRT station and trip index
-  final Future<int?> Function(String MRT, int index) countBooking;
+  final Future<int?> Function(String mrt, int index) countBooking;
 
   // Function to show the bus stop selection bottom sheet
   final Function showBusStopSelectionBottomSheet;
 
   // Full departure time lists for both stations
-  final List<DateTime> KAPDepartureTime;
-  final List<DateTime> CLEDepartureTime;
+  final List<DateTime> departureTimeKAP;
+  final List<DateTime> departureTimeCLE;
 
   // Evening service start time or identifier
   final int eveningService;
@@ -63,8 +63,8 @@ class BookingService extends StatefulWidget {
     required this.updateBookingStatusKAP,
     required this.updateBookingStatusCLE,
     required this.showBusStopSelectionBottomSheet,
-    required this.KAPDepartureTime,
-    required this.CLEDepartureTime,
+    required this.departureTimeKAP,
+    required this.departureTimeCLE,
     required this.eveningService,
     required this.isDarkMode,
     required this.selectedBusStop,
@@ -262,9 +262,10 @@ class _BookingServiceState extends State<BookingService> {
                 itemBuilder: (context, index) {
                   final time = widget.departureTimes[index];
 
+                  // TODO: Check for use of variables, will comment them out for now
                   // Departure time lists for both stations
-                  List KAPDepartureTIME = widget.KAPDepartureTime;
-                  List CLEDepartureTIME = widget.CLEDepartureTime;
+                  //List KAPDepartureTIME = widget.KAPDepartureTime;
+                  //List CLEDepartureTIME = widget.CLEDepartureTime;
 
                   // Whether this trip is currently booked for each station
                   bool isBookedKAP =
@@ -272,10 +273,11 @@ class _BookingServiceState extends State<BookingService> {
                   bool isBookedCLE =
                       (index == widget.bookedTripIndexCLE) && busIndex != 0;
 
+                  // TODO: Is it necessary?
                   // Whether user can book (no trip booked yet for selected station)
-                  bool canBook = widget.selectedBox == 1
-                      ? widget.bookedTripIndexKAP == null
-                      : widget.bookedTripIndexCLE == null;
+                  //bool canBook = widget.selectedBox == 1
+                  //    ? widget.bookedTripIndexKAP == null
+                  //    : widget.bookedTripIndexCLE == null;
 
                   // Current booking count for this trip
                   int? count = bookingCounts[index];

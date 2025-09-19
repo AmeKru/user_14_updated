@@ -18,7 +18,7 @@ class CalculateMorningBus {
     context,
     String text,
     bool isDarkMode, {
-    String ETA = '',
+    String eta = '',
   }) {
     return Center(
       child: SizedBox(
@@ -30,12 +30,12 @@ class CalculateMorningBus {
             Container(
               width: 8,
               height: 57,
-              color: ETA.isNotEmpty
+              color: eta.isNotEmpty
                   ? (isDarkMode ? Colors.cyanAccent : Color(0xff014689))
                   : (isDarkMode ? Colors.blueGrey[700] : Colors.grey[400]),
             ),
             Card(
-              color: ETA.isNotEmpty
+              color: eta.isNotEmpty
                   ? (isDarkMode ? Colors.blueGrey[700] : Colors.blue[50])
                   : (isDarkMode ? Colors.blueGrey[800] : Colors.grey[300]),
               shape: RoundedRectangleBorder(
@@ -49,19 +49,19 @@ class CalculateMorningBus {
                     children: [
                       Icon(
                         Icons.directions_bus,
-                        color: ETA.isNotEmpty
+                        color: eta.isNotEmpty
                             ? (isDarkMode ? Colors.cyanAccent : Colors.black)
                             : (isDarkMode
                                   ? Colors.blueGrey[200]
                                   : Colors.grey[600]),
                       ),
                       Text(
-                        ETA.isNotEmpty ? '$text $ETA minutes' : text,
+                        eta.isNotEmpty ? '$text $eta minutes' : text,
                         style: TextStyle(
                           fontSize: 15.0,
                           fontFamily: 'Roboto',
                           fontWeight: FontWeight.w400,
-                          color: ETA.isNotEmpty
+                          color: eta.isNotEmpty
                               ? (isDarkMode
                                     ? Colors.blueGrey[50]
                                     : Colors.black)
@@ -78,7 +78,7 @@ class CalculateMorningBus {
             Container(
               width: 8,
               height: 57,
-              color: ETA.isNotEmpty
+              color: eta.isNotEmpty
                   ? (isDarkMode ? Colors.cyanAccent : Color(0xff014689))
                   : (isDarkMode ? Colors.blueGrey[700] : Colors.grey[400]),
             ),
@@ -155,14 +155,14 @@ class CalculateMorningBus {
         buildMorningETADisplay(
           context,
           'Upcoming bus:',
-          ETA: upcomingBus,
+          eta: upcomingBus,
           isDarkMode,
         ),
         if (selectedMRT == 1)
           buildMorningETADisplay(
             context,
             'Next bus:',
-            ETA: nextUpcomingBus,
+            eta: nextUpcomingBus,
             isDarkMode,
           ),
       ],

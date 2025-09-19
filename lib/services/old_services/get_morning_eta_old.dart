@@ -4,7 +4,7 @@ import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/utils/get_time.dart';
 
 class CalculateMorningBus {
-  static Widget buildMorningETADisplay(String text, {String ETA = ''}) {
+  static Widget buildMorningETADisplay(String text, {String eta = ''}) {
     return SizedBox(
       width: 350,
       child: Card(
@@ -16,7 +16,7 @@ class CalculateMorningBus {
             children: [
               Icon(Icons.directions_bus_outlined),
               Text(
-                ETA.isNotEmpty ? 'Upcoming bus: $ETA minutes' : text,
+                eta.isNotEmpty ? 'Upcoming bus: $eta minutes' : text,
                 style: TextStyle(
                   fontSize: 15.0,
                   fontFamily: 'Roboto',
@@ -78,13 +78,13 @@ class CalculateMorningBus {
       if (selectedMRT == 1) {
         return Column(
           children: [
-            buildMorningETADisplay('Upcoming bus:', ETA: upcomingBus),
-            buildMorningETADisplay('Next bus:', ETA: nextUpcomingBus),
+            buildMorningETADisplay('Upcoming bus:', eta: upcomingBus),
+            buildMorningETADisplay('Next bus:', eta: nextUpcomingBus),
           ],
         );
       } else if (selectedMRT == 2) {
         return Column(
-          children: [buildMorningETADisplay('Upcoming bus:', ETA: upcomingBus)],
+          children: [buildMorningETADisplay('Upcoming bus:', eta: upcomingBus)],
         );
       }
     }
@@ -96,7 +96,7 @@ class CalculateMorningBus {
 class GetMorningETA extends StatelessWidget {
   final List<DateTime> busArrivalTimes;
 
-  const GetMorningETA(this.busArrivalTimes);
+  const GetMorningETA(this.busArrivalTimes, {super.key});
 
   @override
   Widget build(BuildContext context) {
