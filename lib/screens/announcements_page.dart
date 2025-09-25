@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
+
+///////////////////////////////////////////////////////////////
+// News Announcement Page
 
 class NewsAnnouncementWidget extends StatefulWidget {
   final bool isDarkMode;
@@ -16,12 +20,16 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
+    _loadData();
     newsContent = busData.news;
     if (kDebugMode) {
       print('Printing _NewsContent: $newsContent');
     }
+  }
+
+  Future<void> _loadData() async {
+    await busData.loadData();
   }
 
   @override
@@ -29,11 +37,13 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(10.0),
+          padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
           child: Container(
             color: Color(0xfffeb041),
             child: Padding(
-              padding: const EdgeInsets.all(5.0),
+              padding: EdgeInsets.all(
+                TextSizing.fontSizeMiniText(context) * 0.5,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -41,20 +51,49 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
                     mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(Icons.announcement, color: Colors.blueGrey[900]),
-                      SizedBox(width: 5.0),
+                      SizedBox(
+                        width: TextSizing.fontSizeMiniText(context) * 0.5,
+                      ),
+                      Icon(
+                        Icons.announcement,
+                        color: Colors.blueGrey[900],
+                        size: TextSizing.fontSizeHeading(context),
+                      ),
+                      SizedBox(
+                        width: TextSizing.fontSizeMiniText(context) * 0.5,
+                      ),
                       Text(
                         'Announcements',
                         style: TextStyle(
-                          fontSize: 23,
+                          fontSize: TextSizing.fontSizeHeading(context),
                           fontWeight: FontWeight.bold,
                           color: Colors.blueGrey[900],
+                          fontFamily: 'Roboto',
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 8),
-                  Text(newsContent, style: TextStyle(fontSize: 16)),
+                  SizedBox(height: TextSizing.fontSizeText(context)),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: TextSizing.fontSizeMiniText(context) * 0.5,
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(
+                          TextSizing.fontSizeMiniText(context),
+                        ),
+                        child: Text(
+                          textAlign: TextAlign.center,
+                          newsContent,
+                          style: TextStyle(
+                            fontSize: TextSizing.fontSizeText(context),
+                            fontFamily: 'Roboto',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -74,6 +113,7 @@ class NewsAnnouncement extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: TextSizing.fontSizeHeading(context) * 2,
         iconTheme: IconThemeData(
           color: isDarkMode
               ? Color(0xfffeb041)
@@ -81,17 +121,25 @@ class NewsAnnouncement extends StatelessWidget {
         ),
         backgroundColor: isDarkMode ? Colors.blueGrey[800] : Color(0xfffeb041),
         title: Text(
-          'NP News Announcements',
+          maxLines: 1,
+          overflow: TextOverflow.clip,
+          softWrap: false,
+          'NP Announcements',
           style: TextStyle(
             color: isDarkMode ? Color(0xfffeb041) : Colors.white,
-            fontSize: 23,
+            fontSize: TextSizing.fontSizeHeading(context),
             fontWeight: FontWeight.bold,
           ),
         ),
       ),
       body: Container(
         color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
-        child: NewsAnnouncementWidget(isDarkMode: isDarkMode),
+        child: Column(
+          children: [
+            SizedBox(height: TextSizing.fontSizeText(context)),
+            NewsAnnouncementWidget(isDarkMode: isDarkMode),
+          ],
+        ),
       ),
     );
   }

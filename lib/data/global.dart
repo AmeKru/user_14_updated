@@ -1,5 +1,3 @@
-//import 'package:latlng/latlng.dart'; // Not Used??
-
 DateTime? timeNow;
 int startEveningService = 12;
 int startAfternoonService = 9;

@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'data/get_data.dart';
 import 'screens/map_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await BusData().loadData();
 
-  ////////////////////////////////////////////////////////////////////
-  // needed to hide navigation bar on android devices
-  // Start hidden by default
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  await BusData().loadData();
 
   runApp(MyApp());
 }

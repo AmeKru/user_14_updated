@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
 
 class EveningStartPoint {
   // Builds a single row widget showing:
@@ -24,11 +25,13 @@ class EveningStartPoint {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Vertical coloured line
             Container(
-              height: 45,
+              height: TextSizing.fontSizeText(context) * 2.5,
               width: MediaQuery.of(context).size.width * 0.01,
               color: isDarkMode ? Colors.cyanAccent : Colors.blue,
-            ), // Vertical separator line
+            ),
+
             // Bus stop name container
             Container(
               width: MediaQuery.of(context).size.width * 0.4,
@@ -36,12 +39,12 @@ class EveningStartPoint {
                   ? Colors.blueGrey[800]
                   : const Color(0xff014689),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10.0, 10.0, 0.0, 10.0),
+                padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
                 child: Text(
                   busStop,
                   style: TextStyle(
                     color: isDarkMode ? Colors.cyanAccent : Colors.white,
-                    fontSize: 20,
+                    fontSize: TextSizing.fontSizeText(context),
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Roboto',
                   ),
@@ -57,12 +60,12 @@ class EveningStartPoint {
               width: MediaQuery.of(context).size.width * 0.25,
               color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10.0, 10.0, 0.0, 10.0),
+                padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
                 child: Text(
                   // Add (multiplier * index) to simulate travel time from MRT to this stop
                   '${nextBusTimeDiff + (multiplier * index)}',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: TextSizing.fontSizeText(context),
                     fontFamily: 'Roboto',
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
@@ -78,11 +81,11 @@ class EveningStartPoint {
               width: MediaQuery.of(context).size.width * 0.25,
               color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10.0, 10.0, 0.0, 10.0),
+                padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
                 child: Text(
                   '${nextNextBusTimeDiff + (multiplier * index)}',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: TextSizing.fontSizeText(context),
                     fontFamily: 'Roboto',
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
@@ -93,7 +96,7 @@ class EveningStartPoint {
         ),
 
         // Space in between rows
-        SizedBox(height: MediaQuery.of(context).size.width * 0.005),
+        SizedBox(height: TextSizing.fontSizeText(context) * 0.2),
       ],
     );
   }
@@ -101,10 +104,6 @@ class EveningStartPoint {
   // Returns a widget showing the bus arrival times for a given MRT start point (KAP or CLE)
   static Widget getBusTime(int box, BuildContext context, bool isDarkMode) {
     DateTime currentTime = DateTime.now(); // Current time
-
-    // TODO: Check for use of variable, commented it out for now
-    // Interval between buses in minutes (used for estimation)
-    //double busInterval = 1.5;
 
     BusData busData = BusData(); // Data source for bus stops and times
     List<DateTime> busArrivalTimes = []; // Holds the relevant departure times
@@ -114,15 +113,13 @@ class EveningStartPoint {
       print('Printing bus stops: $busStops');
     }
 
-    String? mrt; // Name of the MRT station (KAP or CLE)
-
     // Select departure times and MRT name based on the box value
     if (box == 1) {
       busArrivalTimes = busData.departureTimeKAP;
-      mrt = 'KAP';
+      //  mrt = 'KAP';
     } else {
       busArrivalTimes = busData.departureTimeCLE;
-      mrt = 'CLE';
+      //  mrt = 'CLE';
     }
     if (kDebugMode) {
       print('printing bus arrival times');
@@ -135,17 +132,19 @@ class EveningStartPoint {
         .toList();
 
     // If there are no upcoming buses, show a message
+
     if (upcomingArrivalTimes.isEmpty) {
       return Column(
         children: [
           Text(
             'NO UPCOMING BUSES',
             style: TextStyle(
-              color: isDarkMode ? Colors.blueGrey[300] : Colors.blueGrey[600],
+              color: isDarkMode ? Colors.blueGrey[400] : Colors.blueGrey[600],
               fontFamily: 'Roboto',
+              fontSize: TextSizing.fontSizeText(context),
             ),
           ),
-          SizedBox(height: MediaQuery.of(context).size.width * 0.05),
+          SizedBox(height: TextSizing.fontSizeText(context)),
         ],
       );
     } else {
@@ -164,25 +163,37 @@ class EveningStartPoint {
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(height: MediaQuery.of(context).size.width * 0.025),
           // Title row showing MRT station
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'Estimated Arriving Time at $mrt',
-                style: TextStyle(
-                  fontSize: 23,
-                  fontFamily: 'Roboto',
-                  fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.white : Colors.black,
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    TextSizing.fontSizeText(context),
+                    0,
+                    TextSizing.fontSizeText(context),
+                    TextSizing.fontSizeMiniText(context),
+                  ),
+                  child: Text(
+                    textAlign: TextAlign.center,
+                    TextSizing.isTablet(context)
+                        ? 'Estimated Time of Arrival at Bus Stops'
+                        : 'ETAs at Bus Stops',
+                    style: TextStyle(
+                      fontSize: TextSizing.fontSizeHeading(context),
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
 
-          SizedBox(height: MediaQuery.of(context).size.width * 0.02),
+          SizedBox(height: TextSizing.fontSizeMiniText(context)),
           // Header row for the table
           Container(
             width: double.infinity, // Ensures full horizontal stretch
@@ -192,33 +203,46 @@ class EveningStartPoint {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween, // Distributes items evenly
+                  MainAxisAlignment.center, // Distributes items evenly
               children: [
                 SizedBox(width: MediaQuery.of(context).size.width * 0.01),
-                Text(
-                  'Bus Stop',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDarkMode ? Colors.white : Colors.black,
+
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: Text(
+                    'Bus stop',
+                    style: TextStyle(
+                      fontSize: TextSizing.fontSizeMiniText(context),
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
-                SizedBox(width: MediaQuery.of(context).size.width * 0.23),
-                Text(
-                  'Upcoming bus(min)',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDarkMode ? Colors.white : Colors.black,
+
+                SizedBox(width: MediaQuery.of(context).size.width * 0.01),
+
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.25,
+                  child: Text(
+                    'Upcoming bus (min)',
+                    style: TextStyle(
+                      fontSize: TextSizing.fontSizeMiniText(context),
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
-                SizedBox(width: MediaQuery.of(context).size.width * 0.02),
-                Text(
-                  'Next bus(min)',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDarkMode ? Colors.white : Colors.black,
+
+                SizedBox(width: MediaQuery.of(context).size.width * 0.01),
+
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.25,
+                  child: Text(
+                    'Next bus (min)',
+                    style: TextStyle(
+                      fontSize: TextSizing.fontSizeMiniText(context),
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
-                SizedBox(width: MediaQuery.of(context).size.width * 0.1),
               ],
             ),
           ),
@@ -234,6 +258,7 @@ class EveningStartPoint {
               1.5, // Multiplier for travel time between stops
               isDarkMode,
             ),
+          SizedBox(height: TextSizing.fontSizeHeading(context)),
         ],
       );
     }

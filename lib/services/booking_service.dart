@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/global.dart'; // contains shared global variables/constants
 import 'package:user_14_updated/services/evening_service.dart'; // Service for evening bus logic
 import 'package:user_14_updated/utils/loading.dart'; // Custom loading widget
+import 'package:user_14_updated/utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
+// Booking Service
 // A stateful widget that manages and displays booking availability for bus trips.
-// It periodically checks booking counts and updates the UI accordingly.
+// It periodically checks booking counts and updates the UI accordingly
 
 class BookingService extends StatefulWidget {
   // List of departure times for the currently selected station
@@ -109,10 +111,13 @@ class _BookingServiceState extends State<BookingService> {
         : widget.bookedTripIndexCLE != null && busIndex != 0;
   }
 
+  ///////////////////////////////////////////////////////////////
+  // If the selected station changes, reset loading state and booking counts
+
   @override
   void didUpdateWidget(covariant BookingService oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If the selected station changes, reset loading state and booking counts
+
     if (oldWidget.selectedBox != widget.selectedBox) {
       setState(() {
         _loading = true;
@@ -126,10 +131,8 @@ class _BookingServiceState extends State<BookingService> {
   void initState() {
     super.initState();
     bookingCounts = {};
-
-    // CHOICE: This timer runs every 100ms — very frequent.
-    // Consider increasing interval to reduce load if not strictly necessary.
-    _timer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
+    // Timer that runs every 0.5 s
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
       _updateBookingCounts();
     });
   }
@@ -196,19 +199,31 @@ class _BookingServiceState extends State<BookingService> {
         ? LoadingScroll(isDarkMode: widget.isDarkMode)
         : Column(
             children: [
-              const SizedBox(height: 20),
+              SizedBox(height: TextSizing.fontSizeMiniText(context) * 0.8),
+              Text(
+                widget.selectedBox == 1
+                    ? 'Bus to King Albert Park'
+                    : 'Bus to Clementi',
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: TextSizing.fontSizeHeading(context),
+                  color: darkText,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: TextSizing.fontSizeMiniText(context)),
 
               // === Capacity Indicator Title ===
               Text(
                 'Capacity Indicator',
                 style: TextStyle(
                   fontFamily: 'Roboto',
-                  fontSize: 20,
+                  fontSize: TextSizing.fontSizeText(context),
                   color: darkText,
                 ),
               ),
 
-              SizedBox(height: 20),
+              SizedBox(height: TextSizing.fontSizeMiniText(context)),
 
               // === Legend Row: Available & Half Full ===
               Row(
@@ -217,40 +232,84 @@ class _BookingServiceState extends State<BookingService> {
                 children: [
                   // Available indicator
                   Container(
-                    width: MediaQuery.of(context).size.width * 0.08,
-                    height: 5,
+                    width: MediaQuery.of(context).size.width * 0.1,
+                    height: TextSizing.fontSizeText(context) * 0.25,
                     color: Colors.green,
                   ),
-                  SizedBox(width: MediaQuery.of(context).size.width * 0.01),
-                  Text('Available', style: TextStyle(color: darkText)),
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.015),
+                  Text(
+                    'Available',
+                    style: TextStyle(
+                      color: darkText,
+                      fontSize: TextSizing.fontSizeMiniText(context),
+                      fontFamily: 'Roboto',
+                    ),
+                  ),
 
                   // spacing in between
-                  SizedBox(width: MediaQuery.of(context).size.width * 0.08),
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.06),
 
                   // Half full indicator
                   Container(
-                    width: MediaQuery.of(context).size.width * 0.08,
-                    height: 5,
+                    width: MediaQuery.of(context).size.width * 0.1,
+                    height: TextSizing.fontSizeText(context) * 0.25,
                     color: Colors.yellow[600],
                   ),
-                  SizedBox(width: MediaQuery.of(context).size.width * 0.01),
-                  Text('Half Full', style: TextStyle(color: darkText)),
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+                  Text(
+                    'Half Full',
+                    style: TextStyle(
+                      color: darkText,
+                      fontSize: TextSizing.fontSizeMiniText(context),
+                      fontFamily: 'Roboto',
+                    ),
+                  ),
 
                   // spacing in between
-                  SizedBox(width: MediaQuery.of(context).size.width * 0.08),
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.06),
 
                   // Full indicator
                   Container(
-                    width: MediaQuery.of(context).size.width * 0.08,
-                    height: 5,
+                    width: MediaQuery.of(context).size.width * 0.1,
+                    height: TextSizing.fontSizeText(context) * 0.25,
                     color: Colors.red, // Full indicator
                   ),
                   SizedBox(width: MediaQuery.of(context).size.width * 0.01),
-                  Text('FULL', style: TextStyle(color: darkText)),
+                  Text(
+                    'FULL',
+                    style: TextStyle(
+                      color: darkText,
+                      fontSize: TextSizing.fontSizeMiniText(context),
+                      fontFamily: 'Roboto',
+                    ),
+                  ),
                 ],
               ),
 
-              const SizedBox(height: 5),
+              SizedBox(height: TextSizing.fontSizeText(context) * 1.5),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      textAlign: TextAlign.center,
+                      softWrap: true,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      TextSizing.isTablet(context)
+                          ? '* Departure time stated refers to bus stop at entrance (ENT). Check below for more information about the other stops.'
+                          : '* Departure time stated refers to bus stop at entrance (ENT).\nCheck below for more information about the other stops.',
+                      style: TextStyle(
+                        fontSize: TextSizing.fontSizeMiniText(context),
+                        color: (widget.isDarkMode
+                            ? Colors.white
+                            : Colors.black),
+                        fontFamily: 'Roboto',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
 
               // === List of Departure Trips ===
               ListView.builder(
@@ -262,22 +321,11 @@ class _BookingServiceState extends State<BookingService> {
                 itemBuilder: (context, index) {
                   final time = widget.departureTimes[index];
 
-                  // TODO: Check for use of variables, will comment them out for now
-                  // Departure time lists for both stations
-                  //List KAPDepartureTIME = widget.KAPDepartureTime;
-                  //List CLEDepartureTIME = widget.CLEDepartureTime;
-
                   // Whether this trip is currently booked for each station
                   bool isBookedKAP =
                       (index == widget.bookedTripIndexKAP) && busIndex != 0;
                   bool isBookedCLE =
                       (index == widget.bookedTripIndexCLE) && busIndex != 0;
-
-                  // TODO: Is it necessary?
-                  // Whether user can book (no trip booked yet for selected station)
-                  //bool canBook = widget.selectedBox == 1
-                  //    ? widget.bookedTripIndexKAP == null
-                  //    : widget.bookedTripIndexCLE == null;
 
                   // Current booking count for this trip
                   int? count = bookingCounts[index];
@@ -286,8 +334,15 @@ class _BookingServiceState extends State<BookingService> {
                   bool isFull = _isFull(count);
 
                   return Padding(
-                    padding: const EdgeInsets.fromLTRB(8.0, 0.0, 8.0, 0.0),
+                    padding: EdgeInsets.fromLTRB(
+                      TextSizing.fontSizeText(context),
+                      0.0,
+                      TextSizing.fontSizeText(context),
+                      0.0,
+                    ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -309,145 +364,174 @@ class _BookingServiceState extends State<BookingService> {
                                   ), // Square corners
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(
+                                  padding: EdgeInsets.fromLTRB(
                                     0,
                                     0,
-                                    8,
+                                    TextSizing.fontSizeText(context),
                                     0,
                                   ),
                                   child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       // Capacity color bar (only if count known)
                                       if (count != null)
                                         Container(
-                                          width: 8,
-                                          height: 57,
+                                          width:
+                                              TextSizing.fontSizeText(context) *
+                                              0.5,
+                                          height:
+                                              TextSizing.fontSizeText(context) *
+                                              4,
                                           color: _getColor(count),
                                         ),
+                                      Expanded(
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceEvenly,
 
-                                      SizedBox(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                            0.04,
-                                      ),
-
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            'Departure Trip ${index + 1}',
-                                            style: TextStyle(
-                                              fontFamily: 'Roboto',
-                                              fontWeight: FontWeight.bold,
-                                              color: isFull
-                                                  ? (widget.isDarkMode
-                                                        ? Colors.blueGrey[400]
-                                                        : Colors.grey[600])
-                                                  : (widget.isDarkMode
-                                                        ? Colors.white
-                                                        : Colors.black),
-                                            ),
-                                          ),
-
-                                          SizedBox(
-                                            width:
-                                                MediaQuery.of(
-                                                  context,
-                                                ).size.width *
-                                                0.04,
-                                          ),
-
-                                          // Vertical divider
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Container(
-                                              width: 2,
-                                              height: 40,
-                                              color: isFull
-                                                  ? (widget.isDarkMode
-                                                        ? Colors.blueGrey[500]
-                                                        : Colors.grey[600])
-                                                  : (widget.isDarkMode
-                                                        ? Colors.blueGrey[200]
-                                                        : Colors.blueGrey[500]),
-                                            ),
-                                          ),
-
-                                          SizedBox(
-                                            width:
-                                                MediaQuery.of(
-                                                  context,
-                                                ).size.width *
-                                                0.04,
-                                          ),
-
-                                          // Departure time
-                                          Text(
-                                            '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
-                                            style: TextStyle(
-                                              fontFamily: 'Roboto',
-                                              fontWeight: FontWeight.bold,
-                                              color: isFull
-                                                  ? (widget.isDarkMode
-                                                        ? Colors.blueGrey[400]
-                                                        : Colors.grey[600])
-                                                  : (widget.isDarkMode
-                                                        ? Colors.white
-                                                        : Colors.black),
-                                            ),
-                                          ),
-
-                                          SizedBox(
-                                            width:
-                                                MediaQuery.of(
-                                                  context,
-                                                ).size.width *
-                                                0.04,
-                                          ),
-
-                                          // Vertical divider
-                                          Padding(
-                                            padding: const EdgeInsets.all(8.0),
-                                            child: Container(
-                                              width: 2,
-                                              height: 40,
-                                              color: isFull
-                                                  ? (widget.isDarkMode
-                                                        ? Colors.blueGrey[500]
-                                                        : Colors.grey[600])
-                                                  : (widget.isDarkMode
-                                                        ? Colors.blueGrey[200]
-                                                        : Colors.blueGrey[500]),
-                                            ),
-                                          ),
-
-                                          SizedBox(
-                                            width:
-                                                MediaQuery.of(
-                                                  context,
-                                                ).size.width *
-                                                0.03,
-                                          ),
-
-                                          if (canConfirm())
+                                          children: [
                                             Text(
-                                              widget.selectedBusStop,
+                                              'Trip ${index + 1}',
                                               style: TextStyle(
                                                 fontFamily: 'Roboto',
                                                 fontWeight: FontWeight.bold,
+                                                fontSize:
+                                                    TextSizing.fontSizeText(
+                                                      context,
+                                                    ),
                                                 color: isFull
                                                     ? (widget.isDarkMode
                                                           ? Colors.blueGrey[400]
-                                                          : Colors.grey[400])
+                                                          : Colors.grey[600])
                                                     : (widget.isDarkMode
                                                           ? Colors.white
                                                           : Colors.black),
                                               ),
                                             ),
-                                        ],
+
+                                            // Vertical divider
+                                            Padding(
+                                              padding: EdgeInsets.all(
+                                                TextSizing.fontSizeText(
+                                                  context,
+                                                ),
+                                              ),
+                                              child: Container(
+                                                width:
+                                                    TextSizing.fontSizeText(
+                                                      context,
+                                                    ) *
+                                                    0.1,
+                                                height:
+                                                    TextSizing.fontSizeHeading(
+                                                      context,
+                                                    ) *
+                                                    1.2,
+                                                color: isFull
+                                                    ? (widget.isDarkMode
+                                                          ? Colors.blueGrey[500]
+                                                          : Colors.grey[600])
+                                                    : (widget.isDarkMode
+                                                          ? Colors.blueGrey[200]
+                                                          : Colors
+                                                                .blueGrey[500]),
+                                              ),
+                                            ),
+
+                                            // Departure time
+                                            Text(
+                                              '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} *',
+                                              style: TextStyle(
+                                                fontFamily: 'Roboto',
+                                                fontWeight: FontWeight.bold,
+                                                fontSize:
+                                                    TextSizing.fontSizeText(
+                                                      context,
+                                                    ),
+                                                color: isFull
+                                                    ? (widget.isDarkMode
+                                                          ? Colors.blueGrey[400]
+                                                          : Colors.grey[600])
+                                                    : (widget.isDarkMode
+                                                          ? Colors.white
+                                                          : Colors.black),
+                                              ),
+                                            ),
+
+                                            // Vertical divider
+                                            Padding(
+                                              padding: EdgeInsets.all(
+                                                TextSizing.fontSizeText(
+                                                  context,
+                                                ),
+                                              ),
+                                              child: Container(
+                                                width:
+                                                    TextSizing.fontSizeText(
+                                                      context,
+                                                    ) *
+                                                    0.1,
+                                                height:
+                                                    TextSizing.fontSizeHeading(
+                                                      context,
+                                                    ) *
+                                                    1.2,
+                                                color: isFull
+                                                    ? (widget.isDarkMode
+                                                          ? Colors.blueGrey[500]
+                                                          : Colors.grey[600])
+                                                    : (widget.isDarkMode
+                                                          ? Colors.blueGrey[200]
+                                                          : Colors
+                                                                .blueGrey[500]),
+                                              ),
+                                            ),
+
+                                            if (canConfirm())
+                                              Text(
+                                                widget.selectedBusStop,
+                                                style: TextStyle(
+                                                  fontFamily: 'Roboto',
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize:
+                                                      TextSizing.fontSizeText(
+                                                        context,
+                                                      ),
+                                                  color: isFull
+                                                      ? (widget.isDarkMode
+                                                            ? Colors
+                                                                  .blueGrey[400]
+                                                            : Colors.grey[600])
+                                                      : (widget.isDarkMode
+                                                            ? Colors.white
+                                                            : Colors.black),
+                                                ),
+                                              ),
+                                            if (!canConfirm())
+                                              Text(
+                                                ' ---- ',
+                                                style: TextStyle(
+                                                  fontSize:
+                                                      TextSizing.fontSizeText(
+                                                        context,
+                                                      ),
+                                                  color: isFull
+                                                      ? (widget.isDarkMode
+                                                            ? Colors
+                                                                  .blueGrey[400]
+                                                            : Colors.grey[600])
+                                                      : (widget.isDarkMode
+                                                            ? Colors.white
+                                                            : Colors.black),
+                                                  fontFamily: 'Roboto',
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -468,10 +552,12 @@ class _BookingServiceState extends State<BookingService> {
                                               index,
                                               true,
                                             );
-                                            widget
-                                                .showBusStopSelectionBottomSheet(
-                                                  context,
-                                                );
+                                            if (busIndex == 0) {
+                                              widget
+                                                  .showBusStopSelectionBottomSheet(
+                                                    context,
+                                                  );
+                                            }
                                           } else {
                                             widget.updateBookingStatusKAP(
                                               index,
@@ -485,10 +571,12 @@ class _BookingServiceState extends State<BookingService> {
                                               index,
                                               true,
                                             );
-                                            widget
-                                                .showBusStopSelectionBottomSheet(
-                                                  context,
-                                                );
+                                            if (busIndex == 0) {
+                                              widget
+                                                  .showBusStopSelectionBottomSheet(
+                                                    context,
+                                                  );
+                                            }
                                           } else {
                                             widget.updateBookingStatusCLE(
                                               index,
@@ -513,7 +601,7 @@ class _BookingServiceState extends State<BookingService> {
                                     : (widget.isDarkMode
                                           ? Colors.blueGrey[50]
                                           : const Color(0xff014689)),
-                                size: 30,
+                                size: TextSizing.fontSizeHeading(context),
                               ),
                             ),
                           ],
@@ -524,39 +612,86 @@ class _BookingServiceState extends State<BookingService> {
                 },
               ),
 
-              // === Confirm Button (only if a trip is selected) ===
-              if (canConfirm())
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (widget.isDarkMode
-                            ? Colors.blueGrey[50]
-                            : const Color(
-                                0xff014689,
-                              )), // Button background color
-                        foregroundColor: (widget.isDarkMode
-                            ? Colors.blueGrey[900]
-                            : Colors.white),
-                      ), // Text color
-                      onPressed: widget.onPressedConfirm,
-                      child: const Text('Confirm'),
-                    ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // === Confirm Button (only if a trip is selected) ===
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (canConfirm())
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: EdgeInsets.all(
+                              TextSizing.fontSizeText(context),
+                            ),
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: (widget.isDarkMode
+                                    ? Colors.blueGrey[50]
+                                    : const Color(
+                                        0xff014689,
+                                      )), // Button background color
+                                foregroundColor: (widget.isDarkMode
+                                    ? Colors.blueGrey[900]
+                                    : Colors.white),
+                              ), // Text color
+                              onPressed: widget.onPressedConfirm,
+                              child: Padding(
+                                padding: EdgeInsets.all(
+                                  TextSizing.fontSizeText(context) * 0.33,
+                                ),
+                                child: Text(
+                                  'Confirm',
+                                  style: TextStyle(
+                                    fontSize: TextSizing.fontSizeText(context),
+                                    fontFamily: 'Roboto',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (!canConfirm())
+                        SizedBox(width: TextSizing.fontSizeText(context) * 6),
+                      SizedBox(
+                        width: TextSizing.fontSizeText(context),
+                        height: TextSizing.fontSizeText(context) * 4,
+                      ),
+                    ],
                   ),
-                ),
-
-              const SizedBox(height: 20),
+                ],
+              ),
 
               // === Evening Service Info ===
-              now.hour > startEveningService
-                  ? EveningStartPoint.getBusTime(
-                      widget.selectedBox,
-                      context,
-                      widget.isDarkMode,
+              now.hour >= startEveningService
+                  ? Column(
+                      children: [
+                        SizedBox(height: TextSizing.fontSizeHeading(context)),
+                        EveningStartPoint.getBusTime(
+                          widget.selectedBox,
+                          context,
+                          widget.isDarkMode,
+                        ),
+                      ],
                     )
-                  : const SizedBox(height: 20),
+                  : Column(
+                      children: [
+                        SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                        Text(
+                          'ETAs will be shown in the afternoon',
+                          style: TextStyle(
+                            color: widget.isDarkMode
+                                ? Colors.blueGrey[400]
+                                : Colors.blueGrey[600],
+                            fontFamily: 'Roboto',
+                            fontSize: TextSizing.fontSizeText(context),
+                          ),
+                        ),
+                        SizedBox(height: TextSizing.fontSizeText(context)),
+                      ],
+                    ),
             ],
           );
   }

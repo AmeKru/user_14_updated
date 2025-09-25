@@ -10,14 +10,17 @@ import 'package:user_14_updated/services/evening_service.dart';
 import 'package:user_14_updated/services/shared_preference.dart';
 import 'package:user_14_updated/utils/loading.dart';
 import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
 import 'package:user_14_updated/utils/text_styles_booking_confirmation.dart';
 
 ///////////////////////////////////////////////////////////////
-// This URL returns the current time for the Asia/Singapore timezone.
-/// CHANGED: Moved API URL to a constant for easier maintenance.
-
+// This URL returns the current time for the Asia/Singapore timezone
+// Moved API URL to a constant for easier maintenance
 const String timeApiUrl =
     'https://www.timeapi.io/api/time/current/zone?timeZone=ASIA%2FSINGAPORE';
+
+///////////////////////////////////////////////////////////////
+// Booking Confirmation
 
 class BookingConfirmation extends StatefulWidget {
   // Index of the selected booking option (e.g., which trip card was tapped)
@@ -73,14 +76,14 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 
   final SharedPreferenceService prefsService = SharedPreferenceService();
 
-  // CHANGED: Added loading flag to track time fetch status
+  // Added loading flag to track time fetch status
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
 
-    // CHANGED: Save booking data here instead of inside build()
+    // Save booking data here instead of inside build()
     prefsService.saveBookingData(
       widget.selectedBox,
       widget.bookedTripIndexKAP,
@@ -90,7 +93,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 
     // Fetch the current time from the API first
     getTime().then((_) {
-      /// CHANGED: Mark loading complete once time is fetched
+      // Mark loading complete once time is fetched
       setState(() {
         _loading = false;
       });
@@ -159,7 +162,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     try {
       final uri = Uri.parse(timeApiUrl);
 
-      /// CHANGED: Added timeout to prevent indefinite loading
+      // Added timeout to prevent indefinite loading
       final response = await get(uri).timeout(Duration(seconds: 5));
 
       final Map data = jsonDecode(response.body);
@@ -176,7 +179,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
         print('Error fetching time: $e');
       }
 
-      /// CHANGED: Fallback to device time if API fails
+      // Fallback to device time if API fails
       setState(() {
         timeNow = DateTime.now();
       });
@@ -200,20 +203,47 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
       builder: (BuildContext context) {
         return AlertDialog(
           // Match dialog background to theme mode
-          backgroundColor: widget.isDarkMode ? Colors.black : Colors.white,
-          title: Text(
-            "Cancel Booking",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Roboto',
-              color: widget.isDarkMode ? Colors.white : Colors.black,
-            ),
+          backgroundColor: widget.isDarkMode
+              ? Colors.blueGrey[900]
+              : Colors.white,
+          actionsAlignment: MainAxisAlignment.center,
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.cancel_rounded,
+                    color: Colors.redAccent,
+                    size: TextSizing.fontSizeHeading(context),
+                  ), // Success icon
+                  SizedBox(width: TextSizing.fontSizeMiniText(context)),
+                  Text(
+                    'Cancel Booking',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Roboto',
+                      color: widget.isDarkMode ? Colors.white : Colors.black,
+                      fontSize: TextSizing.fontSizeHeading(context),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          content: Text(
-            "Are you sure you want to cancel this booking?",
-            style: TextStyle(
-              fontFamily: 'Roboto',
-              color: widget.isDarkMode ? Colors.white : Colors.black,
+
+          content: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: TextSizing.fontSizeText(context),
+              vertical: TextSizing.fontSizeMiniText(context),
+            ),
+            child: Text(
+              "Are you sure you want to\ncancel this booking?",
+              style: TextStyle(
+                fontFamily: 'Roboto',
+                color: widget.isDarkMode ? Colors.white : Colors.black,
+                fontSize: TextSizing.fontSizeText(context),
+              ),
             ),
           ),
           actions: <Widget>[
@@ -224,6 +254,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
+                  fontSize: TextSizing.fontSizeText(context),
                   color: widget.isDarkMode
                       ? Colors.tealAccent
                       : const Color(0xff014689),
@@ -238,6 +269,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
+                  fontSize: TextSizing.fontSizeText(context),
                   color: widget.isDarkMode
                       ? Colors.tealAccent
                       : const Color(0xff014689),
@@ -261,6 +293,9 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     );
   }
 
+  ///////////////////////////////////////////////////////////////
+  // Booking Card
+
   @override
   Widget build(BuildContext context) {
     // Determine which booked trip index to use based on the selected box:
@@ -276,7 +311,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     // Determine the station name based on the selected box.
     final String station = widget.selectedBox == 1 ? 'KAP' : 'CLE';
 
-    /// CHANGED: Use loading flag instead of relying on timeNow directly
+    // Use loading flag instead of relying on timeNow directly
     if (_loading || timeNow == null) {
       if (kDebugMode) {
         print('time now = $timeNow'); // Debug log for troubleshooting
@@ -289,10 +324,10 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
 
-      /// CHANGED: Center children horizontally
+      // Center children horizontally
       children: [
         Center(
-          /// CHANGED: Wrap card in Center to align it horizontally
+          // Wrap card in Center to align it horizontally
           child: _BookingDetailsCard(
             bookedTripIndex: bookedTripIndex,
             bookedTime: bookedTime,
@@ -305,11 +340,11 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
             onCancel: showCancelDialog, // Show cancel confirmation dialog
           ),
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: TextSizing.fontSizeHeading(context)),
         // Show evening service bus time only if current hour is after service start
-        if (timeNow!.hour > startEveningService)
+        if (timeNow!.hour >= startEveningService)
           Center(
-            /// CHANGED: Wrap bus time in Center to align it horizontally
+            // Wrap bus time in Center to align it horizontally
             child: EveningStartPoint.getBusTime(
               widget.selectedBox,
               context,
@@ -321,7 +356,8 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   }
 }
 
-/// CHANGED: New stateless widget for booking details card.
+///////////////////////////////////////////////////////////////
+// Layout for Booking Details
 class _BookingDetailsCard extends StatelessWidget {
   final int bookedTripIndex; // Index of the booked trip
   final DateTime bookedTime; // Departure time of the booked trip
@@ -342,29 +378,40 @@ class _BookingDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(10.0), // Outer padding around the card
+      padding: EdgeInsets.all(
+        TextSizing.fontSizeText(context),
+      ), // Outer padding around the card
       child: Container(
         color: color, // Apply dynamic background color
         child: Padding(
-          padding: const EdgeInsets.all(5.0), // Inner padding inside the card
+          padding: EdgeInsets.all(
+            TextSizing.fontSizeText(context) * 0.5,
+          ), // Inner padding inside the card
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
 
             children: [
-              SizedBox(height: 5), // Small top spacing
+              SizedBox(
+                height: TextSizing.fontSizeText(context) * 0.5,
+              ), // Small top spacing
               Row(
-                children: const [
-                  SizedBox(width: 10), // Left spacing before icon
+                children: [
+                  SizedBox(
+                    width: TextSizing.fontSizeText(context),
+                  ), // Left spacing before icon
                   Icon(
                     Icons.event_available,
                     color: Colors.black,
+                    size: TextSizing.fontSizeText(context) * 1.5,
                   ), // Calendar/check icon
-                  SizedBox(width: 5), // Space between icon and text
+                  SizedBox(
+                    width: TextSizing.fontSizeText(context) * 0.5,
+                  ), // Space between icon and text
                   Text(
                     'Booking Confirmation:',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: TextSizing.fontSizeText(context),
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Roboto',
                       color: Colors.black,
@@ -372,7 +419,9 @@ class _BookingDetailsCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 25), // Space before booking details
+              SizedBox(
+                height: TextSizing.fontSizeText(context) * 1.5,
+              ), // Space before booking details
               // Display trip number (index + 1 for human-readable numbering)
               BookingConfirmationText(
                 label: 'Trip Number',
@@ -405,14 +454,17 @@ class _BookingDetailsCard extends StatelessWidget {
                 size: 1,
                 darkText: true,
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: TextSizing.fontSizeText(context)),
               // Cancel button row
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(top: 5, bottom: 20),
+                    padding: EdgeInsets.only(
+                      top: TextSizing.fontSizeText(context),
+                      bottom: TextSizing.fontSizeText(context) * 1.5,
+                    ),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor:
@@ -420,7 +472,17 @@ class _BookingDetailsCard extends StatelessWidget {
                         foregroundColor: Colors.white, // Text (and icon) color
                       ),
                       onPressed: onCancel, // Trigger cancel dialog
-                      child: const Text('Cancel'),
+                      child: Padding(
+                        padding: EdgeInsets.all(
+                          TextSizing.fontSizeText(context) * 0.33,
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: TextSizing.fontSizeText(context),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],

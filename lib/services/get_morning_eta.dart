@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/utils/get_time.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
 
 //////////////////////////////////////////////////////////////
 // Utility class for calculating and displaying morning bus ETAs.
@@ -28,8 +29,8 @@ class CalculateMorningBus {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 8,
-              height: 57,
+              width: TextSizing.fontSizeText(context) * 0.5,
+              height: TextSizing.fontSizeText(context) * 4,
               color: eta.isNotEmpty
                   ? (isDarkMode ? Colors.cyanAccent : Color(0xff014689))
                   : (isDarkMode ? Colors.blueGrey[700] : Colors.grey[400]),
@@ -44,11 +45,12 @@ class CalculateMorningBus {
               child: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.8,
                 child: Padding(
-                  padding: const EdgeInsets.all(10.0),
+                  padding: EdgeInsets.all(TextSizing.fontSizeText(context)),
                   child: Column(
                     children: [
                       Icon(
                         Icons.directions_bus,
+                        size: TextSizing.fontSizeHeading(context),
                         color: eta.isNotEmpty
                             ? (isDarkMode ? Colors.cyanAccent : Colors.black)
                             : (isDarkMode
@@ -58,7 +60,7 @@ class CalculateMorningBus {
                       Text(
                         eta.isNotEmpty ? '$text $eta minutes' : text,
                         style: TextStyle(
-                          fontSize: 15.0,
+                          fontSize: TextSizing.fontSizeText(context),
                           fontFamily: 'Roboto',
                           fontWeight: FontWeight.w400,
                           color: eta.isNotEmpty
@@ -76,8 +78,8 @@ class CalculateMorningBus {
               ),
             ),
             Container(
-              width: 8,
-              height: 57,
+              width: TextSizing.fontSizeText(context) * 0.5,
+              height: TextSizing.fontSizeText(context) * 4,
               color: eta.isNotEmpty
                   ? (isDarkMode ? Colors.cyanAccent : Color(0xff014689))
                   : (isDarkMode ? Colors.blueGrey[700] : Colors.grey[400]),
@@ -227,11 +229,37 @@ class _GetMorningETAState extends State<GetMorningETA> {
 
   @override
   Widget build(BuildContext context) {
-    /// CHANGED: Pass widget.isDarkMode to getMorningETA so it can style accordingly
-    return CalculateMorningBus.getMorningETA(
-      widget.busArrivalTimes,
-      widget.isDarkMode, // CHANGED: now passing dark mode flag
-      context,
+    return Column(
+      children: [
+        // Text above ETA
+        Text(
+          'Bus to NP Campus',
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: TextSizing.fontSizeHeading(context),
+            color: widget.isDarkMode ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          selectedMRT == 1
+              ? 'Departure times from King Albert Park'
+              : 'Departure times from Clementi',
+          style: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: TextSizing.fontSizeText(context),
+            color: widget.isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        SizedBox(height: TextSizing.fontSizeText(context)),
+
+        // ETA displays
+        CalculateMorningBus.getMorningETA(
+          widget.busArrivalTimes,
+          widget.isDarkMode, // CHANGED: now passing isDarkMode as well
+          context,
+        ),
+      ],
     );
   }
 }

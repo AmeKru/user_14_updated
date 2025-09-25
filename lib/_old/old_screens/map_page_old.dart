@@ -13,11 +13,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/screens/afternoon_screen.dart';
-import 'package:user_14_updated/screens/info.dart';
+import 'package:user_14_updated/screens/information.dart';
 import 'package:user_14_updated/screens/news_announcement.dart';
 import 'package:user_14_updated/screens/settings.dart';
 import 'package:user_14_updated/services/get_location.dart';
-import 'package:user_14_updated/services/old_services/mqtt_old.dart';
+import 'package:user_14_updated/_old/old_services/mqtt_old.dart';
 import 'package:user_14_updated/utils/marker_colour.dart';
 
 class MapPage extends StatefulWidget {
@@ -317,7 +317,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         //KAP
         //fetchRoute(LatLng(1.3359291665604225, 103.78307744418207));
         //fetchAM_KAPRoute();
-        if (now.hour > startAfternoonService) {
+        if (now.hour >= startAfternoonService) {
           fetchRoute(pmKAP);
         } else {
           fetchRoute(amKAP);
@@ -326,7 +326,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         //CLE
         //fetchRoute(LatLng(1.3157535241817033, 103.76510924418207));
         //fetchAM_CLERoute();
-        if (now.hour > startAfternoonService) {
+        if (now.hour >= startAfternoonService) {
           fetchRoute(pmCLE);
         } else {
           fetchRoute(amCLE);
@@ -426,7 +426,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       updateSelectedBox: updateSelectedBox,
       isDarkMode: _isDarkMode,
     );
-    // Widget displayPage = now.hour > startAfternoonService ? Afternoon_Screen(updateSelectedBox: updateSelectedBox, isDarkMode: _isDarkMode,) : Morning_Screen(updateSelectedBox: updateSelectedBox);
+    // Widget displayPage = now.hour >= startAfternoonService ? Afternoon_Screen(updateSelectedBox: updateSelectedBox, isDarkMode: _isDarkMode,) : Morning_Screen(updateSelectedBox: updateSelectedBox);
     return Scaffold(
       // body: currentLocation == null? LoadingScreen(isDarkMode: _isDarkMode) : Stack(
       body: Stack(
@@ -642,6 +642,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                           direction: _heading,
                           arcSweepAngle: 360,
                           arcStartAngle: 0,
+                          context: context,
                         ),
                       ),
                     ),

@@ -12,46 +12,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/screens/afternoon_screen.dart';
-import 'package:user_14_updated/screens/info.dart';
+import 'package:user_14_updated/screens/announcements_page.dart';
+import 'package:user_14_updated/screens/information_page.dart';
 import 'package:user_14_updated/screens/morning_screen.dart';
-import 'package:user_14_updated/screens/news_announcement.dart';
-import 'package:user_14_updated/screens/settings.dart';
+import 'package:user_14_updated/screens/settings_page.dart';
 import 'package:user_14_updated/services/get_location.dart';
 import 'package:user_14_updated/services/mqtt.dart';
 import 'package:user_14_updated/services/shared_preference.dart';
 import 'package:user_14_updated/utils/marker_colour.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
-// Put this here for UI, depending on screen you use it on, not sure if really necessary
-
-class ResponsiveConfig {
-  final BuildContext context;
-  late final double screenWidth;
-  late final double screenHeight;
-  late final bool isTablet;
-  late final bool isPortrait;
-
-  ResponsiveConfig(this.context) {
-    final mq = MediaQuery.of(context);
-    screenWidth = mq.size.width;
-    screenHeight = mq.size.height;
-    isTablet = mq.size.shortestSide >= 600;
-    isPortrait = mq.orientation == Orientation.portrait;
-  }
-
-  double get iconSize => isTablet
-      ? (isPortrait ? screenWidth * 0.04 : screenHeight * 0.04)
-      : screenWidth * 0.05;
-
-  double get busIconSize => isTablet
-      ? (isPortrait ? screenWidth * 0.035 : screenHeight * 0.035)
-      : screenWidth * 0.045;
-
-  double get logoSize => isTablet ? screenWidth * 0.1 : screenWidth * 0.15;
-}
-
-///////////////////////////////////////////////////////////////
-// start of class Map_Page
+// Map Page
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -331,11 +303,15 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     setState(() {
       this.selectedBox = selectedBox;
       if (selectedBox == 1) {
-        fetchRoute(now.hour > startAfternoonService ? pmKAP : amKAP);
+        selectedMRT = 1;
+        fetchRoute(now.hour >= startAfternoonService ? pmKAP : amKAP);
       } else if (selectedBox == 2) {
-        fetchRoute(now.hour > startAfternoonService ? pmCLE : amCLE);
+        selectedMRT = 2;
+        fetchRoute(now.hour >= startAfternoonService ? pmCLE : amCLE);
       } else {
         routePoints.clear();
+        selectedMRT = 0;
+        busIndex = 0;
       }
     });
   }
@@ -372,43 +348,53 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   ///////////////////////////////////////////////////////////////
   // Function to be able to create Bus marker on map more easily
 
-  Marker _buildBusMarker(
-    String label,
-    LatLng? location,
-    ResponsiveConfig config,
-  ) {
+  Marker _buildBusMarker(String label, LatLng? location) {
     return Marker(
       point: location ?? LatLng(1.3323127398440282, 103.774728443874),
-      child: SizedBox(
-        width: config.iconSize * 2,
-        height: config.iconSize * 2.4,
-        child: FittedBox(
-          // Scales down contents to avoid overflow
-          fit: BoxFit.contain,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.fade,
-                softWrap: false,
-                style: TextStyle(
-                  fontSize: config.isTablet ? 10 : 8,
-                  color: getBusMarkerColor(label, selectedBox, isDarkMode),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 0.5),
-
-              Icon(
-                Icons.directions_bus,
-                color: getBusMarkerColor(label, selectedBox, isDarkMode),
-                size: config.busIconSize * 1.5,
-              ),
-            ],
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          Icon(
+            Icons.directions_bus,
+            color: getBusMarkerColor(label, selectedBox, isDarkMode),
+            size: TextSizing.fontSizeText(context) * 2,
           ),
-        ),
+          SizedBox(
+            height: TextSizing.fontSizeText(context),
+            width: TextSizing.fontSizeText(context) * 3,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextSizing.isTablet(context)
+                    ? SizedBox(
+                        width: TextSizing.fontSizeMiniText(context) * 0.83,
+                      )
+                    : SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                Column(
+                  children: [
+                    SizedBox(
+                      height: TextSizing.fontSizeMiniText(context) * 0.83,
+                    ),
+                    Text(
+                      label,
+                      overflow: TextOverflow.fade,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontSize: TextSizing.fontSizeMiniText(context) * 0.5,
+                        color: getBusMarkerColor(
+                          label,
+                          selectedBox,
+                          isDarkMode,
+                        ),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -422,10 +408,12 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     String title,
     String description,
     bool isDarkMode,
-    ResponsiveConfig config,
   ) {
     return Marker(
       point: point,
+      width: TextSizing.fontSizeText(context),
+      height: TextSizing.fontSizeText(context),
+      //alignment: Alignment.topCenter, // if one wants the tip of arrow pointing to the stop
       child: GestureDetector(
         onTap: () => showDialog(
           context: context,
@@ -437,12 +425,14 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 fontFamily: 'Roboto',
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.white : Colors.black,
+                fontSize: TextSizing.fontSizeHeading(context),
               ),
             ),
             content: Text(
               description,
               style: TextStyle(
                 fontFamily: 'Roboto',
+                fontSize: TextSizing.fontSizeText(context),
                 color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
@@ -455,6 +445,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     color: isDarkMode
                         ? Colors.tealAccent
                         : const Color(0xff014689),
+                    fontSize: TextSizing.fontSizeText(context),
+                    fontFamily: 'Roboto',
                   ),
                 ),
               ),
@@ -466,7 +458,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           child: Icon(
             CupertinoIcons.location_circle_fill,
             color: getMarkerColor(title, busIndex, isDarkMode),
-            size: config.iconSize,
+            size: TextSizing.fontSizeText(context) * 1.75,
           ),
         ),
       ),
@@ -477,14 +469,15 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   // Build the map with all stops, routes and buses
 
   Widget _buildMap() {
-    final config = ResponsiveConfig(context);
     final mapCenter =
         currentLocation ?? LatLng(1.3331191965635956, 103.7765424614437);
 
     return FlutterMap(
       options: MapOptions(
         initialCenter: mapCenter,
-        initialZoom: config.isTablet ? 17 : 18,
+        initialZoom: TextSizing.isTablet(context)
+            ? TextSizing.fontSizeText(context) * 0.85
+            : TextSizing.fontSizeText(context) * 1.1,
         initialRotation: 0,
         interactionOptions: const InteractionOptions(
           flags: ~InteractiveFlag.doubleTapZoom,
@@ -494,9 +487,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         Container(
           color: isDarkMode ? Colors.black87 : Colors.lightBlueAccent[50],
           child: TileLayer(
-            keepBuffer: 4,
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'dev.fleaflet.flutter_map.example',
+            keepBuffer: 4,
             tileBuilder: isDarkMode
                 ? (context, widget, tile) => ColorFiltered(
                     colorFilter: const ColorFilter.matrix([
@@ -532,9 +525,12 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               Polyline(
                 points: routePoints,
                 color: isDarkMode ? Colors.cyan : Colors.blue[600]!,
-                strokeWidth: 5,
+                strokeWidth: TextSizing.fontSizeText(context) * 0.25,
                 pattern: StrokePattern.dashed(
-                  segments: [1, 7],
+                  segments: [
+                    TextSizing.fontSizeText(context) * 0.01,
+                    TextSizing.fontSizeText(context) * 0.3,
+                  ],
                   patternFit: PatternFit.scaleUp,
                 ),
               ),
@@ -548,95 +544,82 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               'ENT',
               'Entrance Bus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopOppositeKAP,
-              'Opposite KAP',
-              ' ',
+              'OPP KAP',
+              'Opposite King Albert Park',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopB23,
               'B23',
               'Block 23 Bus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopSPH,
               'SPH',
               'Sports Hall Bus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopB44,
               'B44',
               'Block 44 Bus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopB37,
               'B37',
               'Block 37 Bus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopB72,
               'B72',
               'Block 72 Bus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopMAP,
               'MAP',
               'Makan Place Bus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopCLE,
               'CLE',
               'Clementi MRT Bus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopKAP,
               'KAP',
-              'King Albert Park\nMRT Bus Stop',
+              'King Albert Park MRT\nBus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopHSC,
               'HSC',
               'School of Health Sciences\nBus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopLCT,
               'LCT',
               'School of Life Sciences & Technology\nBus Stop',
               isDarkMode,
-              config,
             ),
             _buildStopMarker(
               busStopSIT,
               'SIT',
               'Singapore Institute of Technology\nBus Stop',
               isDarkMode,
-              config,
             ),
-            _buildBusMarker('Bus1', bus1Location, config),
-            _buildBusMarker('Bus2', bus2Location, config),
-            _buildBusMarker('Bus3', bus3Location, config),
+            _buildBusMarker('Bus1', bus1Location),
+            _buildBusMarker('Bus2', bus2Location),
+            _buildBusMarker('Bus3', bus3Location),
           ],
         ),
         MarkerLayer(
@@ -646,11 +629,15 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               Marker(
                 point: currentLocation!,
                 child: CustomPaint(
-                  size: Size(config.iconSize * 3, config.iconSize * 2),
+                  size: Size(
+                    TextSizing.fontSizeText(context),
+                    TextSizing.fontSizeText(context),
+                  ),
                   painter: CompassPainter(
                     direction: _heading,
                     arcSweepAngle: 360,
                     arcStartAngle: 0,
+                    context: context,
                   ),
                 ),
               ),
@@ -665,22 +652,30 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
   Widget _buildCircularMenu() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 30.0, 10.0, 0),
+      padding: EdgeInsets.fromLTRB(
+        0,
+        TextSizing.fontSizeText(context) * 2,
+        TextSizing.fontSizeText(context),
+        0,
+      ),
+
+      // Circular Menu button
       child: CircularMenu(
         alignment: Alignment.topRight,
-        radius: 80.0,
-        toggleButtonSize: 55,
+        radius: TextSizing.fontSizeText(context) * 4.75,
+        toggleButtonSize: TextSizing.fontSizeText(context) * 3.5,
         toggleButtonColor: isDarkMode
             ? Colors.blueGrey[500]
             : const Color(0xff014689),
         toggleButtonIconColor: Colors.white,
         curve: Curves.easeInOut,
         items: [
+          // Information Page button
           CircularMenuItem(
-            color: Colors.cyan,
-            iconSize: 30.0,
-            margin: 10.0,
-            padding: 10.0,
+            color: isDarkMode ? Colors.cyan : Colors.cyan[600],
+            iconSize: TextSizing.fontSizeText(context) * 2.25,
+            margin: TextSizing.fontSizeText(context),
+            padding: TextSizing.fontSizeText(context) * 0.5,
             icon: Icons.info_rounded,
             iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
@@ -690,11 +685,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               ),
             ),
           ),
+
+          // Settings Page button
           CircularMenuItem(
-            color: Colors.green[300],
-            iconSize: 30.0,
-            margin: 10.0,
-            padding: 10.0,
+            color: isDarkMode ? Colors.green[300] : Colors.green,
+            iconSize: TextSizing.fontSizeText(context) * 2.25,
+            margin: TextSizing.fontSizeText(context),
+            padding: TextSizing.fontSizeText(context) * 0.5,
             icon: Icons.settings,
             iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
@@ -707,11 +704,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               ),
             ),
           ),
+
+          // Announcement Page button
           CircularMenuItem(
             color: Color(0xfffeb041),
-            iconSize: 30.0,
-            margin: 10.0,
-            padding: 10.0,
+            iconSize: TextSizing.fontSizeText(context) * 2.25,
+            margin: TextSizing.fontSizeText(context),
+            padding: TextSizing.fontSizeText(context) * 0.5,
             icon: Icons.newspaper,
             iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
@@ -740,12 +739,14 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       children: [
         SlidingUpPanel(
           controller: _panelController, // wire controller
-          minHeight: 100,
-          maxHeight: screenHeight * 0.65,
+          minHeight: TextSizing.fontSizeHeading(context) * 4.6,
+          maxHeight: screenHeight * 0.75,
           backdropEnabled: true, // dim background
           backdropOpacity: 0.5, // adjust darkness
           backdropTapClosesPanel: true, // tap outside to close
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(TextSizing.fontSizeText(context)),
+          ),
           color: isDarkMode ? Colors.blueGrey[900]! : Colors.lightBlue[50]!,
           onPanelOpened: () => setState(() => ignoring = true),
           onPanelClosed: () {
@@ -774,45 +775,51 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                       color: isDarkMode
                           ? Colors.blueGrey[700]
                           : const Color(0xff014689), // header color
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(TextSizing.fontSizeText(context)),
                       ),
                     ),
                     child: Column(
                       children: [
                         // Grab handle
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          padding: EdgeInsets.symmetric(
+                            vertical: TextSizing.fontSizeText(context) * 0.5,
+                          ),
                           child: Container(
-                            width: 40,
-                            height: 3,
+                            width: TextSizing.fontSizeText(context) * 3,
+                            height: TextSizing.fontSizeText(context) * 0.2,
                             decoration: BoxDecoration(
                               color: isDarkMode
                                   ? Colors.white54
                                   : Colors.black26,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                TextSizing.fontSizeText(context),
+                              ),
                             ),
                           ),
                         ),
                         // Title row with bus icon
                         Padding(
-                          padding: const EdgeInsets.all(8.0),
+                          padding: EdgeInsets.all(
+                            TextSizing.fontSizeText(context) * 0.5,
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.directions_bus,
                                 color: Colors.white,
-                                size: 22,
+                                size: TextSizing.fontSizeHeading(context),
                               ),
-                              const SizedBox(width: 6),
+                              SizedBox(
+                                width: TextSizing.fontSizeText(context) * 0.5,
+                              ),
                               Text(
                                 'MooBus on-demand',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: ResponsiveConfig(context).isTablet
-                                      ? 20
-                                      : 18,
+                                  fontSize: TextSizing.fontSizeHeading(context),
                                   fontWeight: FontWeight.bold,
                                   fontFamily: 'Montserrat',
                                 ),
@@ -837,9 +844,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             displayPage,
-                            const SizedBox(height: 16),
+                            SizedBox(height: TextSizing.fontSizeText(context)),
                             NewsAnnouncementWidget(isDarkMode: isDarkMode),
-                            const SizedBox(height: 20),
+                            // SizedBox(
+                            //   height: TextSizing.fontSizeMiniText(context),
+                            // ),
                           ],
                         ),
                       ),
@@ -851,13 +860,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           },
         ),
 
-        // ===== TAP OVERLAY (unchanged) =====
+        // ===== TAP OVERLAY  =====
         if (!ignoring)
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            height: 100,
+            height: TextSizing.fontSizeHeading(context) * 3.5,
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onTap: () {
@@ -899,14 +908,19 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           _buildMap(),
           _buildCircularMenu(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8.0, 40.0, 0.0, 0),
+            padding: EdgeInsets.fromLTRB(
+              TextSizing.fontSizeText(context),
+              TextSizing.fontSizeText(context) * 2,
+              0,
+              0,
+            ),
             child: Align(
               alignment: Alignment.topLeft,
               child: ClipOval(
                 child: Image.asset(
                   'images/logo.jpeg',
-                  width: 80,
-                  height: 80,
+                  width: TextSizing.fontSizeHeading(context) * 3,
+                  height: TextSizing.fontSizeHeading(context) * 3,
                   fit: BoxFit.cover,
                 ),
               ),

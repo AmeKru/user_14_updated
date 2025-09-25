@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
 // A simple horizontal divider with padding above and below.
@@ -14,13 +15,17 @@ class DrawLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 10), // Space above the line
+        SizedBox(
+          height: TextSizing.fontSizeText(context),
+        ), // Space above the line
         Container(
-          width: MediaQuery.of(context).size.width * 0.9, // 90% of screen width
-          height: 1, // Thin line
+          width: MediaQuery.of(context).size.width * 0.8, // 90% of screen width
+          height: TextSizing.fontSizeText(context) * 0.05, // Thin line
           color: Colors.blueGrey[900], // black color
         ),
-        const SizedBox(height: 10), // Space below the line
+        SizedBox(
+          height: TextSizing.fontSizeText(context),
+        ), // Space below the line
       ],
     );
   }
@@ -54,10 +59,13 @@ class BoxMRT extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 0), // No animation delay
-      height: 55, // Fixed height for the box
+      height:
+          TextSizing.fontSizeHeading(context) * 1.8, // Fixed height for the box
       curve: Curves.easeOutCubic, // Animation curve (if duration > 0)
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(10), // Rounded corners
+        borderRadius: BorderRadius.circular(
+          TextSizing.fontSizeText(context) * 0.6,
+        ), // Rounded corners
         child: Container(
           // Background color changes based on selection and dark mode
           color: box == chosen
@@ -68,9 +76,9 @@ class BoxMRT extends StatelessWidget {
               mrt, // Display the MRT station name
               style: box == chosen
                   // Selected style: white, larger, bold
-                  ? const TextStyle(
+                  ? TextStyle(
                       color: Colors.white,
-                      fontSize: 25,
+                      fontSize: TextSizing.fontSizeHeading(context),
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Roboto',
                     )
@@ -79,7 +87,7 @@ class BoxMRT extends StatelessWidget {
                       color: isDarkMode
                           ? Colors.blueGrey[100]
                           : Colors.blueGrey[800],
-                      fontSize: 20,
+                      fontSize: TextSizing.fontSizeHeading(context),
                       fontFamily: 'Roboto',
                     ),
             ),

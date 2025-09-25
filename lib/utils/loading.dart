@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
 // flutter_spinkit provides a variety of animated loading indicators
 
 //////////////////////////////////////////////////////////////
@@ -27,7 +28,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
       body: Center(
         child: SpinKitSpinningLines(
           color: Colors.grey, // Spinner color
-          size: 80.0, // Spinner size in logical pixels
+          size: TextSizing.fontSizeText(
+            context,
+          ), // Spinner size in logical pixels
         ),
       ),
     );
@@ -55,7 +58,7 @@ class _LoadingScrollState extends State<LoadingScroll> {
     return Column(
       children: [
         // Add some vertical spacing above the loader
-        const SizedBox(height: 10),
+        SizedBox(height: TextSizing.fontSizeText(context)),
 
         // Container to hold the loading animation
         Container(
@@ -66,7 +69,9 @@ class _LoadingScrollState extends State<LoadingScroll> {
           child: Center(
             child: SpinKitWave(
               color: Colors.blueGrey[200], // Color of the wave animation
-              size: 30.0, // Size of the animation
+              size: TextSizing.fontSizeHeading(
+                context,
+              ), // Size of the animation
             ),
           ),
         ),

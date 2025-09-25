@@ -19,7 +19,7 @@ import 'package:uuid/uuid.dart';
 
 class AfternoonScreen extends StatefulWidget {
   final Function(int) updateSelectedBox;
-  static int eveningService = 15;
+  static int eveningService = startEveningService;
   final bool isDarkMode;
 
   const AfternoonScreen({
@@ -43,7 +43,7 @@ class AfternoonScreenState extends State<AfternoonScreen> {
   BusData busData = BusData();
   List<DateTime> departureTimeKAP = [];
   List<DateTime> departureTimeCLE = [];
-  int eveningService = 9;
+  int eveningService = startEveningService;
   SharedPreferenceService prefsService = SharedPreferenceService();
   Future<Map<String, dynamic>?>? futureBookingData;
   bool _showBookingService = false;
@@ -489,8 +489,7 @@ class AfternoonScreenState extends State<AfternoonScreen> {
                   label: 'Trip Number: ',
                   value:
                       '${selectedBox == 1 ? bookedTripIndexKAP! + 1 : bookedTripIndexCLE! + 1}',
-                  // size: 0.15,
-                  size: 0.30,
+                  size: 0.6,
                   darkText: true,
                 ),
                 BookingConfirmationText(
@@ -500,22 +499,19 @@ class AfternoonScreenState extends State<AfternoonScreen> {
                         ? bookedTripIndexKAP!
                         : bookedTripIndexCLE!],
                   ),
-                  // size: 0.31,
-                  size: 0.30,
+                  size: 0.6,
                   darkText: true,
                 ),
                 BookingConfirmationText(
                   label: 'Station: ',
                   value: selectedBox == 1 ? 'KAP' : 'CLE',
-                  // size: 0.26,
-                  size: 0.30,
+                  size: 0.6,
                   darkText: true,
                 ),
                 BookingConfirmationText(
                   label: 'Bus Stop: ',
                   value: selectedBusStop,
-                  // size: 0.23,
-                  size: 0.30,
+                  size: 0.2,
                   darkText: true,
                 ),
               ],

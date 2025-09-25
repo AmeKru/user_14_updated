@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 // - Whether dark mode is enabled (`darkMode`)
 //
 // Certain marker names combined with specific `currentValue`s
-// will be highlighted in RED, if not then they are by default BLUE
+// will be highlighted in a different colour
 
 Color getMarkerColor(String markerName, int currentValue, bool darkMode) {
   if (markerName == "ENT" && currentValue == 2) {
@@ -38,7 +38,6 @@ Color getMarkerColor(String markerName, int currentValue, bool darkMode) {
   return Color(0xff002345);
 }
 
-// TODO: check which Bus goes on which route (then maybe add highlighted colour to bus on selected route?)
 Color getBusMarkerColor(String busNumber, int selectedBox, bool darkMode) {
   if (darkMode == true) {
     return Color(0xfffeb041);

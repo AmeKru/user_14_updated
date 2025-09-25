@@ -51,13 +51,14 @@ class ConnectMQTT extends StatefulWidget {
 }
 
 class ConnectMQTTState extends State<ConnectMQTT> {
-  String uniqueID = 'MyPC_24092024'; // Example identifier
+  String uniqueID = 'MyPC_24092024'; //MR HUI
 
-  // MQTT client configured for AWS IoT endpoint
+  // Chelsters
   final mqtt.MqttServerClient client = mqtt.MqttServerClient(
     'a2a1gb4ur9migt-ats.iot.ap-southeast-2.amazonaws.com',
     '',
   );
+  // Chelsters
 
   String statusText = "Status Text"; // Connection status message for UI
   bool isConnected = false; // Tracks connection state

@@ -4,6 +4,10 @@ import 'package:user_14_updated/data/get_data.dart';
 import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/services/get_morning_eta.dart';
 import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
+
+///////////////////////////////////////////////////////////////
+// Class for Morning screen
 
 class MorningScreen extends StatefulWidget {
   final Function(int) updateSelectedBox;
@@ -29,6 +33,9 @@ class MorningScreenState extends State<MorningScreen> {
     selectedMRT = 0; // Ensure starts with no selection
   }
 
+  ///////////////////////////////////////////////////////////////
+  // So the corresponding path, information and visual box can be loaded
+
   void updateSelectedBox(int box) {
     setState(() {
       // If the same box is tapped again, deselect it
@@ -46,23 +53,31 @@ class MorningScreenState extends State<MorningScreen> {
     widget.updateSelectedBox(selectedBox);
   }
 
+  ///////////////////////////////////////////////////////////////
+  // everything that is shown in the screen if morning and open
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 5),
+        SizedBox(height: TextSizing.fontSizeMiniText(context)),
         Text(
           'Select MRT',
           style: TextStyle(
             color: widget.isDarkMode ? Colors.white : Colors.black,
-            fontSize: 15,
+            fontSize: TextSizing.fontSizeText(context),
             fontWeight: FontWeight.bold,
             fontFamily: 'Roboto',
           ),
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: TextSizing.fontSizeMiniText(context)),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: TextSizing.fontSizeMiniText(context),
+          ),
+
+          ///////////////////////////////////////////////////////////////
+          // The two buttons KAP and CLE
           child: Row(
             children: [
               Expanded(
@@ -75,7 +90,7 @@ class MorningScreenState extends State<MorningScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: TextSizing.fontSizeMiniText(context)),
               Expanded(
                 child: GestureDetector(
                   onTap: () => updateSelectedBox(2),
@@ -89,7 +104,10 @@ class MorningScreenState extends State<MorningScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+
+        ///////////////////////////////////////////////////////////////
+        // Shows bus arrival times, depending on selected MRT Station
+        SizedBox(height: TextSizing.fontSizeText(context)),
         if (selectedBox != 0)
           GetMorningETA(
             selectedBox == 1 ? busData.arrivalTimeKAP : busData.arrivalTimeCLE,

@@ -18,6 +18,7 @@ import 'package:user_14_updated/services/booking_confirmation.dart'; // Booking 
 import 'package:user_14_updated/services/booking_service.dart'; // Booking servicing confirmation UI
 import 'package:user_14_updated/services/shared_preference.dart'; // SharedPreferences wrapper
 import 'package:user_14_updated/utils/styling_line_and_buttons.dart'; // Styling helpers
+import 'package:user_14_updated/utils/text_sizing.dart'; // sizing, so it stays consistent
 import 'package:user_14_updated/utils/text_styles_booking_confirmation.dart'; // Text style helpers
 // For generating unique IDs
 import 'package:uuid/uuid.dart';
@@ -46,7 +47,7 @@ class AfternoonScreen extends StatefulWidget {
 
 class _AfternoonScreenState extends State<AfternoonScreen> {
   // Currently selected MRT box index (0 = none)
-  int selectedBox = 0;
+  int selectedBox = selectedMRT;
 
   // Indices of booked trips for two MRT stations (KAP and CLE)
   int? bookedTripIndexKAP;
@@ -68,7 +69,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
   final SharedPreferenceService prefsService = SharedPreferenceService();
 
   // Local constant for evening service (different from static const above)
-  final int _eveningService = 9;
+  final int _eveningService = startEveningService;
 
   // Lists of DateTime objects for trip schedules
   List<DateTime> kapDT = [];
@@ -95,9 +96,21 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
       if (mounted) setState(() => _showBookingService = false);
     });
 
+    checkBooking();
+
     // Debug: print list of bus stops from BusData
     if (kDebugMode) {
       print('BusStop list: ${_busData.busStop}');
+    }
+  }
+
+  void checkBooking() async {
+    final data = await futureBookingData;
+    if (data != null) {
+      final selectedBox = data['selectedBox'] as int?;
+      setState(() {
+        confirmationPressed = selectedBox != 0;
+      });
     }
   }
 
@@ -390,72 +403,87 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
       backgroundColor: Colors.transparent, // so we can round corners
       builder: (_) {
         return FractionallySizedBox(
-          heightFactor: 0.8, // finite height for the sheet
+          heightFactor: 0.65, // finite height for the sheet
           child: Material(
             color: widget.isDarkMode ? Colors.blueGrey[900] : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(TextSizing.fontSizeText(context)),
+            ),
             child: SafeArea(
               top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.max, // fill vertical space
-                children: [
-                  const SizedBox(height: 10),
-                  Text(
-                    'Choose bus stop:',
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      fontSize: 20,
-                      color: widget.isDarkMode ? Colors.white : Colors.black,
+              child: Padding(
+                padding: EdgeInsets.all(
+                  TextSizing.fontSizeText(context) * 0.35,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.max, // fill vertical space
+                  children: [
+                    const SizedBox(height: 10),
+                    Text(
+                      'Choose bus stop:',
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontSize: TextSizing.fontSizeHeading(context),
+                        fontWeight: FontWeight.bold,
+                        color: widget.isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  // Give the list bounded height via Expanded
-                  Expanded(
-                    child: ListView.builder(
-                      // no shrinkWrap, no NeverScrollablePhysics
-                      itemCount: _busData.busStop.length - 2,
-                      itemBuilder: (_, index) {
-                        final stopName = _busData.busStop[index + 2];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          child: Material(
-                            color: widget.isDarkMode
-                                ? Colors.blueGrey[800]
-                                : Colors.blue[50],
-                            borderRadius: BorderRadius.circular(5),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(5),
-                              onTap: () {
-                                setState(() {
-                                  selectedBusStop = stopName;
-                                  busIndex = index + 2;
-                                });
-                                Navigator.pop(context);
-                              },
-                              child: ListTile(
-                                title: Text(
-                                  stopName,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontFamily: 'Roboto',
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                    SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                    // Give the list bounded height via Expanded
+                    Expanded(
+                      child: ListView.builder(
+                        // no shrinkWrap, no NeverScrollablePhysics
+                        itemCount: _busData.busStop.length - 2,
+                        itemBuilder: (_, index) {
+                          final stopName = _busData.busStop[index + 2];
+                          return Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: TextSizing.fontSizeText(context),
+                              vertical: TextSizing.fontSizeText(context) * 0.2,
+                            ),
+                            child: Material(
+                              color: widget.isDarkMode
+                                  ? Colors.blueGrey[800]
+                                  : const Color(0xff014689),
+                              borderRadius: BorderRadius.circular(
+                                TextSizing.fontSizeText(context) * 0.25,
+                              ),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(
+                                  TextSizing.fontSizeText(context) * 0.25,
                                 ),
-                                textColor: widget.isDarkMode
-                                    ? Colors.cyanAccent
-                                    : Colors.black,
-                                // No trailing/leading to keep it simple
+                                onTap: () {
+                                  setState(() {
+                                    selectedBusStop = stopName;
+                                    busIndex = index + 2;
+                                  });
+                                  Navigator.pop(context);
+                                },
+                                child: ListTile(
+                                  title: Text(
+                                    stopName,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontFamily: 'Roboto',
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: TextSizing.fontSizeText(
+                                        context,
+                                      ),
+                                    ),
+                                  ),
+                                  textColor: widget.isDarkMode
+                                      ? Colors.cyanAccent
+                                      : Colors.white,
+                                  // No trailing/leading to keep it simple
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -512,76 +540,97 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
       context: context,
       builder: (_) {
         return AlertDialog(
+          actionsAlignment: MainAxisAlignment.center,
           backgroundColor: widget.isDarkMode
               ? Colors.blueGrey[900]
               : Colors.white,
+
           // Dialog title section
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green), // Success icon
-                  SizedBox(width: 10),
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: TextSizing.fontSizeHeading(context),
+                  ), // Success icon
+                  SizedBox(width: TextSizing.fontSizeMiniText(context)),
                   Text(
                     'Booking Confirmed!',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Roboto',
                       color: widget.isDarkMode ? Colors.white : Colors.black,
+                      fontSize: TextSizing.fontSizeHeading(context),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Thank you for booking with us. Your booking has been confirmed',
-                style: TextStyle(
-                  fontFamily: 'Roboto',
-                  fontSize: 15,
-                  color: widget.isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-              const SizedBox(height: 10),
             ],
           ),
 
           // Dialog content section
-          content: SingleChildScrollView(
-            child: ListBody(
+          content: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: TextSizing.fontSizeText(context),
+              vertical: TextSizing.fontSizeMiniText(context),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // Trip number display
-                BookingConfirmationText(
-                  label: 'Trip Number: ',
-                  value:
-                      '${selectedBox == 1 ? bookedTripIndexKAP! + 1 : bookedTripIndexCLE! + 1}',
-                  size: 0.60,
-                  darkText: widget.isDarkMode ? false : true,
-                ),
-                // Departure time display
-                BookingConfirmationText(
-                  label: 'Time: ',
-                  value: formatTime(
-                    getDepartureTimes()[selectedBox == 1
-                        ? bookedTripIndexKAP!
-                        : bookedTripIndexCLE!],
+                Text(
+                  'Thank you for booking with us.\nYour booking has been confirmed.',
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontSize: TextSizing.fontSizeText(context),
+                    color: widget.isDarkMode ? Colors.white : Colors.black,
                   ),
-                  size: 0.60,
-                  darkText: widget.isDarkMode ? false : true,
                 ),
-                // Station name display
-                BookingConfirmationText(
-                  label: 'Station: ',
-                  value: selectedBox == 1 ? 'KAP' : 'CLE',
-                  size: 0.60,
-                  darkText: widget.isDarkMode ? false : true,
-                ),
-                // Bus stop display
-                BookingConfirmationText(
-                  label: 'Bus Stop: ',
-                  value: selectedBusStop,
-                  size: 0.60,
-                  darkText: widget.isDarkMode ? false : true,
+                SizedBox(height: TextSizing.fontSizeHeading(context)),
+
+                SingleChildScrollView(
+                  child: ListBody(
+                    children: [
+                      // Trip number display
+                      BookingConfirmationText(
+                        label: 'Trip:',
+                        value:
+                            '${selectedBox == 1 ? bookedTripIndexKAP! + 1 : bookedTripIndexCLE! + 1}',
+                        size: 0.60,
+                        darkText: widget.isDarkMode ? false : true,
+                      ),
+                      SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                      // Departure time display
+                      BookingConfirmationText(
+                        label: 'Time:',
+                        value: formatTime(
+                          getDepartureTimes()[selectedBox == 1
+                              ? bookedTripIndexKAP!
+                              : bookedTripIndexCLE!],
+                        ),
+                        size: 0.60,
+                        darkText: widget.isDarkMode ? false : true,
+                      ),
+                      SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                      // Station name display
+                      BookingConfirmationText(
+                        label: 'Station:',
+                        value: selectedBox == 1 ? 'KAP' : 'CLE',
+                        size: 0.60,
+                        darkText: widget.isDarkMode ? false : true,
+                      ),
+                      SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                      // Bus stop display
+                      BookingConfirmationText(
+                        label: 'Bus Stop:',
+                        value: selectedBusStop,
+                        size: 0.60,
+                        darkText: widget.isDarkMode ? false : true,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -591,10 +640,12 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(), // Close dialog
+
               child: Text(
                 'Close',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
+                  fontSize: TextSizing.fontSizeText(context),
                   fontFamily: 'Roboto',
                   color: widget.isDarkMode
                       ? Colors.tealAccent
@@ -614,7 +665,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
 
   Widget _mrtSelectionRow() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: TextSizing.fontSizeMiniText(context),
+      ),
       child: Row(
         children: [
           // KAP selection box
@@ -628,7 +681,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8), // Space between boxes
+          SizedBox(
+            width: TextSizing.fontSizeMiniText(context),
+          ), // Space between boxes
           // CLE selection box
           Expanded(
             child: GestureDetector(
@@ -677,7 +732,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 5),
+              SizedBox(height: TextSizing.fontSizeMiniText(context)),
 
               // Title: "Select MRT"
               Center(
@@ -685,19 +740,19 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                   'Select MRT',
                   style: TextStyle(
                     color: widget.isDarkMode ? Colors.white : Colors.black,
-                    fontSize: 15,
+                    fontSize: TextSizing.fontSizeText(context),
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Roboto',
                   ),
                 ),
               ),
 
-              const SizedBox(height: 10),
+              SizedBox(height: TextSizing.fontSizeMiniText(context)),
 
               // MRT selection row (KAP / CLE)
               _mrtSelectionRow(),
 
-              const SizedBox(height: 10),
+              SizedBox(height: TextSizing.fontSizeText(context)),
 
               // If _showBookingService is true → show booking selection UI
               // Else → show booking confirmation UI
@@ -775,27 +830,26 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 5),
-
+            SizedBox(height: TextSizing.fontSizeMiniText(context)),
             // Title: "Select MRT"
             Center(
               child: Text(
                 'Select MRT',
                 style: TextStyle(
                   color: widget.isDarkMode ? Colors.white : Colors.black,
-                  fontSize: 15,
+                  fontSize: TextSizing.fontSizeText(context),
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
                 ),
               ),
             ),
 
-            const SizedBox(height: 10),
+            SizedBox(height: TextSizing.fontSizeMiniText(context)),
 
             // MRT station selection row (KAP / CLE)
             _mrtSelectionRow(),
 
-            const SizedBox(height: 10),
+            SizedBox(height: TextSizing.fontSizeText(context)),
 
             // Only show booking UI if a station has been selected
             if (selectedBox != 0)

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:user_14_updated/utils/text_sizing.dart';
 
 //////////////////////////////////////////////////////////////
 // A reusable widget for displaying a label–value pair in a booking confirmation.
 //
 // Example:
-// ┌───────────────────────────────┐
-// │ Trip Number:      5           │
-// └───────────────────────────────┘
+//
+//  Trip Number:      5
 //
 // - [label] is the descriptive text (e.g., "Trip Number:").
 // - [value] is the corresponding data (e.g., "5").
@@ -42,13 +42,17 @@ class BookingConfirmationText extends StatelessWidget {
         children: [
           // Fixed-size box for the label
           SizedBox(
-            height: 25, // Fixed height for alignment
-            width: 100, // Fixed width so labels align vertically in a list
+            height:
+                TextSizing.fontSizeText(context) *
+                1.25, // Fixed height for alignment
+            width:
+                TextSizing.fontSizeText(context) *
+                5, // Fixed width so labels align vertically in a list
             child: Text(
               label,
               style: TextStyle(
                 fontFamily: 'Roboto',
-                fontSize: 17,
+                fontSize: TextSizing.fontSizeText(context),
                 color: darkText ? Colors.blueGrey[900]! : Colors.white,
               ),
             ),
@@ -57,13 +61,15 @@ class BookingConfirmationText extends StatelessWidget {
 
           // Fixed-size box for the value
           SizedBox(
-            height: 25,
-            width: 50, // 1/2 width as label for cleaner alignment
+            height: TextSizing.fontSizeText(context) * 1.25,
+            width:
+                TextSizing.fontSizeText(context) *
+                3, // 1/2 width as label for cleaner alignment
             child: Text(
               value,
               style: TextStyle(
                 fontFamily: 'Roboto',
-                fontSize: 17,
+                fontSize: TextSizing.fontSizeText(context),
                 color: darkText ? Colors.blueGrey[900]! : Colors.white,
               ),
             ),
