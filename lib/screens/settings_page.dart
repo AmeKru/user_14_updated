@@ -61,6 +61,7 @@ class _SettingsState extends State<Settings> {
           ),
         ),
         backgroundColor: isDarkMode ? Colors.blueGrey[800] : Colors.green,
+        centerTitle: true,
       ),
       backgroundColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
       body: Padding(

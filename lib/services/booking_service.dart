@@ -183,7 +183,7 @@ class _BookingServiceState extends State<BookingService> {
     if (count < vacancyGreen) {
       return Colors.green[400]!;
     } else if (count >= vacancyGreen && count <= vacancyYellow) {
-      return Colors.yellow[600]!;
+      return Color(0xfffeb041);
     } else {
       return Colors.red[400]!;
     }
@@ -253,7 +253,7 @@ class _BookingServiceState extends State<BookingService> {
                   Container(
                     width: MediaQuery.of(context).size.width * 0.1,
                     height: TextSizing.fontSizeText(context) * 0.25,
-                    color: Colors.yellow[600],
+                    color: Color(0xfffeb041),
                   ),
                   SizedBox(width: MediaQuery.of(context).size.width * 0.02),
                   Text(
@@ -351,6 +351,7 @@ class _BookingServiceState extends State<BookingService> {
                             // === Trip Card ===
                             Expanded(
                               child: Card(
+                                elevation: 0,
                                 color: isFull
                                     ? (widget.isDarkMode
                                           ? Colors.blueGrey[800]

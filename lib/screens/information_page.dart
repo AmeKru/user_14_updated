@@ -53,6 +53,7 @@ class _InformationPageState extends State<InformationPage> {
             color: widget.isDarkMode ? Colors.cyan[200] : Colors.white,
           ),
         ),
+        centerTitle: true,
       ),
 
       ///////////////////////////////////////////////////////////////
@@ -276,9 +277,7 @@ class _InformationPageState extends State<InformationPage> {
               fontWeight: FontWeight.bold,
 
               fontSize: TextSizing.fontSizeText(context),
-              color:
-                  (colIndex % 2 == 0 && widget.isDarkMode ||
-                      !widget.isDarkMode && rowIndex == 0)
+              color: (rowIndex == 0)
                   ? (widget.isDarkMode ? Colors.cyan[200] : Colors.white)
                   : (widget.isDarkMode ? Colors.white : Colors.black),
             ),

@@ -115,12 +115,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   ///////////////////////////////////////////////////////////////
   // All the Bus Routes
 
-  final List<LatLng> amKAP = [
-    busStopKAP, // TODO: currently set to opposite KAP instead of KAP??
-    uTurn,
-    busStopENT,
-    busStopMAP,
-  ];
+  final List<LatLng> amKAP = [busStopKAP, uTurn, busStopENT, busStopMAP];
   final List<LatLng> amCLE = [busStopCLE, busStopENT, busStopMAP];
   final List<LatLng> pmKAP = [
     busStopENT,
@@ -413,7 +408,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       point: point,
       width: TextSizing.fontSizeText(context),
       height: TextSizing.fontSizeText(context),
-      //alignment: Alignment.topCenter, // if one wants the tip of arrow pointing to the stop
+      alignment: Alignment
+          .topCenter, // if one wants the tip of arrow pointing to the stop
       child: GestureDetector(
         onTap: () => showDialog(
           context: context,
@@ -918,7 +914,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               alignment: Alignment.topLeft,
               child: ClipOval(
                 child: Image.asset(
-                  'images/logo.jpeg',
+                  'images/np_logo.png',
                   width: TextSizing.fontSizeHeading(context) * 3,
                   height: TextSizing.fontSizeHeading(context) * 3,
                   fit: BoxFit.cover,

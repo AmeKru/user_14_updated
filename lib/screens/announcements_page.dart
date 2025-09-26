@@ -131,6 +131,7 @@ class NewsAnnouncement extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
+        centerTitle: true,
       ),
       body: Container(
         color: isDarkMode ? Colors.blueGrey[900] : Colors.white,

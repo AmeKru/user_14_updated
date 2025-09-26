@@ -11,25 +11,25 @@ import 'package:flutter/material.dart';
 
 Color getMarkerColor(String markerName, int currentValue, bool darkMode) {
   if (markerName == "ENT" && currentValue == 2) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "B23" && currentValue == 3) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "SPH" && currentValue == 4) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "SIT" && currentValue == 5) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "B44" && currentValue == 6) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "B37" && currentValue == 7) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "MAP" && currentValue == 8) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "HSC" && currentValue == 9) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "LCT" && currentValue == 10) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   } else if (markerName == "B72" && currentValue == 11) {
-    return (darkMode ? Colors.lightGreenAccent : Colors.pink[800]!);
+    return (darkMode ? Colors.lightGreenAccent : Colors.pink[900]!);
   }
 
   if (darkMode == true) {
@@ -42,5 +42,5 @@ Color getBusMarkerColor(String busNumber, int selectedBox, bool darkMode) {
   if (darkMode == true) {
     return Color(0xfffeb041);
   }
-  return Colors.pink[700]!;
+  return Colors.pink[600]!;
 }
