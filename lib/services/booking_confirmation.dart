@@ -480,6 +480,7 @@ class _BookingDetailsCard extends StatelessWidget {
                           'Cancel',
                           style: TextStyle(
                             fontSize: TextSizing.fontSizeText(context),
+                            fontFamily: 'Roboto'
                           ),
                         ),
                       ),

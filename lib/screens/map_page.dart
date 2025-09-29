@@ -472,9 +472,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     return FlutterMap(
       options: MapOptions(
         initialCenter: mapCenter,
-        initialZoom: TextSizing.isTablet(context)
-            ? TextSizing.fontSizeText(context) * 0.85
-            : TextSizing.fontSizeText(context) * 1.1,
+        initialZoom: 16,
+        //initialZoom: TextSizing.isTablet(context)
+          //  ? TextSizing.fontSizeText(context) * 0.85
+            //: TextSizing.fontSizeText(context) * 1.1,
         initialRotation: 0,
         interactionOptions: const InteractionOptions(
           flags: ~InteractiveFlag.doubleTapZoom,
