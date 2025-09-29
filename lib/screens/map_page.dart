@@ -376,6 +376,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                       softWrap: false,
                       style: TextStyle(
                         fontSize: TextSizing.fontSizeMiniText(context) * 0.5,
+                        fontFamily: 'Roboto',
                         color: getBusMarkerColor(
                           label,
                           selectedBox,

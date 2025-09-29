@@ -471,7 +471,7 @@ class AfternoonScreenState extends State<AfternoonScreen> {
                   SizedBox(width: 2),
                   Text(
                     'Booking Confirmed!',
-                    style: TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),

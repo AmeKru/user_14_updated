@@ -58,6 +58,7 @@ class _SettingsState extends State<Settings> {
             color: isDarkMode ? Colors.green[300] : Colors.white,
             fontSize: TextSizing.fontSizeHeading(context),
             fontWeight: FontWeight.bold,
+            fontFamily: 'Roboto',
           ),
         ),
         backgroundColor: isDarkMode ? Colors.blueGrey[800] : Colors.green,
