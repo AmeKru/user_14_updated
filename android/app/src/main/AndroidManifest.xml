@@ -9,7 +9,7 @@
 
 
     <application
-        android:label="user_14_updated"
+        android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name="com.example.user_14_updated.MainActivity"
