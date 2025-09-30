@@ -470,6 +470,7 @@ class AfternoonScreenState extends State<AfternoonScreen> {
                   Icon(Icons.check_circle, color: Colors.green),
                   SizedBox(width: 2),
                   Text(
+                    softWrap: true,
                     'Booking Confirmed!',
                     style: TextStyle(fontSize: 23, fontWeight: FontWeight.bold),
                   ),
@@ -477,6 +478,7 @@ class AfternoonScreenState extends State<AfternoonScreen> {
               ),
               SizedBox(height: 8),
               Text(
+                softWrap: true,
                 'Thank you for booking with us. Your booking has been confirmed',
                 style: TextStyle(fontSize: 13),
               ),

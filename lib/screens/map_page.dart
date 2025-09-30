@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/cupertino.dart';
@@ -483,7 +484,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       ),
       children: [
         Container(
-          color: isDarkMode ? Colors.black87 : Colors.lightBlueAccent[50],
+          color: isDarkMode ? Colors.black : Colors.lightBlueAccent[50],
           child: TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             userAgentPackageName: 'dev.fleaflet.flutter_map.example',
@@ -653,7 +654,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       padding: EdgeInsets.fromLTRB(
         0,
         TextSizing.fontSizeText(context) * 2,
-        TextSizing.fontSizeText(context),
+        TextSizing.fontSizeText(context)*0.5,
         0,
       ),
 
@@ -737,7 +738,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       children: [
         SlidingUpPanel(
           controller: _panelController, // wire controller
-          minHeight: TextSizing.fontSizeHeading(context) * 4.6,
+          minHeight: Platform.isAndroid ? TextSizing.fontSizeHeading(context) * 4.6 : TextSizing.fontSizeHeading(context) * 4.2,
           maxHeight: screenHeight * 0.75,
           backdropEnabled: true, // dim background
           backdropOpacity: 0.5, // adjust darkness
@@ -746,7 +747,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             top: Radius.circular(TextSizing.fontSizeText(context)),
           ),
           color: isDarkMode ? Colors.blueGrey[900]! : Colors.lightBlue[50]!,
-          onPanelOpened: () => setState(() => ignoring = true),
+          onPanelOpened: () => setState(() => ignoring = true, ),
           onPanelClosed: () {
             setState(() => ignoring = false);
             // Reset scroll position when panel closes
@@ -908,7 +909,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           Padding(
             padding: EdgeInsets.fromLTRB(
               TextSizing.fontSizeText(context),
-              TextSizing.fontSizeText(context) * 2,
+              TextSizing.fontSizeText(context) * 2.5,
               0,
               0,
             ),
@@ -917,8 +918,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               child: ClipOval(
                 child: Image.asset(
                   'images/np_logo.png',
-                  width: TextSizing.fontSizeHeading(context) * 3,
-                  height: TextSizing.fontSizeHeading(context) * 3,
+                  width: TextSizing.fontSizeHeading(context) * 2.75,
+                  height: TextSizing.fontSizeHeading(context) * 2.75,
                   fit: BoxFit.cover,
                 ),
               ),

@@ -1,4 +1,8 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
+import 'dart:io';
+
+
 
 class TextSizing {
   static bool isTablet(BuildContext context) {
@@ -13,11 +17,11 @@ class TextSizing {
 
   static double fontSizeText(
     BuildContext context, {
-    double phoneFactor = 0.015,
-    double tabletFactor = 0.015,
+    double iphoneFactor = 0.02,
+    double androidFactor = 0.015,
     bool respectAccessibility = true,
   }) {
-    final baseFactor = isTablet(context) ? tabletFactor : phoneFactor;
+    final baseFactor = Platform.isAndroid ? androidFactor : iphoneFactor;
     double textFontSize = widestSide(context) * baseFactor;
 
     if (respectAccessibility) {

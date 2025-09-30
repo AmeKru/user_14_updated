@@ -550,6 +550,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Icon(
                     Icons.check_circle,
@@ -557,7 +558,9 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                     size: TextSizing.fontSizeHeading(context),
                   ), // Success icon
                   SizedBox(width: TextSizing.fontSizeMiniText(context)),
+                  Expanded(child:
                   Text(
+                    softWrap: true,
                     'Booking Confirmed!',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
@@ -565,7 +568,7 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
                       color: widget.isDarkMode ? Colors.white : Colors.black,
                       fontSize: TextSizing.fontSizeHeading(context),
                     ),
-                  ),
+                  ),)
                 ],
               ),
             ],
@@ -581,7 +584,8 @@ class _AfternoonScreenState extends State<AfternoonScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Thank you for booking with us.\nYour booking has been confirmed.',
+                  softWrap: true,
+                  'Thank you for booking with us. Your booking has been confirmed.',
                   style: TextStyle(
                     fontFamily: 'Roboto',
                     fontSize: TextSizing.fontSizeText(context),

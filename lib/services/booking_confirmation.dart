@@ -467,6 +467,7 @@ class _BookingDetailsCard extends StatelessWidget {
                     ),
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
+                        elevation: 0,
                         backgroundColor:
                             Colors.blueGrey[900], // Button background color
                         foregroundColor: Colors.white, // Text (and icon) color

@@ -629,6 +629,7 @@ class _BookingServiceState extends State<BookingService> {
                             ),
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
+                                elevation: 0,
                                 backgroundColor: (widget.isDarkMode
                                     ? Colors.blueGrey[50]
                                     : const Color(
