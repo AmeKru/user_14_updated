@@ -80,7 +80,7 @@ class TimeService with ChangeNotifier {
     } catch (e) {
       // Catch and log any errors during the request or parsing
       if (kDebugMode) {
-        print('Caught error: $e');
+        print('Caught error1: $e');
       }
     }
     return null; // Return null if time could not be fetched

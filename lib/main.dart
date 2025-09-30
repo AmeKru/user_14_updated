@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'data/get_data.dart';
 import 'screens/map_page.dart';
@@ -7,6 +8,12 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await BusData().loadData();
+
+  // So only portrait mode is possible
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   runApp(MyApp());
 }

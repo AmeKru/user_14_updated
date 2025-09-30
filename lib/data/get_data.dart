@@ -37,7 +37,7 @@ class BusData {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('caught error: $e');
+        print('caught error2: $e');
       }
     }
   }
@@ -54,7 +54,7 @@ class BusData {
       news = newsContent;
     } catch (e) {
       if (kDebugMode) {
-        print('caught error: $e');
+        print('caught error3: $e');
       }
     }
   }
@@ -86,7 +86,7 @@ class BusData {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('caught error: $e');
+        print('caught error4: $e');
       }
     }
   }
@@ -118,7 +118,7 @@ class BusData {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('caught error: $e');
+        print('caught error5: $e');
       }
     }
   }
@@ -150,7 +150,7 @@ class BusData {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('caught error: $e');
+        print('caught error6: $e');
       }
     }
   }
@@ -182,7 +182,7 @@ class BusData {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('caught error: $e');
+        print('caught error7: $e');
       }
     }
   }
