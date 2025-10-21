@@ -13,12 +13,11 @@ class CalculateMorningBus {
   //////////////////////////////////////////////////////////////
   // Builds a styled card widget showing either:
   // - A static message (`text`), OR
-  // - An ETA message if `ETA` is provided.
+  // - An ETA message if `eta` is provided.
 
   static Widget buildMorningETADisplay(
-    context,
-    String text,
-    bool isDarkMode, {
+    BuildContext context,
+    String text, {
     String eta = '',
   }) {
     return Center(
@@ -37,11 +36,12 @@ class CalculateMorningBus {
             ),
             Card(
               color: eta.isNotEmpty
-                  ? (isDarkMode ? Colors.blueGrey[700] : Colors.blue[50])
+                  ? (isDarkMode ? Colors.blueGrey[600] : Colors.blue[50])
                   : (isDarkMode ? Colors.blueGrey[800] : Colors.grey[300]),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(0.0),
               ),
+              elevation: 0,
               child: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.8,
                 child: Padding(
@@ -54,21 +54,22 @@ class CalculateMorningBus {
                         color: eta.isNotEmpty
                             ? (isDarkMode ? Colors.cyanAccent : Colors.black)
                             : (isDarkMode
-                                  ? Colors.blueGrey[200]
+                                  ? Colors.blueGrey[300]
                                   : Colors.grey[600]),
                       ),
                       Text(
                         eta.isNotEmpty ? '$text $eta minutes' : text,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: TextSizing.fontSizeText(context),
                           fontFamily: 'Roboto',
                           fontWeight: FontWeight.w400,
                           color: eta.isNotEmpty
-                              ? (isDarkMode
-                                    ? Colors.blueGrey[50]
-                                    : Colors.black)
+                              ? (isDarkMode ? Colors.white : Colors.black)
                               : (isDarkMode
-                                    ? Colors.blueGrey[200]
+                                    ? Colors.blueGrey[300]
                                     : Colors.grey[600]),
                         ),
                       ),
@@ -101,12 +102,9 @@ class CalculateMorningBus {
 
   static Widget getMorningETA(
     List<DateTime> busArrivalTimes,
-    bool darkMode,
     BuildContext context,
   ) {
     final timeService = TimeService();
-    final isDarkMode =
-        darkMode; // CHANGED: explicitly store darkMode in local var
     DateTime currentTime = timeService.timeNow ?? DateTime.now();
 
     // Truncate seconds for minute-level comparison
@@ -129,11 +127,8 @@ class CalculateMorningBus {
         .toList();
 
     // Helper to build "no buses" message
-    Widget noBusCard() => buildMorningETADisplay(
-      context,
-      'No upcoming buses available.',
-      isDarkMode,
-    );
+    Widget noBusCard() =>
+        buildMorningETADisplay(context, 'No upcoming buses available.');
 
     // Helper to calculate minutes until a bus
     String minutesUntil(DateTime time) =>
@@ -150,23 +145,20 @@ class CalculateMorningBus {
     final upcomingBus = minutesUntil(upcomingArrivalTimes[0]);
     final nextUpcomingBus = (upcomingArrivalTimes.length > 1)
         ? minutesUntil(upcomingArrivalTimes[1])
-        : ' - ';
+        : ' ';
 
     return Column(
       children: [
-        buildMorningETADisplay(
-          context,
-          'Upcoming bus:',
-          eta: upcomingBus,
-          isDarkMode,
-        ),
-        if (selectedMRT == 1)
-          buildMorningETADisplay(
-            context,
-            'Next bus:',
-            eta: nextUpcomingBus,
-            isDarkMode,
-          ),
+        buildMorningETADisplay(context, 'Upcoming bus:', eta: upcomingBus),
+        (selectedMRT == 1)
+            ? (nextUpcomingBus == ' ')
+                  ? noBusCard()
+                  : buildMorningETADisplay(
+                      context,
+                      'Next bus:',
+                      eta: nextUpcomingBus,
+                    )
+            : SizedBox(),
       ],
     );
   }
@@ -179,14 +171,7 @@ class CalculateMorningBus {
 class GetMorningETA extends StatefulWidget {
   final List<DateTime> busArrivalTimes;
 
-  // CHANGED: Added isDarkMode parameter so we can pass it down to CalculateMorningBus
-  final bool isDarkMode; // CHANGED: new field
-
-  const GetMorningETA(
-    this.busArrivalTimes, {
-    super.key,
-    required this.isDarkMode,
-  }); // CHANGED: require isDarkMode
+  const GetMorningETA(this.busArrivalTimes, {super.key});
 
   @override
   State<GetMorningETA> createState() => _GetMorningETAState();
@@ -201,18 +186,42 @@ class _GetMorningETAState extends State<GetMorningETA> {
     _scheduleNextMinuteTick();
   }
 
+  @override
+  void didUpdateWidget(covariant GetMorningETA oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // If the provided list changed (added/removed trips), trigger a rebuild
+    final oldList = oldWidget.busArrivalTimes;
+    final newList = widget.busArrivalTimes;
+    if (!_listsEqual(oldList, newList)) {
+      // Re-schedule to ensure timer alignment remains correct
+      _timer?.cancel();
+      _scheduleNextMinuteTick();
+      if (mounted) setState(() {});
+    }
+  }
+
   //////////////////////////////////////////////////////////////
   // Schedules the first update exactly at the start of the next minute,
   // then switches to a periodic 1-minute timer.
 
   void _scheduleNextMinuteTick() {
+    // Cancel any existing timer
+    _timer?.cancel();
+
     final now = DateTime.now();
     final msUntilNextMinute =
         60000 - (now.second * 1000 + now.millisecond); // ms to next minute
 
+    // Edge case: if msUntilNextMinute is 0 or negative, schedule immediate tick
+    final initialDelay = Duration(
+      milliseconds: msUntilNextMinute > 0 ? msUntilNextMinute : 0,
+    );
+
     // Wait until the next minute starts
-    Future.delayed(Duration(milliseconds: msUntilNextMinute), () {
-      if (mounted) setState(() {});
+    Future.delayed(initialDelay, () {
+      if (!mounted) return;
+      setState(() {});
 
       // Then update every minute exactly on the minute
       _timer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -234,10 +243,12 @@ class _GetMorningETAState extends State<GetMorningETA> {
         // Text above ETA
         Text(
           'Bus to NP Campus',
+          softWrap: true,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Roboto',
             fontSize: TextSizing.fontSizeHeading(context),
-            color: widget.isDarkMode ? Colors.white : Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -245,21 +256,28 @@ class _GetMorningETAState extends State<GetMorningETA> {
           selectedMRT == 1
               ? 'Departure times from King Albert Park'
               : 'Departure times from Clementi',
+          softWrap: true,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontFamily: 'Roboto',
             fontSize: TextSizing.fontSizeText(context),
-            color: widget.isDarkMode ? Colors.white : Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
         SizedBox(height: TextSizing.fontSizeText(context)),
 
         // ETA displays
-        CalculateMorningBus.getMorningETA(
-          widget.busArrivalTimes,
-          widget.isDarkMode, // CHANGED: now passing isDarkMode as well
-          context,
-        ),
+        CalculateMorningBus.getMorningETA(widget.busArrivalTimes, context),
       ],
     );
+  }
+
+  // helper to compare DateTime lists
+  bool _listsEqual(List<DateTime> a, List<DateTime> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }

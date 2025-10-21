@@ -1,22 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-///////////////////////////////////////////////////////////////
-// Save dark Mode, so user does not have to turn it one every time
-// the App reopens
-
-Future<void> saveDarkMode(bool value) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setBool('isDarkMode', value);
-}
-
-///////////////////////////////////////////////////////////////
-// Saves the last selected Bus Index
-
-Future<void> saveBusIndex(int index) async {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setInt('busIndex', index);
-}
+// TODO: Add debug prints to see if saved/loaded properly
 
 ///////////////////////////////////////////////////////////////
 // A service class to handle saving, retrieving, and clearing
@@ -26,32 +11,133 @@ Future<void> saveBusIndex(int index) async {
 //  so they remain available between app launches.
 
 class SharedPreferenceService {
-  // Key for storing booking data (not directly used in this implementation)
-  static const String bookingDataKey = 'bookingData';
+  // Key constant for saving DarkMode
+  static const String _kDarkMode = 'darkMode';
+
+  // Key constants for saving booking
+  static const String _kBookingID = 'bookingID';
+  static const String _kSelectedBox = 'selectedBox';
+  static const String _kBookedTripIndexKAP = 'bookedTripIndexKAP';
+  static const String _kBookedTripIndexCLE = 'bookedTripIndexCLE';
+  static const String _kBusStop = 'busStop';
+  static const String _kBusIndex = 'busIndex';
+  static const String _kBookedDepartureTime = 'bookedDepartureTime';
+
+  // Cache SharedPreferences instance to reduce async churn
+  SharedPreferences? _prefs;
+  Future<SharedPreferences> _getPrefs() async {
+    return _prefs ??= await SharedPreferences.getInstance();
+  }
+
+  ///////////////////////////////////////////////////////////////
+  // Save/load dark Mode, so user does not have to turn it one every time
+  // the App reopens
+
+  Future<void> saveDarkMode(bool value) async {
+    final prefs = await _getPrefs();
+    await prefs.setBool(_kDarkMode, value);
+  }
+
+  Future<bool> loadDarkMode() async {
+    final prefs = await _getPrefs();
+    return prefs.getBool(_kDarkMode) ?? false;
+  }
 
   ///////////////////////////////////////////////////////////////
   // Saves booking data to [SharedPreferences].
   //
-  // - [selectedBox]: The MRT selection (1 = KAP, 2 = CLE)
-  // - [bookedTripIndexKAP]: Index of booked trip for KAP (nullable)
-  // - [bookedTripIndexCLE]: Index of booked trip for CLE (nullable)
-  // - [busStop]: Name of the selected bus stop
+  // Expected keys:
+  // - 'bookingID' String?
+  // - 'selectedBox' int
+  // - 'bookedTripIndexKAP' int?
+  // - 'bookedTripIndexCLE' int?
+  // - 'busStop' String?
+  // - 'BusIndex' int
+  // - 'bookedDepartureTime' String? (ISO)
   //
-  // If a trip index is null, it is stored as -1 to indicate "no booking".
+  // Validate-then-write: only commit if all required keys are present and valid
+  // Returns true on success, false if validation failed (no writes performed)
 
-  Future<void> saveBookingData(
-    selectedBox,
-    bookedTripIndexKAP,
-    bookedTripIndexCLE,
-    busStop,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<bool> saveBookingData(Map<String, dynamic> data) async {
+    final requiredSpec = <String, Type>{
+      'bookingID': String,
+      'selectedBox': int,
+      'busStop': String,
+      'busIndex': int,
+      'bookedDepartureTime': DateTime,
+    };
 
-    // Save each value to persistent storage
-    await prefs.setInt('selectedBox', selectedBox);
-    await prefs.setInt('bookedTripIndexKAP', bookedTripIndexKAP ?? -1);
-    await prefs.setInt('bookedTripIndexCLE', bookedTripIndexCLE ?? -1);
-    await prefs.setString('busStop', busStop);
+    for (final entry in requiredSpec.entries) {
+      final key = entry.key;
+      final expected = entry.value;
+
+      if (!data.containsKey(key)) {
+        if (kDebugMode) print('saveBookingData: missing key $key');
+        return false;
+      }
+
+      final val = data[key];
+      if (val == null) {
+        if (kDebugMode) print('saveBookingData: null for key $key');
+        return false;
+      }
+
+      final isTypeMatch =
+          (expected == int && val is int) ||
+          (expected == String && val is String) ||
+          (expected == double && val is double) ||
+          (expected == bool && val is bool) ||
+          (expected == DateTime && val is DateTime);
+
+      if (!isTypeMatch) {
+        if (kDebugMode) {
+          print('saveBookingData: wrong type for $key, got ${val.runtimeType}');
+        }
+        return false;
+      }
+    }
+
+    final prefs = await _getPrefs();
+
+    try {
+      if (kDebugMode) {
+        print('Saving booking data: $data');
+      }
+
+      await prefs.setString(_kBookingID, data['bookingID'] as String);
+      await prefs.setInt(_kSelectedBox, data['selectedBox'] as int);
+
+      if (data['bookedTripIndexKAP'] != null) {
+        await prefs.setInt(
+          _kBookedTripIndexKAP,
+          data['bookedTripIndexKAP'] as int,
+        );
+      } else {
+        await prefs.remove(_kBookedTripIndexKAP);
+      }
+
+      if (data['bookedTripIndexCLE'] != null) {
+        await prefs.setInt(
+          _kBookedTripIndexCLE,
+          data['bookedTripIndexCLE'] as int,
+        );
+      } else {
+        await prefs.remove(_kBookedTripIndexCLE);
+      }
+
+      await prefs.setString(_kBusStop, data['busStop'] as String);
+      await prefs.setInt(_kBusIndex, data['busIndex'] as int);
+
+      // safe DateTime handling: cast then store ISO in UTC
+      final dt = data['bookedDepartureTime'] as DateTime;
+      final isoUtc = dt.toUtc().toIso8601String();
+      await prefs.setString(_kBookedDepartureTime, isoUtc);
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) print('saveBookingData: commit failed: $e');
+      return false;
+    }
   }
 
   ///////////////////////////////////////////////////////////////
@@ -62,62 +148,111 @@ class SharedPreferenceService {
   // - `bookedTripIndexKAP` (null if no booking)
   // - `bookedTripIndexCLE` (null if no booking)
   // - `busStop`
+  // - `bookingID`
+  // - `bookedDepartureTime`
+  // - `bookedDirection`
   //
-  // Returns `null` if required data is missing or incomplete.
+  // Returns `null` if required data is missing.
 
   Future<Map<String, dynamic>?> getBookingData() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await _getPrefs();
 
-    // Fetch stored values from SharedPreferences
-    int? selectedBox = prefs.getInt('selectedBox');
-    int? bookedTripIndexKAP = prefs.getInt('bookedTripIndexKAP');
-    int? bookedTripIndexCLE = prefs.getInt('bookedTripIndexCLE');
-    String? busStop = prefs.getString('busStop');
+    final String? bookingID = prefs.getString(_kBookingID);
+    final int? selectedBox = prefs.getInt(_kSelectedBox);
+    final int? bookedTripIndexKAP = prefs.getInt(_kBookedTripIndexKAP);
+    final int? bookedTripIndexCLE = prefs.getInt(_kBookedTripIndexCLE);
+    final String? busStop = prefs.getString(_kBusStop);
+    final int? busIndex = prefs.getInt(_kBusIndex);
+    final String? bookedDepartureTime = prefs.getString(_kBookedDepartureTime);
 
-    // Only return data if the essential fields are present
-    if (selectedBox != null && busStop != null) {
-      return {
-        'selectedBox': selectedBox,
-        // Convert -1 back to null for easier handling in the app
-        'bookedTripIndexKAP': bookedTripIndexKAP == -1
-            ? null
-            : bookedTripIndexKAP,
-        'bookedTripIndexCLE': bookedTripIndexCLE == -1
-            ? null
-            : bookedTripIndexCLE,
-        'busStop': busStop,
-      };
-    } else {
-      // Data is incomplete or missing
+    // If no station chosen at all, treat as "no booking"
+    if (selectedBox == null || selectedBox == 0) {
+      if (kDebugMode) print('Loaded booking data: none (no station selected)');
       return null;
     }
+
+    // Allow partial state so UI can render BookingService without flipping to null.
+    // If there is a bookingID, treat as a confirmed booking snapshot.
+    // If not, return partial state to continue selection flow.
+
+    DateTime? bookedDepartureParsed;
+    if (bookedDepartureTime != null && bookedDepartureTime.isNotEmpty) {
+      try {
+        // Parse ISO (stored in UTC). Convert to UTC+8 for returned value.
+        // Stored value was saved as dt.toUtc().toIso8601String()
+        final parsed = DateTime.parse(bookedDepartureTime);
+        // Ensure we work from UTC then add 8 hours to get UTC+8 for Singapore time
+        final parsedUtc = parsed.isUtc ? parsed : parsed.toUtc();
+        bookedDepartureParsed = parsedUtc.add(const Duration(hours: 8));
+      } catch (_) {
+        bookedDepartureParsed = null; // invalid format => treat as missing
+      }
+    }
+
+    final result = {
+      'bookingID': bookingID,
+      'selectedBox': selectedBox,
+      'bookedTripIndexKAP': bookedTripIndexKAP,
+      'bookedTripIndexCLE': bookedTripIndexCLE,
+      'busStop': busStop,
+      'busIndex': busIndex,
+      'bookedDepartureTime': bookedDepartureParsed,
+    };
+
+    if (kDebugMode) {
+      print('Loaded booking data: $result');
+    }
+
+    return result;
   }
 
+  ///////////////////////////////////////////////////////////////
   // Clears all booking data from [SharedPreferences].
   //
+  // Removes only booking-related keys to avoid wiping unrelated preferences.
   // Also logs the removal status of each key in debug mode.
-  Future<void> clearBookingData() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+  Future<bool> clearBookingData() async {
+    try {
+      final prefs = await _getPrefs();
 
-    // Clear all stored preferences
-    await prefs.clear();
+      await Future.wait([
+        prefs.remove(_kBookingID),
+        prefs.remove(_kBookedDepartureTime),
+        prefs.remove(_kBookedTripIndexKAP),
+        prefs.remove(_kBookedTripIndexCLE),
+        prefs.remove(_kSelectedBox),
+        prefs.remove(_kBusStop),
+        prefs.remove(_kBusIndex),
+      ]);
 
-    // Verify that all keys are removed
-    bool isSelectedBoxRemoved = prefs.getInt('selectedBox') == null;
-    await prefs.remove('selectedBox'); // Redundant after clear(), but explicit
-    bool isBookedTripIndexKAPRemoved =
-        prefs.getInt('bookedTripIndexKAP') == null;
-    bool isBookedTripIndexCLERemoved =
-        prefs.getInt('bookedTripIndexCLE') == null;
-    bool isBusStopRemoved = prefs.getString('busStop') == null;
+      // verify
+      final ok =
+          prefs.getInt(_kSelectedBox) == null &&
+          prefs.getInt(_kBookedTripIndexKAP) == null &&
+          prefs.getInt(_kBookedTripIndexCLE) == null &&
+          prefs.getString(_kBusStop) == null &&
+          prefs.getString(_kBookingID) == null &&
+          prefs.getString(_kBookedDepartureTime) == null &&
+          prefs.getInt(_kBusIndex) == null;
 
-    // Debug logging to verify removal
-    if (kDebugMode) {
-      print('Clearing saved booking Data');
-      print('selectedBox removed: $isSelectedBoxRemoved');
-      print('bookedTripIndexKAP removed: $isBookedTripIndexKAPRemoved');
-      print('bookedTripIndexCLE removed: $isBookedTripIndexCLERemoved');
-      print('busStop removed: $isBusStopRemoved');
+      if (kDebugMode) {
+        print('Clearing saved booking Data; success: $ok');
+        print('Current values after clear:');
+        print('  bookingID: ${prefs.getString(_kBookingID)}');
+        print(
+          '  bookedDepartureTime: ${prefs.getString(_kBookedDepartureTime)}',
+        );
+        print('  bookedTripIndexKAP: ${prefs.getInt(_kBookedTripIndexKAP)}');
+        print('  bookedTripIndexCLE: ${prefs.getInt(_kBookedTripIndexCLE)}');
+        print('  selectedBox: ${prefs.getInt(_kSelectedBox)}');
+        print('  busStop: ${prefs.getString(_kBusStop)}');
+        print('  busIndex: ${prefs.getInt(_kBusIndex)}');
+      }
+
+      return ok;
+    } catch (e) {
+      if (kDebugMode) print('clearBookingData failed: $e');
+      return false;
     }
   }
 }

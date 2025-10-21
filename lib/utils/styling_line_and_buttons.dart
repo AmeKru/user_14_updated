@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/utils/text_sizing.dart';
 
+import '../data/global.dart';
+
 ///////////////////////////////////////////////////////////////
 // A simple horizontal divider with padding above and below.
 //
@@ -42,14 +44,8 @@ class DrawLine extends StatelessWidget {
 class BoxMRT extends StatelessWidget {
   final int box; // The currently selected box index from parent
   final String mrt; // The MRT station name ("KAP" or "CLE")
-  final bool isDarkMode; // Whether dark mode is enabled
 
-  const BoxMRT({
-    super.key,
-    required this.box,
-    required this.mrt,
-    required this.isDarkMode,
-  });
+  const BoxMRT({super.key, required this.box, required this.mrt});
 
   @override
   Widget build(BuildContext context) {

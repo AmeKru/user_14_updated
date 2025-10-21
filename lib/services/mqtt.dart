@@ -53,15 +53,16 @@ class ConnectMQTT extends StatefulWidget {
 class ConnectMQTTState extends State<ConnectMQTT> {
   String uniqueID = 'MyPC_24092024'; //MR HUI
 
+  String statusText = "Status Text";
+  String? _pendingStatus; // stores a status set before mount
+  bool isConnected = false; // Tracks connection state
+
   // Chelsters
   final mqtt.MqttServerClient client = mqtt.MqttServerClient(
     'a2a1gb4ur9migt-ats.iot.ap-southeast-2.amazonaws.com',
     '',
   );
   // Chelsters
-
-  String statusText = "Status Text"; // Connection status message for UI
-  bool isConnected = false; // Tracks connection state
 
   //////////////////////////////////////////////////////////////
   // Topics for each bus and data type.
@@ -111,6 +112,12 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   @override
   void initState() {
     super.initState();
+
+    // If a status was assigned prior to mounting, apply it now without extra logic
+    if (_pendingStatus != null) {
+      statusText = _pendingStatus!;
+      _pendingStatus = null;
+    }
     _connect(); // Attempt connection on widget load
   }
 
@@ -331,16 +338,29 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   // Updates the connection status text in the UI.
 
   void setStatus(String content) {
+    // Always keep the internal value up to date
+    statusText = content;
+
+    // If not mounted yet, store for later and skip setState
+    if (!mounted) {
+      _pendingStatus = content;
+      return;
+    }
+
+    // Only call setState when safe
     setState(() {
       statusText = content;
     });
   }
+
   //////////////////////////////////////////////////////////////
   // Called when the MQTT client successfully connects to the broker.
 
   void onConnected() {
-    setStatus("Client connection was successful");
     logDebug("MQTT connection established.");
+    // we may also set isConnected here if needed
+    isConnected = true;
+    setStatus("Client connection was successful");
   }
 
   //////////////////////////////////////////////////////////////
@@ -348,15 +368,18 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   // Also attempts to auto-reconnect after 5 seconds if still disconnected.
 
   void onDisconnected() {
-    setStatus("Client Disconnected");
-    isConnected = false;
     logDebug("MQTT connection lost.");
+    isConnected = false;
+    setStatus("Client Disconnected");
 
-    // Auto-reconnect after a delay
+    // Auto-reconnect after a delay; ensure we don't start connect loops while unmounted
     Future.delayed(const Duration(seconds: 5), () {
-      if (!isConnected) {
+      if (!isConnected && mounted) {
         logDebug("Attempting to reconnect...");
         _connect();
+      } else if (!isConnected && !mounted) {
+        // optional: schedule reconnect later or let parent handle it
+        logDebug("Skipped reconnect because widget is not mounted");
       }
     });
   }

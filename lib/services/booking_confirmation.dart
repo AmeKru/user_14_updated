@@ -6,8 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/services/evening_service.dart';
-import 'package:user_14_updated/services/shared_preference.dart';
+import 'package:user_14_updated/services/get_afternoon_eta.dart';
 import 'package:user_14_updated/utils/loading.dart';
 import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
 import 'package:user_14_updated/utils/text_sizing.dart';
@@ -30,37 +29,23 @@ class BookingConfirmation extends StatefulWidget {
   final int? bookedTripIndexKAP;
   final int? bookedTripIndexCLE;
 
-  // Function to retrieve the list of departure times
-  final List<DateTime> Function() getDepartureTimes;
+  // Booked departure time (nullable)
+  final DateTime? bookedDepartureTime;
 
-  // Callback to execute when booking is cancelled
-  final VoidCallback onCancel;
+  // Async callback to execute when booking is cancelled
+  final Future<void> Function()? onCancel;
 
-  // Name of the bus stop (optional)
+  // Name of the bus stop
   final String? busStop;
-
-  // Lists of departure times for KAP and CLE stops
-  final List<DateTime> departureTimeKAP;
-  final List<DateTime> departureTimeCLE;
-
-  // Evening service identifier (likely used to determine schedule)
-  final int eveningService;
-
-  // Whether the app is currently in dark mode
-  final bool isDarkMode;
 
   const BookingConfirmation({
     super.key,
     required this.selectedBox,
-    this.bookedTripIndexKAP,
-    this.bookedTripIndexCLE,
-    required this.getDepartureTimes,
+    required this.bookedTripIndexKAP,
+    required this.bookedTripIndexCLE,
+    required this.bookedDepartureTime,
     required this.onCancel,
-    this.busStop,
-    required this.departureTimeKAP,
-    required this.departureTimeCLE,
-    required this.eveningService,
-    required this.isDarkMode,
+    required this.busStop,
   });
 
   @override
@@ -74,7 +59,8 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   int secondsElapsed = 0;
   Timer? _clockTimer;
 
-  final SharedPreferenceService prefsService = SharedPreferenceService();
+  // Removed local SharedPreferenceService to avoid duplicated writes
+  // final SharedPreferenceService prefsService = SharedPreferenceService();
 
   // Added loading flag to track time fetch status
   bool _loading = true;
@@ -83,42 +69,70 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   void initState() {
     super.initState();
 
-    // Save booking data here instead of inside build()
-    prefsService.saveBookingData(
-      widget.selectedBox,
-      widget.bookedTripIndexKAP,
-      widget.bookedTripIndexCLE,
-      widget.busStop,
-    );
+    // Start initialization flow that is allowed to be asynchronous.
+    // We don't mark initState as async; use a fire-and-forget helper.
+    _initializeTimeAndTimers();
+  }
 
-    // Fetch the current time from the API first
-    getTime().then((_) {
-      // Mark loading complete once time is fetched
-      setState(() {
-        _loading = false;
-      });
+  // Async initializer started from initState.
+  Future<void> _initializeTimeAndTimers() async {
+    // Fetch the current time from the API first. getTime must be implemented
+    // to avoid calling setState when !mounted.
+    try {
+      await getTime();
+    } catch (e) {
+      if (kDebugMode) print('Error fetching initial time: $e');
+    }
 
-      // Start a periodic timer to update the time every second
-      _clockTimer = Timer.periodic(timeUpdateInterval, (timer) {
-        updateTimeManually(); // Increment time locally
-        secondsElapsed += timeUpdateInterval.inSeconds;
+    if (!mounted) return;
 
-        // Every [apiFetchInterval], refresh the time from the API
-        if (secondsElapsed >= apiFetchInterval.inSeconds) {
-          getTime();
-          secondsElapsed = 0;
-        }
-      });
+    // Mark loading complete once time is fetched (or attempted)
+    setState(() {
+      _loading = false;
+    });
+
+    // Start a periodic timer to update the time every second.
+    _clockTimer = Timer.periodic(timeUpdateInterval, (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      // Increment local time representation synchronously
+      updateTimeManually();
+      secondsElapsed += timeUpdateInterval.inSeconds;
+
+      // If you need to update UI each second, put the change inside setState
+      if (mounted) {
+        setState(() {
+          // update widgets that depend on the current time here, if any
+        });
+      }
+
+      // Every [apiFetchInterval], refresh the time from the API as a fire-and-forget Future.
+      if (secondsElapsed >= apiFetchInterval.inSeconds) {
+        getTime().catchError((e) {
+          if (kDebugMode) print('Periodic time refresh failed: $e');
+        });
+        secondsElapsed = 0;
+      }
     });
   }
 
   @override
   void dispose() {
+    // Cancel timer to prevent callbacks after disposal
     _clockTimer?.cancel();
+    _clockTimer = null;
+
+    // If getTime registers any listeners/subscriptions, cancel/unregister them here
+
     super.dispose();
   }
 
-  Color? generateColor(DateTime departureTime, int selectedTripNo) {
+  Color? generateColor(DateTime? departureTime, int selectedTripNo) {
+    if (timeNow == null || departureTime == null) return null;
+
     final List<Color?> colors = [
       Colors.red[100],
       Colors.yellow[200],
@@ -132,23 +146,19 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
       Colors.limeAccent[100],
     ];
 
+    // Compute a stable seed from date components instead of trying to construct
+    // a DateTime with possibly out-of-range seconds.
     final int departureSeconds =
-        departureTime.hour * 3600 + departureTime.minute * 60;
-    final int combinedSeconds = timeNow!.second + departureSeconds;
-    final int roundedSeconds = (combinedSeconds ~/ 10) * 10;
+        departureTime.hour * 3600 +
+        departureTime.minute * 60 +
+        departureTime.second;
+    final int nowSeconds =
+        timeNow!.hour * 3600 + timeNow!.minute * 60 + timeNow!.second;
+    final int combined = (departureSeconds + nowSeconds) & 0x7fffffff;
 
-    final DateTime roundedTime = DateTime(
-      timeNow!.year,
-      timeNow!.month,
-      timeNow!.day,
-      timeNow!.hour,
-      timeNow!.minute,
-      roundedSeconds,
-    );
-
-    final int seed = roundedTime.millisecondsSinceEpoch ~/ (1000 * 10);
+    final int seed = combined ~/ 10; // coarse bucketed seed
     final Random random = Random(seed);
-    final int syncedRandomNum = random.nextInt(10);
+    final int syncedRandomNum = random.nextInt(colors.length);
 
     return colors[syncedRandomNum];
   }
@@ -161,32 +171,35 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   Future<void> getTime() async {
     try {
       final uri = Uri.parse(timeApiUrl);
+      final response = await get(uri).timeout(const Duration(seconds: 5));
+      final Map data = jsonDecode(response.body) as Map;
+      final String? datetime = data['dateTime'] as String?;
+      final DateTime newTime = datetime != null
+          ? DateTime.parse(datetime)
+          : DateTime.now();
 
-      // Added timeout to prevent indefinite loading
-      final response = await get(uri).timeout(Duration(seconds: 5));
-
-      final Map data = jsonDecode(response.body);
-
-      // Extract the datetime string and parse it into a DateTime object
-      final String datetime = data['dateTime'];
-
+      if (!mounted) {
+        timeNow = newTime;
+        return;
+      }
       setState(() {
-        timeNow = DateTime.parse(datetime);
+        timeNow = newTime;
       });
     } catch (e) {
-      // Log error in debug mode if API call fails
-      if (kDebugMode) {
-        print('Error fetching time: $e');
+      if (kDebugMode) print('Error fetching time: $e');
+      final DateTime fallback = DateTime.now();
+      if (!mounted) {
+        timeNow = fallback;
+        return;
       }
-
-      // Fallback to device time if API fails
       setState(() {
-        timeNow = DateTime.now();
+        timeNow = fallback;
       });
     }
   }
 
   void updateTimeManually() {
+    if (timeNow == null) return;
     setState(() {
       timeNow = timeNow!.add(timeUpdateInterval);
     });
@@ -202,10 +215,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          // Match dialog background to theme mode
-          backgroundColor: widget.isDarkMode
-              ? Colors.blueGrey[900]
-              : Colors.white,
+          backgroundColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
           actionsAlignment: MainAxisAlignment.center,
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -216,38 +226,40 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                     Icons.cancel_rounded,
                     color: Colors.redAccent,
                     size: TextSizing.fontSizeHeading(context),
-                  ), // Success icon
+                  ),
                   SizedBox(width: TextSizing.fontSizeMiniText(context)),
-                  Text(
-                    'Cancel Booking',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Roboto',
-                      color: widget.isDarkMode ? Colors.white : Colors.black,
-                      fontSize: TextSizing.fontSizeHeading(context),
+                  Flexible(
+                    child: Text(
+                      'Cancel Booking',
+                      softWrap: true,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Roboto',
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontSize: TextSizing.fontSizeHeading(context),
+                      ),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-
           content: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: TextSizing.fontSizeText(context),
               vertical: TextSizing.fontSizeMiniText(context),
             ),
             child: Text(
-              "Are you sure you want to\ncancel this booking?",
+              softWrap: true,
+              "Are you sure you want to cancel this booking?",
               style: TextStyle(
                 fontFamily: 'Roboto',
-                color: widget.isDarkMode ? Colors.white : Colors.black,
+                color: isDarkMode ? Colors.white : Colors.black,
                 fontSize: TextSizing.fontSizeText(context),
               ),
             ),
           ),
           actions: <Widget>[
-            // "No" button just closes the dialog
             TextButton(
               child: Text(
                 "No",
@@ -255,14 +267,13 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
                   fontSize: TextSizing.fontSizeText(context),
-                  color: widget.isDarkMode
+                  color: isDarkMode
                       ? Colors.tealAccent
                       : const Color(0xff014689),
                 ),
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            // "Yes" button cancels booking and clears stored data
             TextButton(
               child: Text(
                 "Yes",
@@ -270,21 +281,23 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
                   fontSize: TextSizing.fontSizeText(context),
-                  color: widget.isDarkMode
+                  color: isDarkMode
                       ? Colors.tealAccent
                       : const Color(0xff014689),
                 ),
               ),
-              onPressed: () {
-                saveBusIndex(0);
-                busIndex = 0;
-                widget
-                    .onCancel(); // Trigger the parent widget's cancel callback
-                prefsService
-                    .clearBookingData(); // Remove any saved booking info from local storage
-                Navigator.of(
-                  context,
-                ).pop(); // Close the dialog after cancelling
+              onPressed: () async {
+                // Close the dialog synchronously to avoid using the dialog BuildContext across async gaps
+                Navigator.of(context).pop();
+
+                // Let the parent handle cancellation, persistence, and state updates.
+                if (widget.onCancel != null) {
+                  try {
+                    await widget.onCancel!();
+                  } catch (e) {
+                    if (kDebugMode) print('Error in onCancel callback: $e');
+                  }
+                }
               },
             ),
           ],
@@ -304,19 +317,80 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
         ? widget.bookedTripIndexKAP
         : widget.bookedTripIndexCLE;
 
-    // Retrieve the booked departure time from the list of departure times
-    // using the booked trip index (non-null asserted with !).
-    final DateTime bookedTime = widget.getDepartureTimes()[bookedTripIndex!];
+    // Retrieve the booked departure time passed from parent.
+    final DateTime? bookedTime = widget.bookedDepartureTime;
 
     // Determine the station name based on the selected box.
-    final String station = widget.selectedBox == 1 ? 'KAP' : 'CLE';
+    final String station = widget.selectedBox == 1
+        ? 'KAP'
+        : widget.selectedBox == 2
+        ? 'CLE'
+        : '-';
 
     // Use loading flag instead of relying on timeNow directly
     if (_loading || timeNow == null) {
       if (kDebugMode) {
         print('time now = $timeNow'); // Debug log for troubleshooting
       }
-      return LoadingScroll(isDarkMode: widget.isDarkMode);
+      return LoadingScroll();
+    }
+
+    // Determine card color with null-safe fallback
+    final Color cardColor =
+        generateColor(bookedTime, bookedTripIndex ?? 0) ??
+        (isDarkMode ? Colors.blueGrey[800]! : Colors.white);
+
+    // Guard: if there is no booked trip index or booked time, show a friendly empty state
+    if (bookedTripIndex == null || bookedTime == null) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(TextSizing.fontSizeText(context)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Trip cannot be found. Booking will now be cancelled.',
+                softWrap: true,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDarkMode
+                      ? Colors.blueGrey[200]
+                      : Colors.blueGrey[500],
+                  fontSize: TextSizing.fontSizeText(context),
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Roboto',
+                ),
+              ),
+              SizedBox(height: TextSizing.fontSizeText(context)),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: (isDarkMode
+                      ? Colors.blueGrey[50]
+                      : const Color(0xff014689)), // Button background color
+                  foregroundColor: (isDarkMode
+                      ? Colors.blueGrey[900]
+                      : Colors.white),
+                ), // Text color
+                onPressed: () async {
+                  // If the parent passed an async cancel function, call it via showCancelDialog or directly.
+                  if (widget.onCancel != null) {
+                    await widget.onCancel!();
+                  }
+                },
+                child: Text(
+                  'OK',
+                  style: TextStyle(
+                    fontSize: TextSizing.fontSizeText(context),
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Roboto',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     // Main UI layout for the booking confirmation screen
@@ -333,23 +407,17 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
             bookedTime: bookedTime,
             station: station,
             busStop: widget.busStop ?? '', // Fallback to empty string if null
-            color: generateColor(
-              bookedTime,
-              bookedTripIndex,
-            ), // Dynamic background color
+            color: cardColor, // Dynamic background color with fallback
             onCancel: showCancelDialog, // Show cancel confirmation dialog
+            // Note: onCancel is synchronous dialog trigger; parent will handle async persistence
           ),
         ),
         SizedBox(height: TextSizing.fontSizeHeading(context)),
-        // Show evening service bus time only if current hour is after service start
-        if (timeNow!.hour >= startEveningService)
+        // Show Afternoon service bus time only if current hour is after service start
+        if (timeNow != null && timeNow!.hour >= startAfternoonETA)
           Center(
             // Wrap bus time in Center to align it horizontally
-            child: EveningStartPoint.getBusTime(
-              widget.selectedBox,
-              context,
-              widget.isDarkMode,
-            ),
+            child: AfternoonStartPointAutoRefresh(box: widget.selectedBox),
           ),
       ],
     );
@@ -359,8 +427,8 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 ///////////////////////////////////////////////////////////////
 // Layout for Booking Details
 class _BookingDetailsCard extends StatelessWidget {
-  final int bookedTripIndex; // Index of the booked trip
-  final DateTime bookedTime; // Departure time of the booked trip
+  final int? bookedTripIndex; // Index of the booked trip
+  final DateTime? bookedTime; // Departure time of the booked trip
   final String station; // Station name (KAP or CLE)
   final String busStop; // Bus stop name
   final Color? color; // Background color for the card
@@ -377,6 +445,22 @@ class _BookingDetailsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Defensive local values
+    final int displayIndex = (bookedTripIndex ?? 0) + 1;
+    final String dateLabel = bookedTime != null
+        ? '[${bookedTime!.day.toString().padLeft(2, '0')}.${bookedTime!.month.toString().padLeft(2, '0')}.${bookedTime!.year.toString()}]'
+        : '-';
+    final String timeLabel = bookedTime != null
+        ? '${bookedTime!.hour.toString().padLeft(2, '0')}:${bookedTime!.minute.toString().padLeft(2, '0')}'
+        : '-';
+    final String stopLabel = busStop.isNotEmpty ? busStop : '-';
+
+    // Determine whether cancel button should be shown: only if bookedTime is in the future compared to timeNow
+    final DateTime now = DateTime.now();
+    final bool canCancel = bookedTime != null
+        ? bookedTime!.isAfter(now) || bookedTime!.isAtSameMomentAs(now)
+        : false;
+
     return Padding(
       padding: EdgeInsets.all(
         TextSizing.fontSizeText(context),
@@ -396,36 +480,51 @@ class _BookingDetailsCard extends StatelessWidget {
                 height: TextSizing.fontSizeText(context) * 0.5,
               ), // Small top spacing
               Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: TextSizing.fontSizeText(context),
-                  ), // Left spacing before icon
                   Icon(
                     Icons.event_available,
                     color: Colors.black,
-                    size: TextSizing.fontSizeText(context) * 1.5,
+                    size: TextSizing.fontSizeHeading(context),
                   ), // Calendar/check icon
                   SizedBox(
                     width: TextSizing.fontSizeText(context) * 0.5,
                   ), // Space between icon and text
-                  Text(
-                    'Booking Confirmation:',
-                    style: TextStyle(
-                      fontSize: TextSizing.fontSizeText(context),
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Roboto',
-                      color: Colors.black,
+                  Flexible(
+                    child: Text(
+                      'Booking Confirmation',
+                      maxLines: 1, //  limits to 1 lines
+                      overflow:
+                          TextOverflow.ellipsis, // clips text if not fitting
+                      style: TextStyle(
+                        fontSize: TextSizing.fontSizeHeading(context),
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Roboto',
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ],
               ),
-              SizedBox(
-                height: TextSizing.fontSizeText(context) * 1.5,
-              ), // Space before booking details
+
+              SizedBox(height: TextSizing.fontSizeMiniText(context)),
+              Text(
+                // Date of Trip
+                dateLabel,
+                style: TextStyle(
+                  fontSize: TextSizing.fontSizeMiniText(context),
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Roboto',
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: TextSizing.fontSizeText(context)),
+
               // Display trip number (index + 1 for human-readable numbering)
               BookingConfirmationText(
                 label: 'Trip Number',
-                value: '${bookedTripIndex + 1}',
+                value: bookedTripIndex != null ? '$displayIndex' : '-',
                 size: 1,
                 darkText: true,
               ),
@@ -433,8 +532,7 @@ class _BookingDetailsCard extends StatelessWidget {
               // Display departure time in HH:mm format
               BookingConfirmationText(
                 label: 'Time',
-                value:
-                    '${bookedTime.hour.toString().padLeft(2, '0')}:${bookedTime.minute.toString().padLeft(2, '0')}',
+                value: timeLabel,
                 size: 1,
                 darkText: true,
               ),
@@ -450,7 +548,7 @@ class _BookingDetailsCard extends StatelessWidget {
               // Display bus stop name
               BookingConfirmationText(
                 label: 'Bus Stop',
-                value: busStop,
+                value: stopLabel,
                 size: 1,
                 darkText: true,
               ),
@@ -465,27 +563,35 @@ class _BookingDetailsCard extends StatelessWidget {
                       top: TextSizing.fontSizeText(context),
                       bottom: TextSizing.fontSizeText(context) * 1.5,
                     ),
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor:
-                            Colors.blueGrey[900], // Button background color
-                        foregroundColor: Colors.white, // Text (and icon) color
-                      ),
-                      onPressed: onCancel, // Trigger cancel dialog
-                      child: Padding(
-                        padding: EdgeInsets.all(
-                          TextSizing.fontSizeText(context) * 0.33,
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            fontSize: TextSizing.fontSizeText(context),
-                            fontFamily: 'Roboto'
-                          ),
-                        ),
-                      ),
-                    ),
+
+                    // TODO: remove option to cancel after trip has started
+                    child: canCancel
+                        ? ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: Colors
+                                  .blueGrey[900], // Button background color
+                              foregroundColor:
+                                  Colors.white, // Text (and icon) color
+                            ),
+                            onPressed: onCancel, // Trigger cancel dialog
+                            child: Padding(
+                              padding: EdgeInsets.all(
+                                TextSizing.fontSizeText(context) * 0.33,
+                              ),
+                              child: Text(
+                                'Cancel',
+                                maxLines: 1, //  limits to 1 lines
+                                overflow: TextOverflow
+                                    .ellipsis, // clips text if not fitting
+                                style: TextStyle(
+                                  fontSize: TextSizing.fontSizeText(context),
+                                  fontFamily: 'Roboto',
+                                ),
+                              ),
+                            ),
+                          )
+                        : const SizedBox(),
                   ),
                 ],
               ),

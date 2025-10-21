@@ -1,34 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart';
+import 'package:user_14_updated/data/global.dart';
+import 'package:user_14_updated/utils/loading.dart';
 import 'package:user_14_updated/utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
 // Information Page
 
 class InformationPage extends StatefulWidget {
-  final bool isDarkMode; // For layout
-
-  const InformationPage({super.key, required this.isDarkMode});
+  const InformationPage({super.key});
 
   @override
   State<InformationPage> createState() => _InformationPageState();
 }
 
 class _InformationPageState extends State<InformationPage> {
+  // BusData singleton instance
   BusData busData = BusData();
+
+  // Loading state for this page (driven by BusData)
   bool _isLoading = true;
+
+  // Listener token for BusData ChangeNotifier
+  late VoidCallback _busDataListener;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+
+    // Initialize local loading state from BusData (may already be loaded)
+    _isLoading = !busData.isDataLoaded;
+
+    // One-shot load in case BusData hasn't loaded yet
+    // This will call notifyListeners when load completes if BusData.startPolling wasn't started elsewhere
+    busData.loadData();
+
+    // Listen for BusData updates and update local state accordingly
+    _busDataListener = () {
+      if (!mounted) return;
+      setState(() {
+        // reflect BusData's loaded flag; when false -> show loading
+        _isLoading = !busData.isDataLoaded;
+      });
+    };
+    busData.addListener(_busDataListener);
   }
 
-  Future<void> _loadData() async {
-    await busData.loadData();
-    setState(() {
-      _isLoading = false;
-    });
+  @override
+  void dispose() {
+    // Clean up listener when widget is removed
+    busData.removeListener(_busDataListener);
+    super.dispose();
   }
 
   @override
@@ -40,17 +62,19 @@ class _InformationPageState extends State<InformationPage> {
         toolbarHeight: TextSizing.fontSizeHeading(context) * 2,
         // Arrow back
         iconTheme: IconThemeData(
-          color: widget.isDarkMode
+          color: isDarkMode
               ? Colors.cyan[200]
               : Colors.white, // Arrow back color
         ),
-        backgroundColor: widget.isDarkMode ? Colors.blueGrey[800] : Colors.cyan,
+        backgroundColor: isDarkMode ? Colors.blueGrey[800] : Color(0xff014689),
         title: Text(
           'Information',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontSize: TextSizing.fontSizeHeading(context),
             fontWeight: FontWeight.bold,
-            color: widget.isDarkMode ? Colors.cyan[200] : Colors.white,
+            color: isDarkMode ? Colors.cyan[200] : Colors.white,
           ),
         ),
         centerTitle: true,
@@ -59,11 +83,11 @@ class _InformationPageState extends State<InformationPage> {
       ///////////////////////////////////////////////////////////////
       // Body of screen
       body: Container(
-        color: widget.isDarkMode ? Colors.blueGrey[900] : Colors.white,
+        color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
         width: double.infinity,
         height: double.infinity,
         child: _isLoading
-            ? Center(child: CircularProgressIndicator())
+            ? Center(child: LoadingScreen())
             : SingleChildScrollView(
                 child: Padding(
                   padding: EdgeInsets.all(TextSizing.fontSizeText(context)),
@@ -74,13 +98,13 @@ class _InformationPageState extends State<InformationPage> {
                       SizedBox(height: TextSizing.fontSizeMiniText(context)),
                       Text(
                         'Morning Schedule',
+                        textAlign: TextAlign.center,
+                        softWrap: true,
                         style: TextStyle(
                           fontFamily: 'Roboto',
                           fontSize: TextSizing.fontSizeHeading(context),
                           fontWeight: FontWeight.bold,
-                          color: widget.isDarkMode
-                              ? Colors.white
-                              : Colors.black,
+                          color: isDarkMode ? Colors.white : Colors.black,
                         ),
                       ),
                       SizedBox(
@@ -105,23 +129,25 @@ class _InformationPageState extends State<InformationPage> {
 
                       SizedBox(height: TextSizing.fontSizeText(context) * 3),
                       Text(
+                        textAlign: TextAlign.center,
+                        softWrap: true,
                         'Afternoon Schedule',
                         style: TextStyle(
                           fontFamily: 'Roboto',
                           fontSize: TextSizing.fontSizeHeading(context),
                           fontWeight: FontWeight.bold,
-                          color: widget.isDarkMode
-                              ? Colors.white
-                              : Colors.black,
+                          color: isDarkMode ? Colors.white : Colors.black,
                         ),
                       ),
                       Text(
                         '(Bus Departure Times shown here refer to Bus Stop ENT)',
+                        textAlign: TextAlign.center,
+                        softWrap: true,
                         style: TextStyle(
                           fontFamily: 'Roboto',
                           fontSize: TextSizing.fontSizeMiniText(context),
                           fontWeight: FontWeight.bold,
-                          color: widget.isDarkMode
+                          color: isDarkMode
                               ? Colors.blueGrey[100]
                               : Colors.black,
                         ),
@@ -169,11 +195,13 @@ class _InformationPageState extends State<InformationPage> {
         Text(
           title,
           textAlign: TextAlign.center,
+          softWrap: true,
           style: TextStyle(
             fontSize: TextSizing.fontSizeText(context),
-            color: widget.isDarkMode ? Colors.white : Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
+
         SizedBox(height: TextSizing.fontSizeText(context)),
         Table(
           columnWidths: columns == 2
@@ -186,7 +214,7 @@ class _InformationPageState extends State<InformationPage> {
               : {0: FlexColumnWidth(1), 1: FlexColumnWidth(2)},
           border: TableBorder.all(
             width: TextSizing.fontSizeText(context) * 0.1,
-            color: widget.isDarkMode ? Colors.blueGrey[900]! : Colors.white,
+            color: isDarkMode ? Colors.blueGrey[900]! : Colors.white,
           ),
 
           children: _buildTableRows(times, columns),
@@ -219,7 +247,7 @@ class _InformationPageState extends State<InformationPage> {
             _formatTime(times[i]),
             if (i + 1 < times.length) (i + 2).toString() else '',
             if (i + 1 < times.length) _formatTime(times[i + 1]) else '',
-          ], (i ~/ 2) + 1), // row index (1-based after header)
+          ], (i ~/ 2) + 1),
         );
       }
     } else if (columns == 1) {
@@ -257,29 +285,28 @@ class _InformationPageState extends State<InformationPage> {
         Color bgColor;
         if (rowIndex == 0) {
           // First row (header)
-          bgColor = widget.isDarkMode ? Colors.blueGrey[800]! : Colors.cyan;
+          bgColor = isDarkMode ? Colors.blueGrey[800]! : Color(0xff014689);
         } else {
           // Column-based coloring
           bgColor = (colIndex % 2 == 0)
-              ? (widget.isDarkMode ? Colors.blueGrey[700]! : Colors.cyan[100]!)
-              : (widget.isDarkMode ? Colors.blueGrey[600]! : Colors.cyan[50]!);
+              ? (isDarkMode ? Colors.blueGrey[700]! : Colors.blue[100]!)
+              : (isDarkMode ? Colors.blueGrey[600]! : Colors.blue[50]!);
         }
 
         return Container(
           color: bgColor,
           padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
           child: Text(
-            maxLines: 1, //  limits to 1 lines (optional)
-            overflow: TextOverflow.clip, // clips text if not fitting
+            maxLines: 1, //  limits to 1 lines
+            overflow: TextOverflow.ellipsis, // clips text if not fitting
             data[colIndex],
             textAlign: TextAlign.center,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-
               fontSize: TextSizing.fontSizeText(context),
               color: (rowIndex == 0)
-                  ? (widget.isDarkMode ? Colors.cyan[200] : Colors.white)
-                  : (widget.isDarkMode ? Colors.white : Colors.black),
+                  ? (isDarkMode ? Colors.cyan[200] : Colors.white)
+                  : (isDarkMode ? Colors.white : Colors.black),
             ),
           ),
         );

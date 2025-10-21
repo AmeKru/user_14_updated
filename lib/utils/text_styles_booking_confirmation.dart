@@ -41,36 +41,48 @@ class BookingConfirmationText extends StatelessWidget {
 
         children: [
           // Fixed-size box for the label
-          SizedBox(
-            height:
-                TextSizing.fontSizeText(context) *
-                1.25, // Fixed height for alignment
-            width:
-                TextSizing.fontSizeText(context) *
-                5, // Fixed width so labels align vertically in a list
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: TextSizing.fontSizeText(context),
-                color: darkText ? Colors.blueGrey[900]! : Colors.white,
+          Flexible(
+            child: SizedBox(
+              height:
+                  TextSizing.fontSizeText(context) *
+                  1.25, // Fixed height for alignment
+              width:
+                  TextSizing.fontSizeText(context) *
+                  6, // Fixed width so labels align vertically in a list
+              child: Text(
+                label,
+                maxLines: 1, //  limits to 1 lines
+                overflow: TextOverflow.ellipsis, // clips text if not fitting
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: TextSizing.fontSizeText(context),
+                  color: darkText ? Colors.blueGrey[900]! : Colors.white,
+                ),
               ),
             ),
           ),
-          SizedBox(width: MediaQuery.of(context).size.width * 0.3 * size),
+          Flexible(
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.3 * size,
+            ),
+          ),
 
           // Fixed-size box for the value
-          SizedBox(
-            height: TextSizing.fontSizeText(context) * 1.25,
-            width:
-                TextSizing.fontSizeText(context) *
-                3, // 1/2 width as label for cleaner alignment
-            child: Text(
-              value,
-              style: TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: TextSizing.fontSizeText(context),
-                color: darkText ? Colors.blueGrey[900]! : Colors.white,
+          Flexible(
+            child: SizedBox(
+              height: TextSizing.fontSizeText(context) * 1.25,
+              width:
+                  TextSizing.fontSizeText(context) *
+                  3, // 1/2 width as label for cleaner alignment
+              child: Text(
+                value,
+                maxLines: 1, //  limits to 1 lines
+                overflow: TextOverflow.ellipsis, // clips text if not fitting
+                style: TextStyle(
+                  fontFamily: 'Roboto',
+                  fontSize: TextSizing.fontSizeText(context),
+                  color: darkText ? Colors.blueGrey[900]! : Colors.white,
+                ),
               ),
             ),
           ),

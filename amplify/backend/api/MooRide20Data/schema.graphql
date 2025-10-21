@@ -32,3 +32,16 @@ type CLEMorning @model @auth(rules: [{allow: public}]) {
   TripNo: Int!
   Count: Int!
 }
+
+type BusTrip @model {
+  id: ID!
+  departureTime: AWSDateTime!
+  route: String!
+  direction: String!
+}
+
+type Subscription {
+  onCreateBusTrip: BusTrip @aws_subscribe(mutations: ["createBusTrip"])
+  onDeleteBusTrip: BusTrip @aws_subscribe(mutations: ["deleteBusTrip"])
+}
+

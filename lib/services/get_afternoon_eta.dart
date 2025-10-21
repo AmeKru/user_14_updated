@@ -1,13 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart';
+import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/utils/text_sizing.dart';
 
-class EveningStartPoint {
+//////////////////////////////////////////////////////////////
+// Class for Afternoon start point display and helpers
+
+class AfternoonStartPoint {
   // Builds a single row widget showing:
   // - Bus stop name
   // - Time until the upcoming bus
   // - Time until the next bus after that
+
   static Widget buildRowWidget(
     BuildContext context,
     String busStop, // Name of the bus stop
@@ -15,8 +22,12 @@ class EveningStartPoint {
     int nextNextBusTimeDiff, // Minutes until the bus after the next
     int index, // Index of the bus stop in the list
     double multiplier, // Time increment multiplier per stop
-    bool isDarkMode,
   ) {
+    final adjustedNext = (nextBusTimeDiff + (multiplier * (index - 2))).round();
+    final adjustedNextNext = nextNextBusTimeDiff < 0
+        ? -1
+        : (nextNextBusTimeDiff + (multiplier * (index - 1))).round();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -34,7 +45,7 @@ class EveningStartPoint {
 
             // Bus stop name container
             Container(
-              width: MediaQuery.of(context).size.width * 0.4,
+              width: MediaQuery.of(context).size.width * 0.35,
               color: isDarkMode
                   ? Colors.blueGrey[800]
                   : const Color(0xff014689),
@@ -42,6 +53,8 @@ class EveningStartPoint {
                 padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
                 child: Text(
                   busStop,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: isDarkMode ? Colors.cyanAccent : Colors.white,
                     fontSize: TextSizing.fontSizeText(context),
@@ -57,13 +70,17 @@ class EveningStartPoint {
 
             // Upcoming bus time container
             Container(
-              width: MediaQuery.of(context).size.width * 0.25,
+              width: MediaQuery.of(context).size.width * 0.275,
               color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
               child: Padding(
                 padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
                 child: Text(
-                  // Add (multiplier * index) to simulate travel time from MRT to this stop
-                  '${nextBusTimeDiff + (multiplier * index)}',
+                  adjustedNext <= 0
+                      ? (adjustedNext == 0 ? 'Arr' : '-')
+                      : '$adjustedNext',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: TextSizing.fontSizeText(context),
                     fontFamily: 'Roboto',
@@ -78,12 +95,15 @@ class EveningStartPoint {
 
             // Next-next bus time container
             Container(
-              width: MediaQuery.of(context).size.width * 0.25,
+              width: MediaQuery.of(context).size.width * 0.275,
               color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
               child: Padding(
                 padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
                 child: Text(
-                  '${nextNextBusTimeDiff + (multiplier * index)}',
+                  adjustedNextNext < 0 ? '-' : '$adjustedNextNext',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: TextSizing.fontSizeText(context),
                     fontFamily: 'Roboto',
@@ -102,42 +122,46 @@ class EveningStartPoint {
   }
 
   // Returns a widget showing the bus arrival times for a given MRT start point (KAP or CLE)
-  static Widget getBusTime(int box, BuildContext context, bool isDarkMode) {
-    DateTime currentTime = DateTime.now(); // Current time
+  // No separate polling here — this method reads BusData state when called by the parent.
+  static Widget getBusTime(int box, BuildContext context) {
+    final DateTime currentTime = DateTime.now(); // Current time
+    final double timeBetweenBusStops =
+        2; // minutes per stop multiplier (adjustable)
 
-    BusData busData = BusData(); // Data source for bus stops and times
-    List<DateTime> busArrivalTimes = []; // Holds the relevant departure times
-    List<String> busStops = busData.busStop; // List of bus stop names
+    final BusData busData = BusData(); // Data source for bus stops and times
+    List<DateTime> busArrivalTimes; // Holds the relevant departure times
+    final List<String> busStops = busData.busStop; // List of bus stop names
 
-    if (kDebugMode) {
-      print('Printing bus stops: $busStops');
-    }
-
-    // Select departure times and MRT name based on the box value
+    // Select departure times based on the box value
     if (box == 1) {
       busArrivalTimes = busData.departureTimeKAP;
-      //  mrt = 'KAP';
     } else {
       busArrivalTimes = busData.departureTimeCLE;
-      //  mrt = 'CLE';
-    }
-    if (kDebugMode) {
-      print('printing bus arrival times');
-      print(busArrivalTimes);
     }
 
-    // Filter out past times, keeping only upcoming buses
-    List<DateTime> upcomingArrivalTimes = busArrivalTimes
-        .where((time) => time.isAfter(currentTime))
-        .toList();
+    if (kDebugMode) {
+      print('AfternoonStartPoint: bus stops: $busStops');
+      print('AfternoonStartPoint: bus arrival times: $busArrivalTimes');
+    }
+
+    // Filter to keep recent and upcoming times.
+    // Keep buses that are after (currentTime - travel buffer)
+    final travelBufferMinutes = ((busStops.length - 4) * timeBetweenBusStops)
+        .round();
+    final upcomingArrivalTimes = busArrivalTimes.where((time) {
+      return time.isAfter(
+        currentTime.subtract(Duration(minutes: travelBufferMinutes)),
+      );
+    }).toList();
 
     // If there are no upcoming buses, show a message
-
     if (upcomingArrivalTimes.isEmpty) {
       return Column(
         children: [
           Text(
             'NO UPCOMING BUSES',
+            softWrap: true,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: isDarkMode ? Colors.blueGrey[400] : Colors.blueGrey[600],
               fontFamily: 'Roboto',
@@ -149,14 +173,14 @@ class EveningStartPoint {
       );
     } else {
       // Calculate minutes until the next bus
-      int nextBusTimeDiff = upcomingArrivalTimes.isNotEmpty
+      final int nextBusTimeDiff = upcomingArrivalTimes.isNotEmpty
           ? upcomingArrivalTimes[0].difference(currentTime).inMinutes
           : 0;
 
       // Calculate minutes until the bus after the next
-      int nextNextBusTimeDiff = upcomingArrivalTimes.length > 1
+      final int nextNextBusTimeDiff = upcomingArrivalTimes.length > 1
           ? upcomingArrivalTimes[1].difference(currentTime).inMinutes
-          : 0;
+          : -1;
 
       // Build the UI showing the MRT name, headers, and each bus stop row
       return Column(
@@ -168,7 +192,7 @@ class EveningStartPoint {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
+              Flexible(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     TextSizing.fontSizeText(context),
@@ -177,10 +201,11 @@ class EveningStartPoint {
                     TextSizing.fontSizeMiniText(context),
                   ),
                   child: Text(
-                    textAlign: TextAlign.center,
                     TextSizing.isTablet(context)
                         ? 'Estimated Time of Arrival at Bus Stops'
                         : 'ETAs at Bus Stops',
+                    softWrap: true,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: TextSizing.fontSizeHeading(context),
                       fontFamily: 'Roboto',
@@ -195,56 +220,62 @@ class EveningStartPoint {
 
           SizedBox(height: TextSizing.fontSizeMiniText(context)),
           // Header row for the table
-          Container(
-            width: double.infinity, // Ensures full horizontal stretch
-            padding: EdgeInsets.symmetric(
-              horizontal: 8,
-            ), // Optional: adds side spacing
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment:
-                  MainAxisAlignment.center, // Distributes items evenly
-              children: [
-                SizedBox(width: MediaQuery.of(context).size.width * 0.01),
+          Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment:
+                    MainAxisAlignment.center, // Distributes items evenly
+                children: [
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.4,
-                  child: Text(
-                    'Bus stop',
-                    style: TextStyle(
-                      fontSize: TextSizing.fontSizeMiniText(context),
-                      color: isDarkMode ? Colors.white : Colors.black,
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.35,
+                    child: Text(
+                      'Bus stop',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: TextSizing.fontSizeMiniText(context),
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
                   ),
-                ),
 
-                SizedBox(width: MediaQuery.of(context).size.width * 0.01),
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.25,
-                  child: Text(
-                    'Upcoming bus (min)',
-                    style: TextStyle(
-                      fontSize: TextSizing.fontSizeMiniText(context),
-                      color: isDarkMode ? Colors.white : Colors.black,
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.275,
+                    child: Text(
+                      'Upcoming bus (min)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: TextSizing.fontSizeMiniText(context),
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
                   ),
-                ),
 
-                SizedBox(width: MediaQuery.of(context).size.width * 0.01),
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
-                SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.25,
-                  child: Text(
-                    'Next bus (min)',
-                    style: TextStyle(
-                      fontSize: TextSizing.fontSizeMiniText(context),
-                      color: isDarkMode ? Colors.white : Colors.black,
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.275,
+                    child: Text(
+                      'Next bus (min)',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: TextSizing.fontSizeMiniText(context),
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              // Space in between rows
+              SizedBox(height: TextSizing.fontSizeText(context) * 0.2),
+            ],
           ),
 
           // Loop through bus stops (skipping first 2 and last 2 stops)
@@ -255,12 +286,66 @@ class EveningStartPoint {
               nextBusTimeDiff, // Minutes until next bus
               nextNextBusTimeDiff, // Minutes until next-next bus
               i, // Index of the stop
-              1.5, // Multiplier for travel time between stops
-              isDarkMode,
+              timeBetweenBusStops, // Multiplier for travel time between stops
             ),
           SizedBox(height: TextSizing.fontSizeHeading(context)),
         ],
       );
     }
+  }
+}
+
+// Can use to count down every 0.5 minutes, redundant at the moment
+class AfternoonStartPointAutoRefresh extends StatefulWidget {
+  final int box;
+  final Duration interval;
+
+  const AfternoonStartPointAutoRefresh({
+    super.key,
+    required this.box,
+    this.interval = const Duration(seconds: 30),
+  });
+
+  @override
+  State<AfternoonStartPointAutoRefresh> createState() =>
+      _AfternoonStartPointAutoRefreshState();
+}
+
+class _AfternoonStartPointAutoRefreshState
+    extends State<AfternoonStartPointAutoRefresh> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Immediate build already happens; schedule periodic rebuilds.
+    _timer = Timer.periodic(widget.interval, (_) {
+      if (!mounted) return;
+      setState(() {});
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant AfternoonStartPointAutoRefresh oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If polling interval changes, restart timer
+    if (oldWidget.interval != widget.interval) {
+      _timer?.cancel();
+      _timer = Timer.periodic(widget.interval, (_) {
+        if (!mounted) return;
+        setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AfternoonStartPoint.getBusTime(widget.box, context);
   }
 }

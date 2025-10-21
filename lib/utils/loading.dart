@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/utils/text_sizing.dart';
 // flutter_spinkit provides a variety of animated loading indicators
 
@@ -10,8 +11,7 @@ import 'package:user_14_updated/utils/text_sizing.dart';
 // The background color changes depending on whether dark mode is enabled.
 
 class LoadingScreen extends StatefulWidget {
-  final bool isDarkMode; // Explicitly typed for clarity and safety
-  const LoadingScreen({super.key, required this.isDarkMode});
+  const LoadingScreen({super.key});
 
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
@@ -20,18 +20,15 @@ class LoadingScreen extends StatefulWidget {
 class _LoadingScreenState extends State<LoadingScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Container(
       // Set background color based on dark mode
-      backgroundColor: widget.isDarkMode ? Colors.blueGrey[900] : Colors.white,
+      color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
 
       // Center the loading animation in the middle of the screen
-      body: Center(
-        child: SpinKitSpinningLines(
-          color: Colors.grey, // Spinner color
-          size: TextSizing.fontSizeText(
-            context,
-          ), // Spinner size in logical pixels
-        ),
+      child: Center(
+        child: CircularProgressIndicator(
+          color: Colors.blueGrey[200]!, // Color of the wave animation
+        ), // Spinner size in logical pixels
       ),
     );
   }
@@ -45,8 +42,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
 // The background color adapts to dark mode.
 
 class LoadingScroll extends StatefulWidget {
-  final bool isDarkMode; // Explicitly typed for consistency
-  const LoadingScroll({super.key, required this.isDarkMode});
+  const LoadingScroll({super.key});
 
   @override
   State<LoadingScroll> createState() => _LoadingScrollState();
@@ -63,7 +59,7 @@ class _LoadingScrollState extends State<LoadingScroll> {
         // Container to hold the loading animation
         Container(
           // Background color changes based on dark mode
-          color: widget.isDarkMode ? Colors.blueGrey[900] : Colors.white,
+          color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
 
           // Center the loading animation horizontally
           child: Center(
