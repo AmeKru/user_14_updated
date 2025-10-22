@@ -55,15 +55,19 @@ class BookingService extends StatefulWidget {
   });
 
   @override
-  State<BookingService> createState() => _BookingServiceState();
+  State<BookingService> createState() => BookingServiceState();
 }
 
-class _BookingServiceState extends State<BookingService> {
+class BookingServiceState extends State<BookingService> {
+  Future<void> refreshFromParent() async {
+    await _updateBookingCounts();
+  }
+
   // Default color for UI elements before availability is determined
   Color finalColor = Colors.grey;
 
   // Timer to periodically refresh booking counts
-  late Timer _timer;
+  //late Timer _timer;
 
   // Stores booking counts for each trip index
   // Key: trip index, Value: number of bookings (nullable if not yet fetched)
@@ -83,6 +87,9 @@ class _BookingServiceState extends State<BookingService> {
 
   // Current time snapshot (may be used for filtering trips)
   DateTime now = DateTime.now();
+
+  // To prevent pressing confirm multiple times
+  bool confirmingBooking = false;
 
   // Checks if the user can confirm a booking.
   // Returns true if a trip index is selected for the current station.
@@ -131,15 +138,17 @@ class _BookingServiceState extends State<BookingService> {
     // Prime initial load immediately
     _updateBookingCounts();
     // Poll every 10 seconds (reduced from 1s to avoid excessive requests)
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      _updateBookingCounts();
-    });
+    //_timer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    //  _updateBookingCounts();
+    // });
+    confirmingBooking = false;
   }
 
   @override
   void dispose() {
-    _timer.cancel(); // Stop the timer to prevent memory leaks
+    //  _timer.cancel(); // Stop the timer to prevent memory leaks
     super.dispose();
+    confirmingBooking = false;
   }
 
   // Fetches booking counts for all departure times and updates state.
@@ -766,34 +775,41 @@ class _BookingServiceState extends State<BookingService> {
                             padding: EdgeInsets.all(
                               TextSizing.fontSizeText(context),
                             ),
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                elevation: 0,
-                                backgroundColor: (isDarkMode
-                                    ? Colors.blueGrey[50]
-                                    : const Color(
-                                        0xff014689,
-                                      )), // Button background color
-                                foregroundColor: (isDarkMode
-                                    ? Colors.blueGrey[900]
-                                    : Colors.white),
-                              ), // Text color
-                              onPressed: widget.onPressedConfirm,
-                              child: Padding(
-                                padding: EdgeInsets.all(
-                                  TextSizing.fontSizeText(context) * 0.33,
-                                ),
-                                child: Text(
-                                  softWrap: true,
-                                  textAlign: TextAlign.center,
-                                  'Confirm',
-                                  style: TextStyle(
-                                    fontSize: TextSizing.fontSizeText(context),
-                                    fontFamily: 'Roboto',
+                            child: confirmingBooking
+                                ? LoadingScreen()
+                                : ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      elevation: 0,
+                                      backgroundColor: (isDarkMode
+                                          ? Colors.blueGrey[50]
+                                          : const Color(
+                                              0xff014689,
+                                            )), // Button background color
+                                      foregroundColor: (isDarkMode
+                                          ? Colors.blueGrey[900]
+                                          : Colors.white),
+                                    ), // Text color
+                                    onPressed: () {
+                                      confirmingBooking = true;
+                                      widget.onPressedConfirm();
+                                    },
+                                    child: Padding(
+                                      padding: EdgeInsets.all(
+                                        TextSizing.fontSizeText(context) * 0.33,
+                                      ),
+                                      child: Text(
+                                        softWrap: true,
+                                        textAlign: TextAlign.center,
+                                        'Confirm',
+                                        style: TextStyle(
+                                          fontSize: TextSizing.fontSizeText(
+                                            context,
+                                          ),
+                                          fontFamily: 'Roboto',
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            ),
                           ),
                         ),
                       if (!canConfirm())

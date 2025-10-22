@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart';
 import 'package:user_14_updated/data/global.dart';
@@ -139,10 +138,10 @@ class AfternoonStartPoint {
       busArrivalTimes = busData.departureTimeCLE;
     }
 
-    if (kDebugMode) {
-      print('AfternoonStartPoint: bus stops: $busStops');
-      print('AfternoonStartPoint: bus arrival times: $busArrivalTimes');
-    }
+    //if (kDebugMode) {
+    //  print('AfternoonStartPoint: bus stops: $busStops');
+    //  print('AfternoonStartPoint: bus arrival times: $busArrivalTimes');
+    //}
 
     // Filter to keep recent and upcoming times.
     // Keep buses that are after (currentTime - travel buffer)

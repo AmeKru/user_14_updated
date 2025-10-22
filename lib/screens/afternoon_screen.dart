@@ -47,6 +47,10 @@ class AfternoonScreen extends StatefulWidget {
 
 class _AfternoonScreenState extends State<AfternoonScreen>
     with WidgetsBindingObserver {
+  // Create a GlobalKey typed to the child’s State
+  final GlobalKey<BookingServiceState> _bookingKey =
+      GlobalKey<BookingServiceState>();
+
   // Flag to prevent multiple confirmations
   bool? confirmationPressed = false;
 
@@ -87,6 +91,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Booking status (moved from top-level into this state)
   BookingStatus _bookingStatus = BookingStatus.unknown;
 
+  // guard to prevent multiple refreshes at once
+  bool _isRefreshing = false;
+
   //////////////////////////////////////////////////////////////////////////////
   // Init function (called when first built)
   @override
@@ -115,7 +122,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     // Make the listener a synchronous VoidCallback that spawns an async task.
     _busDataListener = () {
       // Spawn the async handler without awaiting so the listener API remains sync.
-      _onBusDataChanged();
+      _refreshTrips(); // unified refresh
     };
     _busData.addListener(_busDataListener!);
 
@@ -125,9 +132,16 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     _didRestoreSnapshot = false;
   }
 
-  // Async handler invoked by the sync listener
-  Future<void> _onBusDataChanged() async {
-    if (!mounted) return;
+  //////////////////////////////////////////////////////////////////////////////
+  // Unified refresh function (used by polling listener AND manual button)
+
+  Future<void> _refreshTrips() async {
+    if (!mounted || _isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    if (kDebugMode) {
+      print('refreshing Trips');
+    }
+    _bookingKey.currentState?.refreshFromParent();
     try {
       final previousStatus = _bookingStatus;
       _bookingStatus = await _loadAndCheckIfSavedBookingValid();
@@ -156,9 +170,16 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         setState(() {});
       }
     } catch (e, st) {
-      if (kDebugMode) print('Error in busDataListener: $e\n$st');
+      if (kDebugMode) print('Error refreshing trips: $e\n$st');
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+      // Restart polling so the 30s interval resets after any refresh
+      _restartPolling();
     }
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Polling control
 
   void _restartPolling() {
     try {
@@ -998,6 +1019,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         // Notify parent widget of change synchronously inside setState
         widget.updateSelectedBox(selectedBox);
       });
+      _isRefreshing ? null : _refreshTrips;
     }
   }
 
@@ -1662,11 +1684,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                           setState(() => confirmationPressed = true);
                           _showAsyncSnackBar('Could not delete Booking.');
                         }
+                        _isRefreshing ? null : _refreshTrips;
                       },
                     )
                   // If booking not yet confirmed → show BookingService widget
                   : (confirmationPressed == false)
                   ? BookingService(
+                      key: _bookingKey,
                       departureTimes: getDepartureTimes(currentBox),
                       selectedBox: currentBox,
                       bookedTripIndexKAP: bookedTripIndexKAP,
@@ -1678,12 +1702,16 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                           showBusStopSelectionBottomSheet,
                       selectedBusStop: selectedBusStop,
                       onPressedConfirm: () async {
+                        if (kDebugMode) {
+                          print('confirming Booking...');
+                        }
                         // Capture values synchronously to avoid races across awaits
                         final boxAtTap = currentBox;
                         final idx = boxAtTap == 1
                             ? bookedTripIndexKAP
                             : bookedTripIndexCLE;
                         final selectedBusStopAtTap = selectedBusStop;
+                        final List<DateTime> list = getDepartureTimes();
                         final stationAtTap = boxAtTap == 1
                             ? 'KAP'
                             : boxAtTap == 2
@@ -1698,6 +1726,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                           );
                           return;
                         }
+
+                        bookedDepartureTime = list[idx];
 
                         bool? bookingValid = await createBooking(
                           stationAtTap,
