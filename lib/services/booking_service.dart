@@ -76,9 +76,10 @@ class _BookingServiceState extends State<BookingService> {
   bool _updating = false;
 
   // Thresholds for vacancy color coding
-  int vacancyGreen = 3; // Below this count = green
-  int vacancyYellow = 4; // Between green and yellow inclusive = yellow
-  int vacancyRed = 5; // At or above this count = red (full)
+  int vacancyGreen = (busMaxCapacity / 2).floor(); // Below this count = green
+  int vacancyYellow = (busMaxCapacity / 2)
+      .floor(); // above/including this, below maxCapacity yellow and red inclusive = yellow
+  int vacancyRed = busMaxCapacity; // At this count = red (full)
 
   // Current time snapshot (may be used for filtering trips)
   DateTime now = DateTime.now();
@@ -234,7 +235,7 @@ class _BookingServiceState extends State<BookingService> {
   Color _getColor(int count) {
     if (count < vacancyGreen) {
       return Colors.green[400]!;
-    } else if (count >= vacancyGreen && count <= vacancyYellow) {
+    } else if (count >= vacancyGreen && count < busMaxCapacity) {
       return Color(0xfffeb041);
     } else {
       return Colors.red[400]!;
@@ -322,7 +323,7 @@ class _BookingServiceState extends State<BookingService> {
                   SizedBox(width: MediaQuery.of(context).size.width * 0.02),
                   Flexible(
                     child: Text(
-                      'Half Full',
+                      '> Half Full',
                       maxLines: 1, //  limits to 1 lines
                       overflow:
                           TextOverflow.ellipsis, // clips text if not fitting

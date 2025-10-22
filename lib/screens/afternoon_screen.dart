@@ -272,11 +272,21 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // [tripNo] - Trip number
   // [busStop] - Selected bus stop name
 
-  Future<void> createBooking(
+  Future<bool?> createBooking(
     String mrtStation,
     int tripNo,
     String busStop,
   ) async {
+    int? checkIfTripFull = await countBooking(mrtStation, tripNo);
+    if (checkIfTripFull == busMaxCapacity) {
+      if (kDebugMode) {
+        print(
+          'Create Booking failed as Bus already full - checkIfTripFull: $checkIfTripFull BusMaxCapacity: $busMaxCapacity',
+        );
+      }
+      return false;
+    }
+
     try {
       final model = BOOKINGDETAILS5(
         id: const Uuid().v4(),
@@ -292,10 +302,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       final createdBooking = response.data;
       if (createdBooking == null) {
         safePrint('Booking creation errors: ${response.errors}');
-        return;
+        return null;
       }
 
-      if (!mounted) return;
+      if (!mounted) return null;
 
       // Keep a local copy of values we will persist to avoid racing with UI changes
       final String createdId = createdBooking.id;
@@ -330,9 +340,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       } catch (e, st) {
         if (kDebugMode) print('Persist booking locally failed: $e\n$st');
         // If save fails, avoid flipping UI; inform user and exit
-        if (!mounted) return;
+        if (!mounted) return null;
         _showAsyncSnackBar('Failed to persist booking locally.');
-        return;
+        return null;
       }
 
       // Determine new booking status synchronously
@@ -342,7 +352,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
       // Prepare the new future but do not assign inside setState
       final refreshedFuture = prefsService.getBookingData();
-      if (!mounted) return;
+      if (!mounted) return null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
 
@@ -389,6 +399,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     } on ApiException catch (e) {
       safePrint('Booking creation failed: $e');
     }
+    return true;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -580,7 +591,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         context,
         rootNavigator: true,
       );
-      final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
       // Close any open dialog
       try {
@@ -617,9 +627,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
       // Show feedback (use messenger captured earlier)
       if (message.isNotEmpty) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(message), duration: Duration(seconds: 5)),
-        );
+        _showAsyncSnackBar(message);
       }
 
       // Notify parent (safe because we checked mounted above and setState ran)
@@ -667,13 +675,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       if (stillExists) {
         // Capture messenger synchronously before any awaits (none here, but keep pattern)
         if (mounted) {
-          final messenger = ScaffoldMessenger.of(context);
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Failed to confirm deletion on server. Your booking remains saved and will be retried.',
-              ),
-            ),
+          _showAsyncSnackBar(
+            'Failed to confirm deletion on server. Your booking remains saved and will be retried.',
           );
         }
         if (kDebugMode) {
@@ -693,12 +696,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     } catch (e, st) {
       if (kDebugMode) print('Error deleting booking by ID: $e\n$st');
       if (mounted) {
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Error deleting booking. Please try again later.'),
-          ),
-        );
+        _showAsyncSnackBar('Error deleting booking. Please try again later.');
       }
       return false;
     }
@@ -1285,12 +1283,26 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Safe snackBar poster used from async contexts
   void _showAsyncSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Center(child: Text(message, textAlign: TextAlign.center)),
-        duration: Duration(seconds: 5),
-      ),
-    );
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Center(
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isDarkMode ? Colors.black : Colors.white,
+                fontFamily: 'Roboto',
+                fontSize: TextSizing.fontSizeText(context),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          backgroundColor: isDarkMode ? Colors.white : Colors.black,
+          duration: Duration(seconds: 5),
+        ),
+      );
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -1687,18 +1699,28 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                           return;
                         }
 
+                        bool? bookingValid = await createBooking(
+                          stationAtTap,
+                          idx + 1,
+                          selectedBusStopAtTap,
+                        );
+
+                        if (bookingValid != true) {
+                          _showAsyncSnackBar(
+                            'Could not book. Trip is already fully booked.',
+                          );
+                          setState(() {
+                            confirmationPressed = false;
+                          });
+                          return;
+                        }
                         if (!mounted) return;
+
                         setState(() => confirmationPressed = true);
 
                         // Capture the dialog function synchronously
                         void showDialogFn() =>
                             showBookingConfirmationDialog(context);
-
-                        await createBooking(
-                          stationAtTap,
-                          idx + 1,
-                          selectedBusStopAtTap,
-                        );
 
                         if (!mounted) return;
                         showDialogFn();
