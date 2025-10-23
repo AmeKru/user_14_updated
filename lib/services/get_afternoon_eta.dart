@@ -35,6 +35,9 @@ class AfternoonStartPoint {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Space in between
+            SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+
             // Vertical coloured line
             Container(
               height: TextSizing.fontSizeText(context) * 2.5,
@@ -43,6 +46,7 @@ class AfternoonStartPoint {
             ),
 
             // Bus stop name container
+            Flexible(child:
             Container(
               width: MediaQuery.of(context).size.width * 0.35,
               color: isDarkMode
@@ -60,7 +64,7 @@ class AfternoonStartPoint {
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Roboto',
                   ),
-                ),
+                ),),
               ),
             ),
 
@@ -68,6 +72,7 @@ class AfternoonStartPoint {
             SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
             // Upcoming bus time container
+            Flexible(child:
             Container(
               width: MediaQuery.of(context).size.width * 0.275,
               color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
@@ -85,7 +90,7 @@ class AfternoonStartPoint {
                     fontFamily: 'Roboto',
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
-                ),
+                ),),
               ),
             ),
 
@@ -93,6 +98,7 @@ class AfternoonStartPoint {
             SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
             // Next-next bus time container
+            Flexible(child:
             Container(
               width: MediaQuery.of(context).size.width * 0.275,
               color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
@@ -109,8 +115,11 @@ class AfternoonStartPoint {
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
-              ),
+              ),),
             ),
+
+            // Space in between
+            SizedBox(width: MediaQuery.of(context).size.width * 0.02),
           ],
         ),
 
@@ -226,8 +235,13 @@ class AfternoonStartPoint {
                 mainAxisAlignment:
                     MainAxisAlignment.center, // Distributes items evenly
                 children: [
+                  // Space before
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.02),
+
+                  //Size of bar on left
                   SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
+                  Flexible(child:
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.35,
                     child: Text(
@@ -239,10 +253,12 @@ class AfternoonStartPoint {
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
                     ),
-                  ),
+                  ),),
 
+                  // Space in between
                   SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
+                  Flexible(child:
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.275,
                     child: Text(
@@ -253,11 +269,13 @@ class AfternoonStartPoint {
                         fontSize: TextSizing.fontSizeMiniText(context),
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
-                    ),
+                    ),),
                   ),
 
+                  // Space in between
                   SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
+                  Flexible(child:
                   SizedBox(
                     width: MediaQuery.of(context).size.width * 0.275,
                     child: Text(
@@ -268,8 +286,11 @@ class AfternoonStartPoint {
                         fontSize: TextSizing.fontSizeMiniText(context),
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
-                    ),
+                    ),),
                   ),
+
+                  // Space after
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.02),
                 ],
               ),
               // Space in between rows

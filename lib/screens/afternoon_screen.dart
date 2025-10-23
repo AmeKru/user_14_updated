@@ -5,6 +5,7 @@ import 'dart:math'; //
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/foundation.dart';
+
 // Flutter UI framework
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart'; // Local bus data helper
@@ -47,6 +48,7 @@ class AfternoonScreen extends StatefulWidget {
   final Function(int)
   updateSelectedBox; // Callback to parent when selection changes
   const AfternoonScreen({required this.updateSelectedBox, super.key});
+
   @override
   State<AfternoonScreen> createState() => _AfternoonScreenState();
 }
@@ -732,8 +734,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       'bookedTripIndexCLE': bookedTripIndexCLE,
       'busStop': booking.busStop,
       'busIndex': booking.busIndex,
-      'bookedDepartureTime': booking
-          .departure, // must be DateTime or null (saveBookingData requires DateTime)
+      'bookedDepartureTime': booking.departure,
+      // must be DateTime or null (saveBookingData requires DateTime)
     };
 
     if (kDebugMode) safePrint('Attempting to save booking to prefs: $prefsMap');
@@ -1321,6 +1323,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Displays trip number, time, station, and bus stop.
 
   void showBookingConfirmationDialog(BuildContext context) {
+    final ScrollController scrollControllerForScrollbar = ScrollController();
     showDialog(
       context: context,
       builder: (_) {
@@ -1377,54 +1380,63 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                   ),
                 ),
                 SizedBox(height: TextSizing.fontSizeHeading(context)),
-
-                SingleChildScrollView(
-                  child: ListBody(
-                    children: [
-                      // Trip number display
-                      BookingConfirmationText(
-                        label: 'Trip:',
-                        // safe trip display: use local indices but guard null
-                        value:
-                            '${(selectedBox == 1 ? bookedTripIndexKAP : bookedTripIndexCLE) != null ? (selectedBox == 1 ? bookedTripIndexKAP! + 1 : bookedTripIndexCLE! + 1) : '-'}',
-                        size: 0.60,
-                        darkText: isDarkMode ? false : true,
+                Flexible(
+                  child: Scrollbar(
+                    controller: scrollControllerForScrollbar,
+                    thumbVisibility: true,
+                      child: ListBody(
+                        children: [
+                          // Trip number display
+                          BookingConfirmationText(
+                            label: 'Trip:',
+                            // safe trip display: use local indices but guard null
+                            value:
+                                '${(selectedBox == 1 ? bookedTripIndexKAP : bookedTripIndexCLE) != null ? (selectedBox == 1 ? bookedTripIndexKAP! + 1 : bookedTripIndexCLE! + 1) : '-'}',
+                            size: 0.60,
+                            darkText: isDarkMode ? false : true,
+                          ),
+                          SizedBox(
+                            height: TextSizing.fontSizeMiniText(context),
+                          ),
+                          // Departure time display
+                          BookingConfirmationText(
+                            label: 'Time:',
+                            value: bookedDepartureTime != null
+                                ? formatTime(bookedDepartureTime!)
+                                : '-',
+                            size: 0.60,
+                            darkText: isDarkMode ? false : true,
+                          ),
+                          SizedBox(
+                            height: TextSizing.fontSizeMiniText(context),
+                          ),
+                          // Station name display
+                          BookingConfirmationText(
+                            label: 'Station:',
+                            value: selectedBox == 1
+                                ? 'KAP'
+                                : selectedBox == 2
+                                ? 'CLE'
+                                : '-',
+                            size: 0.60,
+                            darkText: isDarkMode ? false : true,
+                          ),
+                          SizedBox(
+                            height: TextSizing.fontSizeMiniText(context),
+                          ),
+                          // Bus stop display
+                          BookingConfirmationText(
+                            label: 'Bus Stop:',
+                            value: selectedBusStop.isNotEmpty
+                                ? selectedBusStop
+                                : '-',
+                            size: 0.60,
+                            darkText: isDarkMode ? false : true,
+                          ),
+                        ],
                       ),
-                      SizedBox(height: TextSizing.fontSizeMiniText(context)),
-                      // Departure time display
-                      BookingConfirmationText(
-                        label: 'Time:',
-                        value: bookedDepartureTime != null
-                            ? formatTime(bookedDepartureTime!)
-                            : '-',
-                        size: 0.60,
-                        darkText: isDarkMode ? false : true,
-                      ),
-                      SizedBox(height: TextSizing.fontSizeMiniText(context)),
-                      // Station name display
-                      BookingConfirmationText(
-                        label: 'Station:',
-                        value: selectedBox == 1
-                            ? 'KAP'
-                            : selectedBox == 2
-                            ? 'CLE'
-                            : '-',
-                        size: 0.60,
-                        darkText: isDarkMode ? false : true,
-                      ),
-                      SizedBox(height: TextSizing.fontSizeMiniText(context)),
-                      // Bus stop display
-                      BookingConfirmationText(
-                        label: 'Bus Stop:',
-                        value: selectedBusStop.isNotEmpty
-                            ? selectedBusStop
-                            : '-',
-                        size: 0.60,
-                        darkText: isDarkMode ? false : true,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
