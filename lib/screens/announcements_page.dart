@@ -164,13 +164,13 @@ class NewsAnnouncement extends StatelessWidget {
       ),
       body: Container(
         color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
-        child: Column(
+        child: SafeArea(child: Column(
           children: [
             SizedBox(height: TextSizing.fontSizeText(context)),
             NewsAnnouncementWidget(),
           ],
         ),
-      ),
+      ),),
     );
   }
 }

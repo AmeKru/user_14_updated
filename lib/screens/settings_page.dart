@@ -64,7 +64,7 @@ class _SettingsState extends State<Settings> {
       backgroundColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
       body: Padding(
         padding: EdgeInsets.all(TextSizing.fontSizeHeading(context)),
-        child: Row(
+        child: SafeArea(child:  Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Text
@@ -141,7 +141,7 @@ class _SettingsState extends State<Settings> {
             ),
           ],
         ),
-      ),
+      ),),
     );
   }
 }

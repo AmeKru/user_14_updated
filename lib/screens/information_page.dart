@@ -86,7 +86,7 @@ class _InformationPageState extends State<InformationPage> {
         color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
         width: double.infinity,
         height: double.infinity,
-        child: _isLoading
+        child:SafeArea(child:  _isLoading
             ? Center(child: LoadingScreen())
             : SingleChildScrollView(
                 child: Padding(
@@ -112,7 +112,7 @@ class _InformationPageState extends State<InformationPage> {
                       ),
 
                       _buildScheduleSection(
-                        TextSizing.isTablet(context)
+                        TextSizing.isTabletOrLandscapeMode(context)
                             ? 'King Albert Park MRT Station to NP Campus'
                             : 'KAP MRT Station to NP Campus',
                         busData.arrivalTimeKAP,
@@ -120,7 +120,7 @@ class _InformationPageState extends State<InformationPage> {
                       ),
                       SizedBox(height: TextSizing.fontSizeText(context) * 2),
                       _buildScheduleSection(
-                        TextSizing.isTablet(context)
+                        TextSizing.isTabletOrLandscapeMode(context)
                             ? 'Clementi MRT Station (CLE) to NP Campus'
                             : 'CLE MRT Station to NP Campus',
                         busData.arrivalTimeCLE,
@@ -157,7 +157,7 @@ class _InformationPageState extends State<InformationPage> {
                       ),
 
                       _buildScheduleSection(
-                        TextSizing.isTablet(context)
+                        TextSizing.isTabletOrLandscapeMode(context)
                             ? 'NP Campus to King Albert Park MRT Station (KAP)'
                             : 'NP Campus to KAP MRT Station',
                         busData.departureTimeKAP,
@@ -165,7 +165,7 @@ class _InformationPageState extends State<InformationPage> {
                       ),
                       SizedBox(height: TextSizing.fontSizeText(context) * 2),
                       _buildScheduleSection(
-                        TextSizing.isTablet(context)
+                        TextSizing.isTabletOrLandscapeMode(context)
                             ? 'NP Campus to Clementi MRT Station (CLE)'
                             : 'NP Campus to CLE MRT Station',
                         busData.departureTimeCLE,
@@ -176,7 +176,7 @@ class _InformationPageState extends State<InformationPage> {
                   ),
                 ),
               ),
-      ),
+      ),),
     );
   }
 
@@ -234,9 +234,9 @@ class _InformationPageState extends State<InformationPage> {
       rows.add(
         _buildTableRow([
           'Trip',
-          TextSizing.isTablet(context) ? 'Bus A Departure Time' : 'Bus A',
+          TextSizing.isTabletOrLandscapeMode(context) ? 'Bus A Departure Time' : 'Bus A',
           'Trip',
-          TextSizing.isTablet(context) ? 'Bus B Departure Time' : 'Bus B',
+          TextSizing.isTabletOrLandscapeMode(context) ? 'Bus B Departure Time' : 'Bus B',
         ], 0),
       );
 
@@ -254,7 +254,7 @@ class _InformationPageState extends State<InformationPage> {
       rows.add(
         _buildTableRow([
           'Trip',
-          TextSizing.isTablet(context) ? 'Bus A Departure Time' : 'Bus A',
+          TextSizing.isTabletOrLandscapeMode(context) ? 'Bus A Departure Time' : 'Bus A',
         ], 0),
       );
 

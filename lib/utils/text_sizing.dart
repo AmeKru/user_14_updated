@@ -5,9 +5,10 @@ import 'dart:io';
 
 
 class TextSizing {
-  static bool isTablet(BuildContext context) {
+  static bool isTabletOrLandscapeMode(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
-    return shortestSide >= 600;
+    final landscapeMode = MediaQuery.of(context).orientation == Orientation.landscape ;
+    return shortestSide >= 600 || landscapeMode;
   }
 
   static double widestSide(BuildContext context) {

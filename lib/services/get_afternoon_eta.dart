@@ -209,7 +209,7 @@ class AfternoonStartPoint {
                     TextSizing.fontSizeMiniText(context),
                   ),
                   child: Text(
-                    TextSizing.isTablet(context)
+                    TextSizing.isTabletOrLandscapeMode(context)
                         ? 'Estimated Time of Arrival at Bus Stops'
                         : 'ETAs at Bus Stops',
                     softWrap: true,

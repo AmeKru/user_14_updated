@@ -380,7 +380,7 @@ class BookingServiceState extends State<BookingService> {
                 children: [
                   Expanded(
                     child: Text(
-                      TextSizing.isTablet(context)
+                      TextSizing.isTabletOrLandscapeMode(context)
                           ? '* Departure time stated refers to bus stop at entrance (ENT). Check below for more information about the other stops.'
                           : '* Departure time stated refers to bus stop at entrance (ENT).\nCheck below for more information about the other stops.',
                       textAlign: TextAlign.center,
