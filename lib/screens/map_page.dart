@@ -553,7 +553,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             polylines: [
               Polyline(
                 points: routePoints,
-                color: isDarkMode ? Colors.cyan : Colors.blue[600]!,
+                color: isDarkMode ? Colors.cyan : Colors.lightBlue[800]!,
                 strokeWidth: TextSizing.fontSizeText(context) * 0.25,
                 pattern: StrokePattern.dashed(
                   segments: [
@@ -772,7 +772,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             top: Radius.circular(TextSizing.fontSizeText(context)),
           ),
           color: isDarkMode ? Colors.blueGrey[900]! : Colors.lightBlue[50]!,
-          onPanelOpened: () => setState(() => ignoring = true),
+          onPanelOpened: () {
+            setState(() => ignoring = true);
+          },
           onPanelClosed: () {
             setState(() => ignoring = false);
             // Reset scroll position when panel closes
