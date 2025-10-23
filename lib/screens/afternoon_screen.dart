@@ -5,7 +5,6 @@ import 'dart:math'; //
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/foundation.dart';
-
 // Flutter UI framework
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart'; // Local bus data helper
@@ -1384,7 +1383,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                   child: Scrollbar(
                     controller: scrollControllerForScrollbar,
                     thumbVisibility: true,
-                      child: ListBody(
+                    child: SingleChildScrollView(
+                      controller: scrollControllerForScrollbar,
+                      child: Column(
                         children: [
                           // Trip number display
                           BookingConfirmationText(
@@ -1437,6 +1438,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                       ),
                     ),
                   ),
+                ),
               ],
             ),
           ),
