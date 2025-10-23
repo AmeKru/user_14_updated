@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/global.dart';
 import 'package:user_14_updated/utils/get_time.dart';
@@ -52,13 +51,15 @@ class CalculateMorningBus {
                         Icons.directions_bus,
                         size: TextSizing.fontSizeHeading(context),
                         color: eta.isNotEmpty
-                            ? (isDarkMode ? Colors.cyanAccent : Colors.black)
+                            ? (isDarkMode
+                                  ? Colors.cyanAccent
+                                  : Color(0xff014689))
                             : (isDarkMode
                                   ? Colors.blueGrey[300]
                                   : Colors.grey[600]),
                       ),
                       Text(
-                        eta.isNotEmpty ? '$text $eta minutes' : text,
+                        eta.isNotEmpty ? '$text $eta min' : text,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
@@ -116,10 +117,11 @@ class CalculateMorningBus {
       currentTime.minute,
     );
 
-    if (kDebugMode) {
-      print('Current Time: $currentTime');
-      print('Bus Timing List: $busArrivalTimes');
-    }
+    // TODO: make it so these are only printed every minute or so
+    //if (kDebugMode) {
+    //  print('Current Time: $currentTime');
+    //  print('Bus Timing List: $busArrivalTimes');
+    //}
 
     // Filter to only upcoming bus times
     final upcomingArrivalTimes = busArrivalTimes

@@ -59,11 +59,11 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   int secondsElapsed = 0;
   Timer? _clockTimer;
 
-  // Removed local SharedPreferenceService to avoid duplicated writes
-  // final SharedPreferenceService prefsService = SharedPreferenceService();
-
   // Added loading flag to track time fetch status
   bool _loading = true;
+
+  // If trip has started/was in the past no cancel option should be given
+  bool canCancel = true;
 
   @override
   void initState() {
@@ -311,14 +311,20 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 
   @override
   Widget build(BuildContext context) {
-    // Determine which booked trip index to use based on the selected box:
-    // If selectedBox == 1, use KAP index; otherwise, use CLE index.
+    // Determine which booked trip index to use based on the selected box:// If selectedBox == 1, use KAP index; otherwise, use CLE index.
+
     final int? bookedTripIndex = widget.selectedBox == 1
         ? widget.bookedTripIndexKAP
         : widget.bookedTripIndexCLE;
 
     // Retrieve the booked departure time passed from parent.
     final DateTime? bookedTime = widget.bookedDepartureTime;
+
+    // Determine whether cancel button should be shown: only if bookedTime is in the future compared to timeNow
+    final DateTime now = DateTime.now();
+    canCancel = bookedTime != null
+        ? bookedTime.isAfter(now) || bookedTime.isAtSameMomentAs(now)
+        : false;
 
     // Determine the station name based on the selected box.
     final String station = widget.selectedBox == 1
@@ -337,8 +343,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 
     // Determine card color with null-safe fallback
     final Color cardColor =
-        generateColor(bookedTime, bookedTripIndex ?? 0) ??
-        (isDarkMode ? Colors.blueGrey[800]! : Colors.white);
+        generateColor(bookedTime, bookedTripIndex ?? 0) ?? Colors.white;
 
     // Guard: if there is no booked trip index or booked time, show a friendly empty state
     if (bookedTripIndex == null || bookedTime == null) {
@@ -408,6 +413,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
             station: station,
             busStop: widget.busStop ?? '', // Fallback to empty string if null
             color: cardColor, // Dynamic background color with fallback
+            canCancel: canCancel,
             onCancel: showCancelDialog, // Show cancel confirmation dialog
             // Note: onCancel is synchronous dialog trigger; parent will handle async persistence
           ),
@@ -432,6 +438,7 @@ class _BookingDetailsCard extends StatelessWidget {
   final String station; // Station name (KAP or CLE)
   final String busStop; // Bus stop name
   final Color? color; // Background color for the card
+  final bool? canCancel;
   final VoidCallback onCancel; // Callback for cancel button
 
   const _BookingDetailsCard({
@@ -440,6 +447,7 @@ class _BookingDetailsCard extends StatelessWidget {
     required this.station,
     required this.busStop,
     required this.color,
+    required this.canCancel,
     required this.onCancel,
   });
 
@@ -454,12 +462,6 @@ class _BookingDetailsCard extends StatelessWidget {
         ? '${bookedTime!.hour.toString().padLeft(2, '0')}:${bookedTime!.minute.toString().padLeft(2, '0')}'
         : '-';
     final String stopLabel = busStop.isNotEmpty ? busStop : '-';
-
-    // Determine whether cancel button should be shown: only if bookedTime is in the future compared to timeNow
-    final DateTime now = DateTime.now();
-    final bool canCancel = bookedTime != null
-        ? bookedTime!.isAfter(now) || bookedTime!.isAtSameMomentAs(now)
-        : false;
 
     return Padding(
       padding: EdgeInsets.all(
@@ -563,35 +565,33 @@ class _BookingDetailsCard extends StatelessWidget {
                       top: TextSizing.fontSizeText(context),
                       bottom: TextSizing.fontSizeText(context) * 1.5,
                     ),
-
-                    // TODO: remove option to cancel after trip has started
-                    child: canCancel
-                        ? ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              elevation: 0,
-                              backgroundColor: Colors
-                                  .blueGrey[900], // Button background color
-                              foregroundColor:
-                                  Colors.white, // Text (and icon) color
-                            ),
-                            onPressed: onCancel, // Trigger cancel dialog
-                            child: Padding(
-                              padding: EdgeInsets.all(
-                                TextSizing.fontSizeText(context) * 0.33,
-                              ),
-                              child: Text(
-                                'Cancel',
-                                maxLines: 1, //  limits to 1 lines
-                                overflow: TextOverflow
-                                    .ellipsis, // clips text if not fitting
-                                style: TextStyle(
-                                  fontSize: TextSizing.fontSizeText(context),
-                                  fontFamily: 'Roboto',
-                                ),
-                              ),
-                            ),
-                          )
-                        : const SizedBox(),
+                    // if trip has already started, cannot cancel anymore
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor:
+                            Colors.blueGrey[900], // Button background color
+                        foregroundColor: Colors.white, // Text (and icon) color
+                      ),
+                      onPressed: canCancel == true
+                          ? onCancel // Trigger cancel dialog
+                          : null, // grey out button if trip already started
+                      child: Padding(
+                        padding: EdgeInsets.all(
+                          TextSizing.fontSizeText(context) * 0.33,
+                        ),
+                        child: Text(
+                          canCancel == true ? 'Cancel' : 'Have a good trip! [:',
+                          maxLines: 1, //  limits to 1 lines
+                          overflow: TextOverflow
+                              .ellipsis, // clips text if not fitting
+                          style: TextStyle(
+                            fontSize: TextSizing.fontSizeText(context),
+                            fontFamily: 'Roboto',
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),

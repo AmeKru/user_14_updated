@@ -39,7 +39,7 @@ class AfternoonStartPoint {
             Container(
               height: TextSizing.fontSizeText(context) * 2.5,
               width: MediaQuery.of(context).size.width * 0.01,
-              color: isDarkMode ? Colors.cyanAccent : Colors.blue,
+              color: isDarkMode ? Colors.cyanAccent : Colors.lightBlue[600],
             ),
 
             // Bus stop name container

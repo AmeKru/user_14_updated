@@ -24,7 +24,13 @@ import 'package:uuid/uuid.dart';
 ////////////////////////////////////////////////////////////////////////////////
 // enum to check what BookingStatus the booking has
 
-enum BookingStatus { unknown, noBooking, validBooking, invalidBooking }
+enum BookingStatus {
+  unknown,
+  noBooking,
+  validBooking,
+  invalidBooking,
+  oldBooking,
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -99,10 +105,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   @override
   void initState() {
     super.initState();
+    _isRefreshing = false;
     selectedBox = selectedMRT; // sync with global if needed
     WidgetsBinding.instance.addObserver(this);
 
     // Initialize the future once and cache it
+    confirmationPressed = false;
     futureBookingData = prefsService.getBookingData();
 
     // Defer running the restore check until after the first frame so setState
@@ -111,9 +119,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       // don't await here; we spawn the async task safely
       _loadAndCheckIfSavedBookingValid();
     });
-
-    loadInitialData();
-    _restartPolling();
 
     if (_busDataListener != null) {
       _busData.removeListener(_busDataListener!);
@@ -125,6 +130,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       _refreshTrips(); // unified refresh
     };
     _busData.addListener(_busDataListener!);
+    // TODO: CHECK IF OK!!!! TOMORROW and if booking CLE TRIP 4 is gone!!
+    loadInitialData();
+    _restartPolling();
 
     if (kDebugMode) {
       print("TimeNow ready: $timeNow");
@@ -188,6 +196,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       if (kDebugMode) print("Error stopping polling before restart: $e\n$st");
     }
     _busData.startPolling(interval: const Duration(seconds: 30));
+    if (kDebugMode) print("started Polling");
   }
 
   Future<void> loadInitialData() async {
@@ -262,30 +271,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   //////////////////////////////////////////////////////////////////////////////
 
   ///  /////////////////////////////////////////////////////////////////////////
-  /// --- Amplify and Creating Booking ---
+  /// --- Creating Booking ---
   ///  /////////////////////////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Configures Amplify with DataStore and API plugins.
-  // Uses the generated amplifyconfiguration.dart file.
-
-  //Future<void> _configureAmplify() async {
-  //try {
-  //if (!Amplify.isConfigured) {
-  //final provider = ModelProvider();
-  // Amplify.addPlugin(AmplifyDataStore(modelProvider: provider));
-  // Amplify.addPlugin(
-  //  AmplifyAPI(options: APIPluginOptions(modelProvider: provider)),
-  // );
-  // await Amplify.configure(amplifyconfig);
-  // if (kDebugMode) print('Amplify configured');
-  //  }
-  //  } catch (e, st) {
-  //  if (kDebugMode) {
-  //  print('Amplify configuration error: $e\n$st');
-  //}
-  // }
-  //}
 
   //////////////////////////////////////////////////////////////////////////////
   // Creates a booking record in the backend via Amplify API.
@@ -446,35 +433,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     // Load booking status (ensure this call also populates any local booking fields like bookedDepartureTime)
     _bookingStatus = await _loadAndCheckIfSavedBookingValid();
 
-    // Capture a single reference to "now" for consistent comparisons in this method
-    final now = DateTime.now();
-
     switch (_bookingStatus) {
       case BookingStatus.validBooking:
-        // Booking is fine, but check if departure has already passed
-        if (bookedDepartureTime != null && bookedDepartureTime!.isBefore(now)) {
-          if (kDebugMode) print('Booking has expired → invalid');
-
-          // Mark invalid and ensure we set the clearing guard synchronously
-          _bookingStatus = BookingStatus.invalidBooking;
-          if (!_isClearingBooking) _isClearingBooking = true;
-
-          try {
-            await _deleteLocalBookingAndNotify(
-              message: 'Your booking has expired',
-            );
-          } finally {
-            _isClearingBooking = false;
-          }
-
-          if (!mounted) return;
-          setState(() => selectedBox = 0);
-          widget.updateSelectedBox(selectedBox);
-        }
+        // Booking is fine, do nothing
         break;
 
       case BookingStatus.invalidBooking:
-        // Cleanup if booking is invalid or old
+        // Cleanup if booking is invalid
         if (!_isClearingBooking) _isClearingBooking = true;
         try {
           final success = await deleteBookingOnServerByID();
@@ -487,6 +452,27 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             _showAsyncSnackBar(
               'Could not delete booking on server. Please try again later.',
             );
+          }
+        } catch (e) {
+          if (kDebugMode) print('Error deleting booking on server: $e');
+        } finally {
+          _isClearingBooking = false;
+        }
+
+        if (!mounted) return;
+        setState(() => selectedBox = 0);
+        widget.updateSelectedBox(selectedBox);
+        break;
+
+      case BookingStatus.oldBooking:
+        // Cleanup if booking is old
+        if (!_isClearingBooking) _isClearingBooking = true;
+        try {
+          final success = await deleteBookingOnServerByID();
+          if (success == true) {
+            await _deleteLocalBookingAndNotify(message: '');
+          } else {
+            if (!mounted) return;
           }
         } catch (e) {
           if (kDebugMode) print('Error deleting booking on server: $e');
@@ -812,7 +798,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       final currentDate = DateTime(today.year, today.month, today.day);
       if (bookingDate.isBefore(currentDate)) {
         if (kDebugMode) print('Booking is from a past date → invalid');
-        return BookingStatus.invalidBooking;
+        return BookingStatus.oldBooking;
       }
     }
 
@@ -841,7 +827,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                     map['TripNo'] - 1 < 0 ||
                     map['TripNo'] - 1 >= list.length)
                 ? null
-                : list[map['TripNo']];
+                : list[map['TripNo'] - 1];
 
             // Defer state mutation until after the current build frame
             if (!mounted) return BookingStatus.validBooking;
@@ -932,6 +918,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     }
 
     // If no server id present but some local data exists, treat as invalid (or unknown per your policy)
+    if (kDebugMode) {
+      print('Invalid Booking. Could not find booking ID on server.');
+    }
     return BookingStatus.invalidBooking;
   }
 

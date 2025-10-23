@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
@@ -125,7 +126,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     busStopB37,
     betweenB37AndMAP,
     busStopMAP,
-    //TODO: something wrong with MAP to HSC??? need to check
     busStopHSC,
     betweenHSCAndLCT,
     busStopLCT,
@@ -141,7 +141,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     busStopB37,
     betweenB37AndMAP,
     busStopMAP,
-    //TODO: something wrong with MAP to HSC??? need to check
     busStopHSC,
     betweenHSCAndLCT,
     busStopLCT,
@@ -298,6 +297,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   // the Time (am or pm) and then loads the corresponding Routes
 
   void updateSelectedBox(int selectedBox) {
+    now =
+        DateTime.now(); // update current time now, so that routes will be shown correctly
     setState(() {
       this.selectedBox = selectedBox;
       if (selectedBox == 1) {
@@ -312,12 +313,21 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         busIndex = 0;
       }
     });
+    if (kDebugMode) {
+      print(
+        'updated selectedBox to $selectedBox - time now hour: ${now.hour} ',
+      );
+    }
   }
 
   ///////////////////////////////////////////////////////////////
   // function to be able to draw the route on the map
 
   Future<void> fetchRoute(List<LatLng> waypoints) async {
+    // Debug print to check if it works as it should
+    if (kDebugMode) {
+      print('fetching route $waypoints');
+    }
     // reformatting into String so one can use for osrm
     String waypointsStr = waypoints
         .map((p) => '${p.longitude},${p.latitude}')
