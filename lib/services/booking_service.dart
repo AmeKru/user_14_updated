@@ -135,12 +135,6 @@ class BookingServiceState extends State<BookingService> {
   void initState() {
     super.initState();
     bookingCounts = {};
-    // Prime initial load immediately
-    _updateBookingCounts();
-    // Poll every 10 seconds (reduced from 1s to avoid excessive requests)
-    //_timer = Timer.periodic(const Duration(seconds: 10), (timer) {
-    //  _updateBookingCounts();
-    // });
     confirmingBooking = false;
   }
 
@@ -153,6 +147,7 @@ class BookingServiceState extends State<BookingService> {
 
   // Fetches booking counts for all departure times and updates state.
   Future<void> _updateBookingCounts() async {
+    confirmingBooking = false;
     if (_updating) return; // avoid overlapping calls
     _updating = true;
 
@@ -688,7 +683,7 @@ class BookingServiceState extends State<BookingService> {
                                   ),
                                   // === Booking Checkbox Icon ===
                                   GestureDetector(
-                                    onTap: isFull
+                                    onTap: (isFull || count == null)
                                         ? null // Disable tap if full
                                         : () {
                                             if (!isFull) {

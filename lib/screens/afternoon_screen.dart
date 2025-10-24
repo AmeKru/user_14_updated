@@ -101,14 +101,19 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // guard to prevent multiple refreshes at once
   bool _isRefreshing = false;
 
+  // to prevent loading UI before checking everything else
+  bool loadingInitialData = false;
+
   //////////////////////////////////////////////////////////////////////////////
   // Init function (called when first built)
   @override
   void initState() {
     super.initState();
-    _isRefreshing = false;
-    selectedBox = selectedMRT; // sync with global if needed
     WidgetsBinding.instance.addObserver(this);
+
+    _isRefreshing = false;
+    loadingInitialData = true;
+    selectedBox = selectedMRT; // sync with global if needed
 
     // Initialize the future once and cache it
     confirmationPressed = false;
@@ -131,7 +136,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       _refreshTrips(); // unified refresh
     };
     _busData.addListener(_busDataListener!);
-    // TODO: CHECK IF OK!!!! TOMORROW and if booking CLE TRIP 4 is gone!!
     loadInitialData();
     _restartPolling();
 
@@ -202,6 +206,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   Future<void> loadInitialData() async {
     await _waitForTimeAndCheckBooking();
+    loadingInitialData = false;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -437,6 +442,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     switch (_bookingStatus) {
       case BookingStatus.validBooking:
         // Booking is fine, do nothing
+        if (kDebugMode) print('Valid booking found, nothing to delete');
         break;
 
       case BookingStatus.invalidBooking:
@@ -462,7 +468,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
         if (!mounted) return;
         setState(() => selectedBox = 0);
-        widget.updateSelectedBox(selectedBox);
         break;
 
       case BookingStatus.oldBooking:
@@ -472,6 +477,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           final success = await deleteBookingOnServerByID();
           if (success == true) {
             await _deleteLocalBookingAndNotify(message: '');
+            if (kDebugMode) print('Deleted Old Booking');
           } else {
             if (!mounted) return;
           }
@@ -483,7 +489,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
         if (!mounted) return;
         setState(() => selectedBox = 0);
-        widget.updateSelectedBox(selectedBox);
         break;
 
       case BookingStatus.noBooking:
@@ -1663,116 +1668,134 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             SizedBox(height: TextSizing.fontSizeText(context)),
 
             // Only show booking UI if a station has been selected
-            if (currentBox != 0)
-              // If booking has already been confirmed → show BookingConfirmation widget
-              (confirmationPressed == true)
-                  ? BookingConfirmation(
-                      selectedBox: currentBox,
-                      bookedTripIndexKAP: bookedTripIndexKAP,
-                      bookedTripIndexCLE: bookedTripIndexCLE,
-                      bookedDepartureTime: bookedDepartureTime,
-                      busStop: selectedBusStop,
-                      onCancel: () async {
-                        // Cancel booking → reset confirmation state and delete booking if exists
-                        if (!mounted) return;
-                        setState(() => confirmationPressed = null);
-                        bool? deleted = await deleteBookingOnServerByID();
+            loadingInitialData
+                ? SizedBox()
+                : (currentBox != 0
+                      ?
+                        // If booking has already been confirmed → show BookingConfirmation widget
+                        (confirmationPressed == true)
+                            ? BookingConfirmation(
+                                selectedBox: currentBox,
+                                bookedTripIndexKAP: bookedTripIndexKAP,
+                                bookedTripIndexCLE: bookedTripIndexCLE,
+                                bookedDepartureTime: bookedDepartureTime,
+                                busStop: selectedBusStop,
+                                onCancel: () async {
+                                  // Cancel booking → reset confirmation state and delete booking if exists
+                                  if (!mounted) return;
+                                  setState(() => confirmationPressed = null);
+                                  bool? deleted =
+                                      await deleteBookingOnServerByID();
 
-                        if (deleted == true) {
-                          await _deleteLocalBookingAndNotify(
-                            message: 'Booking has been Cancelled.',
-                          );
-                          setState(() => confirmationPressed = false);
-                        } else {
-                          setState(() => confirmationPressed = true);
-                          _showAsyncSnackBar('Could not delete Booking.');
-                        }
-                        _isRefreshing ? null : _refreshTrips;
-                      },
-                    )
-                  // If booking not yet confirmed → show BookingService widget
-                  : (confirmationPressed == false)
-                  ? BookingService(
-                      key: _bookingKey,
-                      departureTimes: getDepartureTimes(currentBox),
-                      selectedBox: currentBox,
-                      bookedTripIndexKAP: bookedTripIndexKAP,
-                      bookedTripIndexCLE: bookedTripIndexCLE,
-                      updateBookingStatusKAP: updateBookingStatusKAP,
-                      updateBookingStatusCLE: updateBookingStatusCLE,
-                      countBooking: countBooking,
-                      showBusStopSelectionBottomSheet:
-                          showBusStopSelectionBottomSheet,
-                      selectedBusStop: selectedBusStop,
-                      onPressedConfirm: () async {
-                        if (kDebugMode) {
-                          print('confirming Booking...');
-                        }
-                        // Capture values synchronously to avoid races across awaits
-                        final boxAtTap = currentBox;
-                        final idx = boxAtTap == 1
-                            ? bookedTripIndexKAP
-                            : bookedTripIndexCLE;
-                        final selectedBusStopAtTap = selectedBusStop;
-                        final List<DateTime> list = getDepartureTimes();
-                        final stationAtTap = boxAtTap == 1
-                            ? 'KAP'
-                            : boxAtTap == 2
-                            ? 'CLE'
-                            : '';
+                                  if (deleted == true) {
+                                    await _deleteLocalBookingAndNotify(
+                                      message: 'Booking has been Cancelled.',
+                                    );
+                                    setState(() => confirmationPressed = false);
+                                  } else {
+                                    setState(() => confirmationPressed = true);
+                                    _showAsyncSnackBar(
+                                      'Could not delete Booking.',
+                                    );
+                                  }
+                                  _isRefreshing ? null : _refreshTrips;
+                                },
+                              )
+                            // If booking not yet confirmed → show BookingService widget
+                            : (confirmationPressed == false)
+                            ? BookingService(
+                                key: _bookingKey,
+                                departureTimes: getDepartureTimes(currentBox),
+                                selectedBox: currentBox,
+                                bookedTripIndexKAP: bookedTripIndexKAP,
+                                bookedTripIndexCLE: bookedTripIndexCLE,
+                                updateBookingStatusKAP: updateBookingStatusKAP,
+                                updateBookingStatusCLE: updateBookingStatusCLE,
+                                countBooking: countBooking,
+                                showBusStopSelectionBottomSheet:
+                                    showBusStopSelectionBottomSheet,
+                                selectedBusStop: selectedBusStop,
+                                onPressedConfirm: () async {
+                                  if (kDebugMode) {
+                                    print('confirming Booking...');
+                                  }
+                                  // Capture values synchronously to avoid races across awaits
+                                  final boxAtTap = currentBox;
+                                  final idx = boxAtTap == 1
+                                      ? bookedTripIndexKAP
+                                      : bookedTripIndexCLE;
+                                  final selectedBusStopAtTap = selectedBusStop;
+                                  final List<DateTime> list =
+                                      getDepartureTimes();
+                                  final stationAtTap = boxAtTap == 1
+                                      ? 'KAP'
+                                      : boxAtTap == 2
+                                      ? 'CLE'
+                                      : '';
 
-                        if (idx == null ||
-                            selectedBusStopAtTap.isEmpty ||
-                            stationAtTap.isEmpty) {
-                          _showAsyncSnackBar(
-                            'Please select a trip and bus stop.',
-                          );
-                          return;
-                        }
+                                  if (idx == null ||
+                                      selectedBusStopAtTap.isEmpty ||
+                                      stationAtTap.isEmpty) {
+                                    _showAsyncSnackBar(
+                                      'Please select a trip and bus stop.',
+                                    );
+                                    return;
+                                  }
 
-                        bookedDepartureTime = list[idx];
+                                  bookedDepartureTime = list[idx];
 
-                        bool? bookingValid = await createBooking(
-                          stationAtTap,
-                          idx + 1,
-                          selectedBusStopAtTap,
-                        );
+                                  bool? bookingValid = await createBooking(
+                                    stationAtTap,
+                                    idx + 1,
+                                    selectedBusStopAtTap,
+                                  );
 
-                        if (bookingValid != true) {
-                          _showAsyncSnackBar(
-                            'Could not book. Trip is already fully booked.',
-                          );
-                          setState(() {
-                            confirmationPressed = false;
-                          });
-                          return;
-                        }
-                        if (!mounted) return;
+                                  if (bookingValid != true) {
+                                    _showAsyncSnackBar(
+                                      'Could not book. Trip is already fully booked.',
+                                    );
+                                    setState(() {
+                                      confirmationPressed = false;
+                                      bookedTripIndexKAP = null;
+                                      bookedTripIndexCLE = null;
+                                      bookingID = null;
+                                      _bookingStatus = BookingStatus.noBooking;
+                                    });
 
-                        setState(() => confirmationPressed = true);
+                                    _isRefreshing ? null : _refreshTrips;
+                                    _bookingKey.currentState
+                                        ?.refreshFromParent();
+                                    return;
+                                  }
+                                  if (!mounted) return;
 
-                        // Capture the dialog function synchronously
-                        void showDialogFn() =>
-                            showBookingConfirmationDialog(context);
+                                  setState(() => confirmationPressed = true);
 
-                        if (!mounted) return;
-                        showDialogFn();
-                      },
-                    )
-                  : Column(
-                      children: [
-                        Text(
-                          'Cancelling Booking...',
-                          style: TextStyle(
-                            color: Colors.blueGrey[200],
-                            fontSize: TextSizing.fontSizeText(context),
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Roboto',
-                          ),
-                        ),
-                        LoadingScroll(),
-                      ],
-                    ),
+                                  // Capture the dialog function synchronously
+                                  void showDialogFn() =>
+                                      showBookingConfirmationDialog(context);
+
+                                  if (!mounted) return;
+                                  showDialogFn();
+                                },
+                              )
+                            : Column(
+                                children: [
+                                  Text(
+                                    'Cancelling Booking...',
+                                    style: TextStyle(
+                                      color: Colors.blueGrey[200],
+                                      fontSize: TextSizing.fontSizeText(
+                                        context,
+                                      ),
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Roboto',
+                                    ),
+                                  ),
+                                  LoadingScroll(),
+                                ],
+                              )
+                      : SizedBox()),
           ],
         );
       },

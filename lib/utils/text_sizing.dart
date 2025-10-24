@@ -1,14 +1,25 @@
-import 'package:flutter/widgets.dart';
-import 'package:flutter/material.dart';
 import 'dart:io';
 
-
+import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 class TextSizing {
   static bool isTabletOrLandscapeMode(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
-    final landscapeMode = MediaQuery.of(context).orientation == Orientation.landscape ;
+    final landscapeMode =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     return shortestSide >= 600 || landscapeMode;
+  }
+
+  static bool isLandscapeMode(BuildContext context) {
+    final landscapeMode =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    return landscapeMode;
+  }
+
+  static bool isTablet(BuildContext context) {
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    return shortestSide >= 600;
   }
 
   static double widestSide(BuildContext context) {

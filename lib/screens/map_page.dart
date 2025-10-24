@@ -42,7 +42,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   LatLng? currentLocation;
   double _heading = 0.0;
   List<LatLng> routePoints = [];
-  bool ignoring = false;
+  bool? ignoring = false;
   DateTime now = DateTime.now();
 
   // Bus1 data
@@ -366,7 +366,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       width: iconSize,
       //  define marker bounds
       height: iconSize,
-      alignment: Alignment.center,
       //  anchor the LatLng to the center
       child: Stack(
         fit: StackFit.expand, // children share the same bounds
@@ -554,6 +553,19 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 : null,
           ),
         ),
+
+        // so the map colours do not distract as much and one can see the route better
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: true,
+            child: Container(
+              color: isDarkMode
+                  ? Color.fromRGBO(0, 0, 0, 0.2)
+                  : Color.fromRGBO(255, 255, 255, 0.1), // 20% opacity
+            ),
+          ),
+        ),
+
         if (routePoints.isNotEmpty)
           PolylineLayer(
             polylines: [
@@ -696,13 +708,21 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
       // Circular Menu button
       child: CircularMenu(
+        toggleButtonBoxShadow: [
+          BoxShadow(
+            color: Colors.blueGrey.withAlpha(100), // ~45% opacity
+            blurRadius: 15, // how soft the shadow is
+            spreadRadius: 2, // how far it extends
+            offset: Offset(0, 0), // no offset = shadow all around
+          ),
+        ],
         toggleButtonMargin: 0,
         toggleButtonPadding: TextSizing.fontSizeMiniText(context),
         alignment: Alignment.topRight,
         radius: TextSizing.fontSizeText(context) * 4.5,
         toggleButtonSize: TextSizing.fontSizeText(context) * 3.75,
         toggleButtonColor: isDarkMode
-            ? Colors.blueGrey[500]
+            ? Colors.blueGrey[600]
             : const Color(0xff014689),
         toggleButtonIconColor: Colors.white,
         curve: Curves.easeInOut,
@@ -710,6 +730,14 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           // Information Page button
           CircularMenuItem(
             color: isDarkMode ? Colors.cyan : Colors.cyan[600],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blueGrey.withAlpha(100), // ~45% opacity
+                blurRadius: 15, // how soft the shadow is
+                spreadRadius: 2, // how far it extends
+                offset: Offset(0, 0), // no offset = shadow all around
+              ),
+            ],
             iconSize: TextSizing.fontSizeText(context) * 2.25,
             margin: TextSizing.fontSizeText(context),
             padding: TextSizing.fontSizeText(context) * 0.5,
@@ -724,6 +752,14 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           // Settings Page button
           CircularMenuItem(
             color: isDarkMode ? Colors.green[300] : Colors.green,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blueGrey.withAlpha(100), // ~45% opacity
+                blurRadius: 15, // how soft the shadow is
+                spreadRadius: 2, // how far it extends
+                offset: Offset(0, 0), // no offset = shadow all around
+              ),
+            ],
             iconSize: TextSizing.fontSizeText(context) * 2.25,
             margin: TextSizing.fontSizeText(context),
             padding: TextSizing.fontSizeText(context) * 0.5,
@@ -740,6 +776,14 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           // Announcement Page button
           CircularMenuItem(
             color: Color(0xfffeb041),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blueGrey.withAlpha(100), // ~45% opacity
+                blurRadius: 15, // how soft the shadow is
+                spreadRadius: 2, // how far it extends
+                offset: Offset(0, 0), // no offset = shadow all around
+              ),
+            ],
             iconSize: TextSizing.fontSizeText(context) * 2.25,
             margin: TextSizing.fontSizeText(context),
             padding: TextSizing.fontSizeText(context) * 0.5,
@@ -774,7 +818,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           minHeight: Platform.isAndroid
               ? TextSizing.fontSizeHeading(context) * 4.6
               : TextSizing.fontSizeHeading(context) * 4.2,
-          maxHeight: TextSizing.isTabletOrLandscapeMode(context) ? screenHeight * 0.95 : screenHeight*0.75,
+          maxHeight: TextSizing.isLandscapeMode(context)
+              ? (TextSizing.isTablet(context)
+                    ? screenHeight * 0.965
+                    : screenHeight * 0.975)
+              : screenHeight * 0.8,
           backdropEnabled: true,
           // dim background
           backdropOpacity: 0.5,
@@ -797,142 +845,174 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               );
             }
           },
+          onPanelSlide: (position) {
+            setState(() => ignoring = null);
+          },
+
           panelBuilder: (controller) {
             // Store the controller so we can use it in onPanelClosed
             _panelScrollController = controller;
 
-            return Padding( padding: EdgeInsetsGeometry.all(0), child: SafeArea(
-              top: false,
-              bottom: false,
-              left: true,
-              right: true,
-              child: Material(
-                elevation: 20,
-                color: isDarkMode
-                    ? Colors.blueGrey[700]
-                    : const Color(0xff014689),
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(TextSizing.fontSizeText(context)),
-                ),
-                child: Column(
-                  children: [
-                    // Header section with different background
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? Colors.blueGrey[700]
-                            : const Color(0xff014689), // header color
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(
-                            TextSizing.fontSizeText(context),
+            return Padding(
+              padding: EdgeInsetsGeometry.all(0),
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                left: true,
+                right: true,
+                child: Material(
+                  elevation: 20,
+                  color: isDarkMode
+                      ? Colors.blueGrey[700]
+                      : const Color(0xff014689),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(TextSizing.fontSizeText(context)),
+                  ),
+                  child: Column(
+                    children: [
+                      // Header section with different background
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? Colors.blueGrey[700]
+                              : const Color(0xff014689), // header color
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(
+                              TextSizing.fontSizeText(context),
+                            ),
                           ),
                         ),
-                      ),
-                      child: Column(
-                        children: [
-                          // Grab handle
-                          Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: TextSizing.fontSizeText(context) * 0.5,
-                            ),
-                            child: Container(
-                              width: TextSizing.fontSizeText(context) * 3,
-                              height: TextSizing.fontSizeText(context) * 0.2,
-                              decoration: BoxDecoration(
-                                color: isDarkMode
-                                    ? Colors.white54
-                                    : Colors.black26,
-                                borderRadius: BorderRadius.circular(
-                                  TextSizing.fontSizeText(context),
+                        child: Column(
+                          children: [
+                            // Grab handle
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical:
+                                    TextSizing.fontSizeText(context) * 0.5,
+                              ),
+                              child: Container(
+                                width: TextSizing.fontSizeText(context) * 3,
+                                height: TextSizing.fontSizeText(context) * 0.2,
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? Colors.white54
+                                      : Colors.black26,
+                                  borderRadius: BorderRadius.circular(
+                                    TextSizing.fontSizeText(context),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          // Title row with bus icon
-                          Padding(
-                            padding: EdgeInsets.all(
-                              TextSizing.fontSizeText(context) * 0.5,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.directions_bus,
-                                  color: Colors.white,
-                                  size: TextSizing.fontSizeHeading(context),
-                                ),
-                                SizedBox(
-                                  width: TextSizing.fontSizeText(context) * 0.5,
-                                ),
-                                Flexible(
-                                  child: Text(
-                                    'MooBus on-demand',
-                                    maxLines: 1,
-                                    // or more if you want multiple lines
-                                    overflow: TextOverflow.ellipsis,
-                                    // options: clip, ellipsis, fade
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: TextSizing.fontSizeHeading(
-                                        context,
+                            // Title row with bus icon
+                            Padding(
+                              padding: EdgeInsets.all(
+                                TextSizing.fontSizeText(context) * 0.5,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.directions_bus,
+                                    color: Colors.white,
+                                    size: TextSizing.fontSizeHeading(context),
+                                  ),
+                                  SizedBox(
+                                    width:
+                                        TextSizing.fontSizeText(context) * 0.5,
+                                  ),
+                                  Flexible(
+                                    child: Text(
+                                      'MooBus on-demand',
+                                      maxLines: 1,
+                                      // or more if you want multiple lines
+                                      overflow: TextOverflow.ellipsis,
+                                      // options: clip, ellipsis, fade
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: TextSizing.fontSizeHeading(
+                                          context,
+                                        ),
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'Montserrat',
                                       ),
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'Montserrat',
                                     ),
                                   ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Main body section
+                      Expanded(
+                        child: Container(
+                          color: isDarkMode
+                              ? Colors.blueGrey[900]
+                              : Colors.white,
+                          child: SingleChildScrollView(
+                            controller: controller,
+                            padding: EdgeInsets.only(
+                              bottom: MediaQuery.of(context).padding.bottom,
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                displayPage,
+                                SizedBox(
+                                  height: TextSizing.fontSizeText(context),
                                 ),
+                                NewsAnnouncementWidget(),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-
-                    // Main body section
-                    Expanded(
-                      child: Container(
-                        color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
-                        child: SingleChildScrollView(
-                          controller: controller,
-                          padding: EdgeInsets.only(
-                            bottom: MediaQuery.of(context).padding.bottom,
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              displayPage,
-                              SizedBox(
-                                height: TextSizing.fontSizeText(context),
-                              ),
-                              NewsAnnouncementWidget(),
-                            ],
-                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),),
+              ),
             );
           },
         ),
 
         // ===== TAP OVERLAY  =====
-        if (!ignoring)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: TextSizing.fontSizeHeading(context) * 3.5,
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: () {
-                _panelController.open();
-              },
-              child: const SizedBox.expand(),
-            ),
-          ),
+        (ignoring == false)
+            ? Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0, //  anchored to bottom
+                height: Platform.isAndroid
+                    ? TextSizing.fontSizeHeading(context) * 3.3
+                    : TextSizing.fontSizeHeading(context) * 2.9,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () => _panelController.open(),
+                  child: Container(color: Colors.transparent),
+                ),
+              )
+            : (ignoring == true)
+            ? Positioned(
+                left: 0,
+                right: 0,
+                top:
+                    screenHeight -
+                    (TextSizing.isLandscapeMode(context)
+                        ? (TextSizing.isTablet(context)
+                              ? screenHeight * 0.965
+                              : screenHeight * 0.975)
+                        : screenHeight * 0.8) +
+                    TextSizing.fontSizeText(context) *
+                        2, // towards top of the open panel
+                height: TextSizing.fontSizeHeading(context) * 1.5,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () => _panelController.close(),
+                  child: Container(color: Colors.transparent),
+                ),
+              )
+            : SizedBox(),
       ],
     );
   }
@@ -962,7 +1042,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             bottom: false,
             child: Stack(
               children: [
-                _buildCircularMenu(),
                 Padding(
                   padding: EdgeInsets.fromLTRB(
                     TextSizing.fontSizeText(context),
@@ -972,15 +1051,36 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   ),
                   child: Align(
                     alignment: Alignment.topLeft,
-                    child: SizedBox(width: TextSizing.fontSizeHeading(context) * 2.75,
-                      height: TextSizing.fontSizeHeading(context) * 2.75,
+                    child: Container(
+                      width: TextSizing.fontSizeHeading(context) * 2.9,
+                      height: TextSizing.fontSizeHeading(context) * 2.9,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blueGrey.withAlpha(
+                              100,
+                            ), // ~45% opacity
+                            blurRadius: 15, // how soft the shadow is
+                            spreadRadius: 2, // how far it extends
+                            offset: Offset(
+                              0,
+                              0,
+                            ), // no offset = shadow all around
+                          ),
+                        ],
+                      ),
                       child: ClipOval(
-                      child: Image.asset(
-                        'images/np_logo.png',
-                        fit: BoxFit.cover,
-                      ),),),
+                        child: Image.asset(
+                          'images/np_logo.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
+                  ),
                 ),
+                _buildCircularMenu(),
               ],
             ),
           ),
