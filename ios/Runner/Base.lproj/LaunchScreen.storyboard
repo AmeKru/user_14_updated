@@ -14,16 +14,44 @@
                         <viewControllerLayoutGuide type="bottom" id="xbc-2k-c8Z"/>
                     </layoutGuides>
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
-                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <subviews>
-                            <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" image="LaunchImage" translatesAutoresizingMaskIntoConstraints="NO" id="YRO-k0-Ey4">
-                            </imageView>
-                        </subviews>
-                        <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                        <constraints>
-                            <constraint firstItem="YRO-k0-Ey4" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="1a2-6s-vTC"/>
-                            <constraint firstItem="YRO-k0-Ey4" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="4X2-HB-R7a"/>
-                        </constraints>
+                      <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                      <subviews>
+                        <!-- Circle background drawn at runtime (white) -->
+                        <view opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="circle-1">
+                          <rect key="frame" x="107.0" y="326.0" width="160" height="160"/>
+                          <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                          <userDefinedRuntimeAttributes>
+                            <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
+                              <real key="value">80</real>
+                            </userDefinedRuntimeAttribute>
+                            <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
+                              <bool key="value">YES</bool>
+                            </userDefinedRuntimeAttribute>
+                          </userDefinedRuntimeAttributes>
+                        </view>
+
+                        <!-- Foreground app icon with transparent background -->
+                        <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" image="np_logo_launch_image" translatesAutoresizingMaskIntoConstraints="NO" id="icon-1">
+                          <rect key="frame" x="137.5" y="356.0" width="110" height="110"/>
+                        </imageView>
+                      </subviews>
+
+                      <!-- full-screen background color -->
+                      <color key="backgroundColor" red="0" green="0" blue="0" alpha="1" colorSpace="calibratedRGB"/>
+
+                      <constraints>
+                        <!-- Circle constraints -->
+                        <constraint firstItem="circle-1" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="c-circle-centerX"/>
+                        <constraint firstItem="circle-1" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="c-circle-centerY"/>
+                        <constraint firstItem="circle-1" firstAttribute="width" constant="160" id="c-circle-width"/>
+                        <constraint firstItem="circle-1" firstAttribute="height" constant="160" id="c-circle-height"/>
+
+                        <!-- Icon constraints -->
+                        <constraint firstItem="icon-1" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="c-icon-centerX"/>
+                        <constraint firstItem="icon-1" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="c-icon-centerY"/>
+                        <constraint firstItem="icon-1" firstAttribute="width" constant="110" id="c-icon-width"/>
+                        <constraint firstItem="icon-1" firstAttribute="height" constant="110" id="c-icon-height"/>
+                      </constraints>
                     </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
