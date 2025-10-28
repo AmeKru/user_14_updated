@@ -108,6 +108,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // to prevent multiple restarting poll all the time
   bool restartPolling = false;
 
+  // to prevent User from switching between boxes and UI being too slow to catch up
+  bool updatingSelectedBox = false;
+
   // used to check for AppLifeCycle
   AppLifecycleState? _previousAppLifecycleState;
   DateTime? _lastBackgroundAt;
@@ -1135,6 +1138,16 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // If the same box is tapped twice, it will be deselected.
 
   void updateSelectedBox(int box) {
+    if (updatingSelectedBox == true) {
+      if (kDebugMode) {
+        print('Tap ignored: updatingSelectedBox=$updatingSelectedBox');
+      }
+      return; // return if update is in progress to prevent wrong UI loads
+    }
+    setState(() {
+      updatingSelectedBox = true; // setting guard to true
+    });
+
     // Prevent interactions while a confirmation/cancel flow is in progress.
     // confirmationPressed is tri-state: true = confirmed, false = normal, null = cancelling.
     if (confirmationPressed != false) {
@@ -1159,20 +1172,22 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     // This ensures any refreshes or fetches that run after setState operate on the updated selection.
     setState(() {
       // Toggle behaviour: tapping the same box deselects it (resets to 0).
-      if (selectedBox == box) {
-        selectedBox = 0;
-        selectedMRT = 0;
-      } else {
-        selectedBox = box;
-        selectedMRT = box;
-      }
+      if (box != 0) {
+        if (selectedBox == box) {
+          selectedBox = 0;
+          selectedMRT = 0;
+        } else {
+          selectedBox = box;
+          selectedMRT = box;
+        }
 
-      if (kDebugMode) {
-        print('updated SelectedBox to $selectedBox in afternoon screen');
-      }
+        if (kDebugMode) {
+          print('updated SelectedBox to $selectedBox in afternoon screen');
+        }
 
-      // Notify parent of the new selectedBox value (keeps parent-child synchronized).
-      widget.updateSelectedBox(selectedBox);
+        // Notify parent of the new selectedBox value (keeps parent-child synchronized).
+        widget.updateSelectedBox(selectedBox);
+      }
     });
 
     // Kick off data refresh for the new selection after state update.
@@ -1223,6 +1238,19 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       if (kDebugMode) {
         print('selectedBox is 0; skipping booking service refresh');
       }
+    }
+    Future.delayed(Duration(seconds: 1), () {
+      // waits one second before freeing up guard to completely prevent loading issues
+      // (not too obvious to user as animation of loading takes similar amount of time)
+      setState(() {
+        updatingSelectedBox =
+            false; // setting guard to false when done updating
+      });
+    });
+    if (kDebugMode) {
+      print(
+        'finished updating selectedBox - now setting updatingSelectedBox to $updatingSelectedBox',
+      );
     }
   }
 
@@ -1695,7 +1723,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           // KAP selection box
           Expanded(
             child: GestureDetector(
-              onTap: () => updateSelectedBox(1), // Select KAP
+              onTap: () => updatingSelectedBox
+                  ? null
+                  : updateSelectedBox(1), // Select KAP
               child: BoxMRT(box: selectedBox, mrt: 'KAP'),
             ),
           ),
@@ -1705,7 +1735,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           // CLE selection box
           Expanded(
             child: GestureDetector(
-              onTap: () => updateSelectedBox(2), // Select CLE
+              onTap: () => updatingSelectedBox
+                  ? null
+                  : updateSelectedBox(2), // Select CLE
               child: BoxMRT(box: selectedBox, mrt: 'CLE'),
             ),
           ),
@@ -1934,7 +1966,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 _bookingStatus = BookingStatus.noBooking;
               });
 
-              if (!_isRefreshing) _refreshTrips();
+              updateSelectedBox(0);
               return;
             }
             if (!mounted) return;
