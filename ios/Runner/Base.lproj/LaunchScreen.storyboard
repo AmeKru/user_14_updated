@@ -17,18 +17,9 @@
                       <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                       <subviews>
                         <!-- Circle background drawn at runtime (white) -->
-                        <view opaque="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="circle-1">
+                        <imageView opaque="NO" contentMode="scaleAspectFill" image="circle_white" translatesAutoresizingMaskIntoConstraints="NO" id="circle-1">
                           <rect key="frame" x="107.0" y="326.0" width="160" height="160"/>
-                          <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
-                          <userDefinedRuntimeAttributes>
-                            <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
-                              <real key="value">80</real>
-                            </userDefinedRuntimeAttribute>
-                            <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
-                              <bool key="value">YES</bool>
-                            </userDefinedRuntimeAttribute>
-                          </userDefinedRuntimeAttributes>
-                        </view>
+                        </imageView>
 
                         <!-- Foreground app icon with transparent background -->
                         <imageView opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFit" image="np_logo_launch_image" translatesAutoresizingMaskIntoConstraints="NO" id="icon-1">
