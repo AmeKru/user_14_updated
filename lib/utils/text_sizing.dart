@@ -22,9 +22,10 @@ class TextSizing {
     return shortestSide >= 600;
   }
 
-  static double widestSide(BuildContext context) {
+  static double shortestSide(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    return size.width > size.height ? size.width : size.height;
+    return (size.width < size.height ? size.width : size.height) *
+        2; // check if works better
   }
 
   static double fontSizeText(
@@ -34,7 +35,7 @@ class TextSizing {
     bool respectAccessibility = true,
   }) {
     final baseFactor = Platform.isAndroid ? androidFactor : iphoneFactor;
-    double textFontSize = widestSide(context) * baseFactor;
+    double textFontSize = shortestSide(context) * baseFactor;
 
     if (respectAccessibility) {
       textFontSize = MediaQuery.of(context).textScaler.scale(textFontSize);

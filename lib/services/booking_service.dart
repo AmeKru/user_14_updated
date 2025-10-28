@@ -13,6 +13,7 @@ import 'package:user_14_updated/utils/text_sizing.dart';
 
 class BookingService extends StatefulWidget {
   // List of departure times for the currently selected station
+
   final List<DateTime> departureTimes;
 
   // Indicates which station is selected: 1 for KAP, otherwise CLE
@@ -375,7 +376,7 @@ class BookingServiceState extends State<BookingService> {
                 children: [
                   Expanded(
                     child: Text(
-                      TextSizing.isTabletOrLandscapeMode(context)
+                      TextSizing.isLandscapeMode(context)
                           ? '* Departure time stated refers to bus stop at entrance (ENT). Check below for more information about the other stops.'
                           : '* Departure time stated refers to bus stop at entrance (ENT).\nCheck below for more information about the other stops.',
                       textAlign: TextAlign.center,

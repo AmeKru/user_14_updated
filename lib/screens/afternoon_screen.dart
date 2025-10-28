@@ -59,7 +59,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       GlobalKey<BookingServiceState>();
 
   // Flag to prevent multiple confirmations
-  bool? confirmationPressed = false;
+  bool? confirmationPressed =
+      false; // null as state when booking is in process of being deleted
 
   // Currently selected MRT box index (0 = none)
   int selectedBox = 0;
@@ -104,6 +105,18 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // to prevent loading UI before checking everything else
   bool loadingInitialData = false;
 
+  // to prevent multiple restarting poll all the time
+  bool restartPolling = false;
+
+  // used to check for AppLifeCycle
+  AppLifecycleState? _previousAppLifecycleState;
+  DateTime? _lastBackgroundAt;
+  final Duration _resumeCooldown = const Duration(seconds: 2);
+  final Duration _inactivityStopDelay = const Duration(milliseconds: 900);
+
+  Timer? _inactivityStopTimer;
+  Timer? _lifecycleResetTimer;
+
   //////////////////////////////////////////////////////////////////////////////
   // Init function (called when first built)
   @override
@@ -132,11 +145,14 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
     // Make the listener a synchronous VoidCallback that spawns an async task.
     _busDataListener = () {
-      // Spawn the async handler without awaiting so the listener API remains sync.
       _refreshTrips(); // unified refresh
     };
     _busData.addListener(_busDataListener!);
     loadInitialData();
+    restartPolling = true;
+    if (kDebugMode) {
+      print('restartPolling in Init function set to true');
+    }
     _restartPolling();
 
     if (kDebugMode) {
@@ -150,43 +166,36 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   Future<void> _refreshTrips() async {
     if (!mounted || _isRefreshing) return;
-    setState(() => _isRefreshing = true);
-    if (kDebugMode) {
-      print('refreshing Trips');
-    }
-    _bookingKey.currentState?.refreshFromParent();
+    _isRefreshing = true;
+
+    if (kDebugMode) print('refreshing Trips');
+
     try {
       final previousStatus = _bookingStatus;
       _bookingStatus = await _loadAndCheckIfSavedBookingValid();
 
       if (_bookingStatus == BookingStatus.invalidBooking) {
-        // Avoid scheduling multiple cleanups: set guard synchronously first
-        if (_isClearingBooking) return;
-        _isClearingBooking = true;
-
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) {
+        if (!_isClearingBooking) {
+          _isClearingBooking = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            if (!mounted) return;
+            await _deleteLocalBookingAndNotify(
+              message: 'Your previously selected trip was removed',
+            );
             _isClearingBooking = false;
-            return;
-          }
-          // Run cleanup and ensure guard is cleared afterwards
-          _deleteLocalBookingAndNotify(
-            message: 'Your previously selected trip was removed',
-          ).whenComplete(() {
-            _isClearingBooking = false;
+            confirmationPressed = false;
           });
-        });
-        return;
-      }
-
-      if (previousStatus != _bookingStatus) {
-        setState(() {});
+        }
+      } else {
+        if (previousStatus != _bookingStatus && mounted) {
+          setState(() {});
+        }
       }
     } catch (e, st) {
       if (kDebugMode) print('Error refreshing trips: $e\n$st');
     } finally {
-      if (mounted) setState(() => _isRefreshing = false);
-      // Restart polling so the 30s interval resets after any refresh
+      _isRefreshing = false;
+      restartPolling = true;
       _restartPolling();
     }
   }
@@ -195,13 +204,21 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Polling control
 
   void _restartPolling() {
-    try {
-      _busData.stopPolling();
-    } catch (e, st) {
-      if (kDebugMode) print("Error stopping polling before restart: $e\n$st");
+    if (restartPolling == false) {
+      if (kDebugMode) {
+        print('restartPolling == false, wont restart polling');
+      }
+      return;
+    } else {
+      try {
+        _busData.stopPolling();
+      } catch (e, st) {
+        if (kDebugMode) print("Error stopping polling before restart: $e\n$st");
+      }
+      _busData.startPolling(interval: const Duration(seconds: 30));
+      if (kDebugMode) print("started Polling");
+      restartPolling = false;
     }
-    _busData.startPolling(interval: const Duration(seconds: 30));
-    if (kDebugMode) print("started Polling");
   }
 
   Future<void> loadInitialData() async {
@@ -227,6 +244,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       }
     }
     // stop polling when screen disposed
+
+    _inactivityStopTimer?.cancel();
+    _inactivityStopTimer = null;
+    _lifecycleResetTimer?.cancel();
+    _lifecycleResetTimer = null;
+    // cancel all timers when disposed
+
     super.dispose();
   }
 
@@ -236,42 +260,168 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Restart polling immediately
-      try {
-        _restartPolling();
-      } catch (e, st) {
+    // preserve original debug line
+    if (kDebugMode) throttleDebugPrint('didChangeAppLifecycleState: $state');
+
+    // If the state is just a transient "inactive", ignore it entirely here.
+    // Instead rely on hidden/paused as the true "background" indicators.
+    switch (state) {
+      case AppLifecycleState.hidden:
+        // The app became not visible; schedule a delayed stop so we tolerate quick returns.
         if (kDebugMode) {
-          print(
-            "Error restarting polling in change of AppLifecycleState: $e\n$st",
+          print('Lifecycle hidden: scheduling delayed stop of polling');
+        }
+        _scheduleInactivityStop();
+        // record the transition for later comparison
+        _previousAppLifecycleState = state;
+        break;
+
+      case AppLifecycleState.paused:
+        // Paused on many platforms is the real background; stop immediately (or you can delay).
+        if (kDebugMode) {
+          print('Lifecycle paused: stopping polling immediately (background)');
+        }
+        _cancelInactivityStopTimer();
+        try {
+          _busData.stopPolling();
+        } catch (e, st) {
+          if (kDebugMode) print("Error stopping polling on paused: $e\n$st");
+        }
+        _lastBackgroundAt = DateTime.now();
+        _previousAppLifecycleState = state;
+        // clear resume cooldown guard so next resume will act
+        _lifecycleResetTimer?.cancel();
+        _lifecycleResetTimer = null;
+        break;
+
+      case AppLifecycleState.inactive:
+        // Intentionally ignore inactive as a background indicator.
+        // Only schedule a short delayed stop if you still want to be conservative.
+        if (kDebugMode) {
+          throttleDebugPrint(
+            'Lifecycle inactive: ignored as background marker',
           );
         }
-      }
+        // Do not update _previousAppLifecycleState to inactive so resume logic can know
+        // whether the app was truly backgrounded earlier.
+        break;
 
-      // Force immediate data refresh
-      _busData.loadData();
+      case AppLifecycleState.resumed:
+        // We only treat this as a "foreground after background" if the previous
+        // stored state was hidden or paused (the two markers we consider background).
+        if (_previousAppLifecycleState == AppLifecycleState.hidden ||
+            _previousAppLifecycleState == AppLifecycleState.paused) {
+          // Debounce repeated resumed events
+          final now = DateTime.now();
+          if (_lastBackgroundAt != null &&
+              now.difference(_lastBackgroundAt!) < _resumeCooldown) {
+            if (kDebugMode) {
+              print(
+                'Resumed soon after background; applying cooldown and ignoring',
+              );
+            }
+            // Reset previous state anyway to avoid treating next resume the same way
+            _previousAppLifecycleState = state;
+            return;
+          }
 
-      // Rebuild UI to reflect fresh data
-      if (mounted) setState(() {});
+          if (kDebugMode) {
+            print(
+              'Resumed after real background; restarting polling and refreshing',
+            );
+          }
+          // Mark and restart polling safely; _restartPolling must be idempotent
+          restartPolling = true;
+          try {
+            _restartPolling();
+          } catch (e, st) {
+            if (kDebugMode) {
+              print("Error restarting polling on resume: $e\n$st");
+            }
+          }
+
+          // Force immediate data refresh
+          try {
+            _busData.loadData();
+          } catch (e, st) {
+            if (kDebugMode) print("Error loading bus data on resume: $e\n$st");
+          }
+
+          if (mounted) setState(() {});
+
+          // Reset resume guard after cooldown so future resumes can be handled again
+          _lifecycleResetTimer?.cancel();
+          _lifecycleResetTimer = Timer(_resumeCooldown, () {
+            _lastBackgroundAt = null;
+            _lifecycleResetTimer = null;
+            if (kDebugMode) {
+              print('Resume cooldown expired, resume guard cleared');
+            }
+          });
+        } else {
+          // previous state was not hidden/paused; ignore this resumed as transient
+          if (kDebugMode) {
+            throttleDebugPrint(
+              'Resumed but previous state not hidden/paused; ignoring',
+            );
+          }
+        }
+        // update previous state to resumed for future comparisons
+        _previousAppLifecycleState = state;
+        break;
+
+      case AppLifecycleState.detached:
+        if (kDebugMode) {
+          print('Lifecycle detached: stopping polling and clearing guards');
+        }
+        _cancelInactivityStopTimer();
+        try {
+          _busData.stopPolling();
+        } catch (e, st) {
+          if (kDebugMode) print("Error stopping polling on detached: $e\n$st");
+        }
+        _previousAppLifecycleState = state;
+        _lastBackgroundAt = null;
+        _lifecycleResetTimer?.cancel();
+        _lifecycleResetTimer = null;
+        break;
+    }
+  }
+
+  void _scheduleInactivityStop() {
+    if (_inactivityStopTimer?.isActive == true) {
+      if (kDebugMode) print('Inactivity stop already scheduled; leaving it.');
+      return;
     }
 
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      // Stop polling to conserve resources
+    _inactivityStopTimer = Timer(_inactivityStopDelay, () {
+      _inactivityStopTimer = null;
+      if (kDebugMode) print('Inactivity delay expired; stopping polling now');
       try {
         _busData.stopPolling();
       } catch (e, st) {
         if (kDebugMode) {
-          print(
-            "Error stopping polling in change of AppLifecycleState: $e\n$st",
-          );
+          print("Error stopping polling after inactivity delay: $e\n$st");
         }
       }
+      _lastBackgroundAt = DateTime.now();
+      // record that we were backgrounded via hidden path
+      _previousAppLifecycleState = AppLifecycleState.hidden;
+    });
+
+    if (kDebugMode) {
+      print(
+        'Scheduled inactivity stop in ${_inactivityStopDelay.inMilliseconds}ms',
+      );
     }
   }
 
-  Future<void> onResume() async {
-    await _waitForTimeAndCheckBooking();
+  void _cancelInactivityStopTimer() {
+    if (_inactivityStopTimer?.isActive == true) {
+      _inactivityStopTimer?.cancel();
+      _inactivityStopTimer = null;
+      if (kDebugMode) print('Cancelled scheduled inactivity stop');
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -299,6 +449,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         );
       }
       return false;
+    }
+    if (checkIfTripFull == null) {
+      if (kDebugMode) {
+        print('Create Booking failed as checkIfTripFull == null');
+      }
+      return null;
     }
 
     try {
@@ -376,10 +532,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           // ensure these match what BookingConfirmation uses
           if (selectedBox == 1) {
             bookedTripIndexKAP = idx;
-            bookedTripIndexCLE = bookedTripIndexCLE; // keep existing as-is
           } else {
             bookedTripIndexCLE = idx;
-            bookedTripIndexKAP = bookedTripIndexKAP; // keep existing as-is
           }
           bookedDepartureTime = departure;
           selectedBusStop = booking.busStop;
@@ -436,59 +590,57 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
     if (kDebugMode) print("TimeNow ready: $timeNow");
 
-    // Load booking status (ensure this call also populates any local booking fields like bookedDepartureTime)
     _bookingStatus = await _loadAndCheckIfSavedBookingValid();
 
     switch (_bookingStatus) {
       case BookingStatus.validBooking:
-        // Booking is fine, do nothing
         if (kDebugMode) print('Valid booking found, nothing to delete');
         break;
 
       case BookingStatus.invalidBooking:
-        // Cleanup if booking is invalid
-        if (!_isClearingBooking) _isClearingBooking = true;
+        if (_isClearingBooking) return;
+        _isClearingBooking = true;
         try {
           final success = await deleteBookingOnServerByID();
-          if (success == true) {
-            await _deleteLocalBookingAndNotify(
-              message: 'Your previously selected trip was removed',
-            );
-          } else {
-            if (!mounted) return;
+          // Always clear local booking, even if server deletion fails
+          await _deleteLocalBookingAndNotify(
+            message: 'Your previously selected trip was removed',
+          );
+          if (success != true && mounted) {
             _showAsyncSnackBar(
               'Could not delete booking on server. Please try again later.',
             );
           }
-        } catch (e) {
-          if (kDebugMode) print('Error deleting booking on server: $e');
+        } catch (e, st) {
+          if (kDebugMode) print('Error deleting booking on server: $e\n$st');
+          await _deleteLocalBookingAndNotify(
+            message: 'Your previously selected trip was removed',
+          );
         } finally {
           _isClearingBooking = false;
         }
-
-        if (!mounted) return;
-        setState(() => selectedBox = 0);
+        if (mounted) setState(() => selectedBox = 0);
         break;
 
       case BookingStatus.oldBooking:
-        // Cleanup if booking is old
-        if (!_isClearingBooking) _isClearingBooking = true;
+        if (_isClearingBooking) return;
+        _isClearingBooking = true;
         try {
           final success = await deleteBookingOnServerByID();
-          if (success == true) {
-            await _deleteLocalBookingAndNotify(message: '');
-            if (kDebugMode) print('Deleted Old Booking');
-          } else {
-            if (!mounted) return;
+          // Always clear local booking, even if server deletion fails
+          await _deleteLocalBookingAndNotify(message: '');
+          if (success == true && kDebugMode) {
+            if (kDebugMode) {
+              print('Deleted Old Booking');
+            }
           }
-        } catch (e) {
-          if (kDebugMode) print('Error deleting booking on server: $e');
+        } catch (e, st) {
+          if (kDebugMode) print('Error deleting booking on server: $e\n$st');
+          await _deleteLocalBookingAndNotify(message: '');
         } finally {
           _isClearingBooking = false;
         }
-
-        if (!mounted) return;
-        setState(() => selectedBox = 0);
+        if (mounted) setState(() => selectedBox = 0);
         break;
 
       case BookingStatus.noBooking:
@@ -528,7 +680,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       }, attempts: 2);
 
       final items = response.data?.items;
-      return (items?.isNotEmpty == true) ? items!.first : null;
+      if (items != null && items.isNotEmpty) {
+        return items.first;
+      }
+      return null;
     } on ApiException catch (e, st) {
       if (kDebugMode) {
         print('readBookingByID ApiException for ID=$bookingID: $e\n$st');
@@ -564,7 +719,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       }, attempts: 2);
 
       final items = resp.data?.items;
-      return items?.isNotEmpty == true;
+      if (items != null && items.isNotEmpty) return true;
+      return false;
     } on ApiException catch (e, st) {
       if (kDebugMode) {
         print(
@@ -594,61 +750,57 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // And show SnackBar after deletion, if message is '', no snackBar is shown
 
   Future<void> _deleteLocalBookingAndNotify({required String message}) async {
-    if (!mounted || _isClearingBooking) return;
-    _isClearingBooking = true;
+    if (!mounted) return;
 
-    try {
-      // Close any open dialog
-      // Capture navigator/messenger synchronously in a null-safe way
-      final NavigatorState? nav = Navigator.maybeOf(
-        context,
-        rootNavigator: true,
-      );
-
-      // Close any open dialog
-      try {
-        if (nav?.canPop() == true) {
-          nav!.maybePop();
-        }
-      } catch (_) {}
-
-      // Clear prefs
-      try {
-        await prefsService.clearBookingData();
-      } catch (e) {
-        if (kDebugMode) print('Error clearing prefs: $e');
-      }
-
-      if (!mounted) return;
-
-      // Reset local state
-      setState(() {
-        busIndex = 0;
-        selectedMRT = 0;
-        selectedBox = 0;
-        bookedTripIndexKAP = null;
-        bookedTripIndexCLE = null;
-        bookingID = null;
-        confirmationPressed = false;
-        _bookingStatus = BookingStatus.noBooking;
-
-        // Reset the future so FutureBuilder resolves cleanly
-        futureBookingData = Future.value(null);
-      });
-
-      if (kDebugMode) print('Deleted Local Booking Data');
-
-      // Show feedback (use messenger captured earlier)
-      if (message.isNotEmpty) {
-        _showAsyncSnackBar(message);
-      }
-
-      // Notify parent (safe because we checked mounted above and setState ran)
-      if (mounted) widget.updateSelectedBox(selectedBox);
-    } finally {
-      _isClearingBooking = false;
-      _bookingStatus = BookingStatus.noBooking; // ensure consistent state
+    if (kDebugMode) {
+      print('_deleteLocalBookingAndNotify triggered message="$message"');
     }
+
+    // Clear persisted snapshot first
+    try {
+      await prefsService.clearBookingData();
+    } catch (e) {
+      if (kDebugMode) print('Error clearing prefs: $e');
+    }
+
+    // Atomically clear UI state used by map and booking
+    setState(() {
+      // Map/route-critical
+      selectedMRT = 0;
+      selectedBox = 0;
+      busIndex = 0;
+      selectedBusStop = '';
+
+      // Booking state
+      bookedTripIndexKAP = null;
+      bookedTripIndexCLE = null;
+      bookedDepartureTime = null;
+      bookingID = null;
+      confirmationPressed = false;
+
+      // Status and snapshot
+      _bookingStatus = BookingStatus.noBooking;
+      _didRestoreSnapshot = false; // ensure restore is allowed later if needed
+      futureBookingData = Future.value(
+        null,
+      ); // prevent FutureBuilder from rehydrating stale prefs
+    });
+
+    if (kDebugMode) {
+      print(
+        'After local delete → bookingID=$bookingID, '
+        'selectedBox=$selectedBox, selectedMRT=$selectedMRT, '
+        'busIndex=$busIndex, selectedBusStop="$selectedBusStop", '
+        'bookedDepartureTime=$bookedDepartureTime, '
+        'confirmationPressed=$confirmationPressed, '
+        '_bookingStatus=$_bookingStatus',
+      );
+    }
+
+    if (message.isNotEmpty) _showAsyncSnackBar(message);
+
+    // Notify parent selection change
+    widget.updateSelectedBox(selectedBox);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -658,59 +810,47 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // null => booking is cannot be found (no such trip exists anymore)
   // After successful deletion, updates the passenger count for that trip.
 
-  Future<bool?> deleteBookingOnServerByID() async {
-    final booking = await _readBookingByID();
-    if (booking == null) {
-      if (kDebugMode) print('No booking found with ID: $bookingID');
-      return null;
-    }
-
+  Future<bool> deleteBookingOnServerByID() async {
     try {
-      // Attempt delete
-      await Amplify.API
+      final String? id = bookingID;
+      if (kDebugMode) {
+        print('deleteBookingOnServerByID called with bookingID=$id');
+      }
+
+      if (id == null || id.isEmpty) {
+        if (kDebugMode) {
+          print('No booking ID available; treating as already deleted');
+        }
+        return true; // nothing to delete
+      }
+
+      // Check existence first (optional, but your code seems to do this)
+      final bool? exists = await _doesBookingExistByID(id);
+      if (exists == false) {
+        if (kDebugMode) {
+          print('No booking found with ID: $id (already deleted)');
+        }
+        return true; // treat as success, proceed to local cleanup
+      }
+
+      // Attempt delete; if mutation throws or returns null, we’ll handle errors below
+      final booking = await _readBookingByID(); // returns model or null
+      if (booking == null) {
+        if (kDebugMode) print('Read by ID returned null; treating as deleted');
+        return true;
+      }
+
+      final resp = await Amplify.API
           .mutate(request: ModelMutations.delete(booking))
           .response;
 
-      // After delete, verify the ID is gone with retries
-      bool stillExists = true;
-      try {
-        final exists = await _retry(() async {
-          return await _doesBookingExistByID(booking.id);
-        }, attempts: 3);
-
-        stillExists =
-            exists ?? true; // null = inconclusive => assume still exists
-      } catch (e, st) {
-        if (kDebugMode) print('Post-delete verification error: $e\n$st');
-        stillExists = true;
+      final ok = resp.errors.isEmpty;
+      if (kDebugMode) {
+        print('Server delete mutation ok=$ok, errors=${resp.errors}');
       }
-
-      if (stillExists) {
-        // Capture messenger synchronously before any awaits (none here, but keep pattern)
-        if (mounted) {
-          _showAsyncSnackBar(
-            'Failed to confirm deletion on server. Your booking remains saved and will be retried.',
-          );
-        }
-        if (kDebugMode) {
-          print('Booking still exists after delete attempt: ${booking.id}');
-        }
-        return false;
-      } else {
-        // Deletion confirmed: update counts on server
-        await _updateCount(
-          booking.MRTStation == 'KAP',
-          booking.TripNo,
-          booking.BusStop,
-        );
-        if (kDebugMode) print('Booking deleted and verified: ${booking.id}');
-        return true;
-      }
+      return ok;
     } catch (e, st) {
-      if (kDebugMode) print('Error deleting booking by ID: $e\n$st');
-      if (mounted) {
-        _showAsyncSnackBar('Error deleting booking. Please try again later.');
-      }
+      if (kDebugMode) print('deleteBookingOnServerByID error: $e\n$st');
       return false;
     }
   }
@@ -762,11 +902,11 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     if (kDebugMode) safePrint('Persisted prefs snapshot: $persisted');
 
     // Update the cached future and let the UI know (assign outside build)
-    final newFuture = prefsService.getBookingData();
     if (!mounted) return;
     setState(() {
-      futureBookingData = newFuture;
+      futureBookingData = Future.value(persisted);
     });
+
     if (kDebugMode) safePrint('Persisted and futureBookingData refreshed');
   }
 
@@ -828,12 +968,11 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             final List<DateTime> list = getDepartureTimes();
 
             // If index is invalid, mark departure as null
+            final int? tripNo = map['TripNo'] as int?;
             final DateTime? serverDeparture =
-                (map['TripNo'] - 1 == null ||
-                    map['TripNo'] - 1 < 0 ||
-                    map['TripNo'] - 1 >= list.length)
+                (tripNo == null || tripNo - 1 < 0 || tripNo - 1 >= list.length)
                 ? null
-                : list[map['TripNo'] - 1];
+                : list[tripNo - 1];
 
             // Defer state mutation until after the current build frame
             if (!mounted) return BookingStatus.validBooking;
@@ -996,25 +1135,94 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // If the same box is tapped twice, it will be deselected.
 
   void updateSelectedBox(int box) {
-    if (confirmationPressed == false) {
-      if (!mounted) return;
-      setState(() {
-        // If the same box is tapped again, deselect it
-        if (selectedBox == box) {
-          selectedBox = 0;
-          selectedMRT = 0; // reset global
-        } else {
-          selectedBox = box;
-          selectedMRT = box; // update global
-        }
-        if (kDebugMode) {
-          print('Selected box updated: $selectedBox');
-        }
+    // Prevent interactions while a confirmation/cancel flow is in progress.
+    // confirmationPressed is tri-state: true = confirmed, false = normal, null = cancelling.
+    if (confirmationPressed != false) {
+      if (kDebugMode) {
+        print('Tap ignored: confirmationPressed=$confirmationPressed');
+      }
+      return;
+    }
 
-        // Notify parent widget of change synchronously inside setState
-        widget.updateSelectedBox(selectedBox);
-      });
-      _isRefreshing ? null : _refreshTrips;
+    // Guard: ensure the State object is still mounted before making changes.
+    if (!mounted) return;
+
+    if (kDebugMode) {
+      // Debug: show the previous selection before we change it.
+      print('Old selected Box $selectedBox in afternoon screen');
+    }
+
+    // Capture previous value (useful for debugging or potential future logic).
+    final int previousBox = selectedBox;
+
+    // Update local selection state immediately so subsequent logic sees the new value.
+    // This ensures any refreshes or fetches that run after setState operate on the updated selection.
+    setState(() {
+      // Toggle behaviour: tapping the same box deselects it (resets to 0).
+      if (selectedBox == box) {
+        selectedBox = 0;
+        selectedMRT = 0;
+      } else {
+        selectedBox = box;
+        selectedMRT = box;
+      }
+
+      if (kDebugMode) {
+        print('updated SelectedBox to $selectedBox in afternoon screen');
+      }
+
+      // Notify parent of the new selectedBox value (keeps parent-child synchronized).
+      widget.updateSelectedBox(selectedBox);
+    });
+
+    // Kick off data refresh for the new selection after state update.
+    // Placing this after setState avoids races where refresh logic reads stale selection.
+    _refreshTrips();
+
+    // Only attempt to refresh the child BookingService when a station is selected (selectedBox != 0).
+    // If selectedBox == 0 we intentionally skip refreshing the child.
+    if (selectedBox != 0) {
+      // Read the keyed child state once to avoid repeated lookups.
+      final bookingState = _bookingKey.currentState;
+
+      // If the child State exists and is mounted, call its refresh method immediately.
+      // This keeps booking counts up-to-date without waiting for another user action.
+      if (bookingState != null && (bookingState as State).mounted) {
+        bookingState.refreshFromParent();
+        if (kDebugMode) {
+          print('booking service refreshed by afternoon screen');
+        }
+      } else {
+        // If the child is not yet built or not mounted, schedule a retry on the next frame.
+        // addPostFrameCallback runs after the current frame when the child is more likely to be created.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final s = _bookingKey.currentState;
+          if (s != null && (s as State).mounted) {
+            // Child is now ready: perform the refresh.
+            s.refreshFromParent();
+            if (kDebugMode) {
+              print('booking service refreshed after first build');
+            }
+          } else {
+            // Child still not ready after one frame: log for debugging.
+            if (kDebugMode) {
+              print('booking service still not ready after first frame');
+            }
+          }
+        });
+
+        // Debug message indicating we scheduled a deferred refresh because the child wasn't ready.
+        if (kDebugMode) {
+          print(
+            'booking service has not been built; scheduled deferred refresh',
+          );
+        }
+      }
+    } else {
+      // When the selection was reset to 0, explicitly skip attempting a child refresh.
+      if (kDebugMode) {
+        print('selectedBox is 0; skipping booking service refresh');
+      }
     }
   }
 
@@ -1048,7 +1256,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           : (bookedTripIndexCLE == index ? null : bookedTripIndexCLE);
     });
     if (kDebugMode) {
-      print('KAP booking index: $bookedTripIndexCLE');
+      print('CLE booking index: $bookedTripIndexCLE');
     }
   }
 
@@ -1146,7 +1354,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       // Count the number of matching bookings (watch for pagination if dataset grows)
       final count = response.data?.items.length ?? 0;
       if (kDebugMode) {
-        print('Booking count for $mrt trip $tripNo: $count');
+        throttleDebugPrint('Booking count for $mrt trip $tripNo: $count');
       }
       return count;
     } catch (e) {
@@ -1327,10 +1535,15 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Displays trip number, time, station, and bus stop.
 
   void showBookingConfirmationDialog(BuildContext context) {
-    final ScrollController scrollControllerForScrollbar = ScrollController();
     showDialog(
       context: context,
       builder: (_) {
+        // Precompute trip number display for readability
+        final tripIndex = selectedBox == 1
+            ? bookedTripIndexKAP
+            : bookedTripIndexCLE;
+        final tripValue = tripIndex != null ? '${tripIndex + 1}' : '-';
+
         return AlertDialog(
           actionsAlignment: MainAxisAlignment.center,
           backgroundColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
@@ -1386,18 +1599,14 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 SizedBox(height: TextSizing.fontSizeHeading(context)),
                 Flexible(
                   child: Scrollbar(
-                    controller: scrollControllerForScrollbar,
                     thumbVisibility: true,
                     child: SingleChildScrollView(
-                      controller: scrollControllerForScrollbar,
                       child: Column(
                         children: [
                           // Trip number display
                           BookingConfirmationText(
                             label: 'Trip:',
-                            // safe trip display: use local indices but guard null
-                            value:
-                                '${(selectedBox == 1 ? bookedTripIndexKAP : bookedTripIndexCLE) != null ? (selectedBox == 1 ? bookedTripIndexKAP! + 1 : bookedTripIndexCLE! + 1) : '-'}',
+                            value: tripValue,
                             size: 0.60,
                             darkText: isDarkMode ? false : true,
                           ),
@@ -1565,11 +1774,20 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         newSelectedBox = raw['selectedBox'] as int? ?? 0;
         newBookedTripIndexKAP = raw['bookedTripIndexKAP'] as int?;
         newBookedTripIndexCLE = raw['bookedTripIndexCLE'] as int?;
-        newBookedDepartureTime = raw['bookedDepartureTime'] is DateTime
-            ? raw['bookedDepartureTime'] as DateTime
-            : null;
+        final depRaw = raw['bookedDepartureTime'];
+        if (depRaw is DateTime) {
+          newBookedDepartureTime = depRaw;
+        } else if (depRaw is int) {
+          newBookedDepartureTime = DateTime.fromMillisecondsSinceEpoch(depRaw);
+        } else if (depRaw is String) {
+          try {
+            newBookedDepartureTime = DateTime.parse(depRaw);
+          } catch (_) {
+            newBookedDepartureTime = null;
+          }
+        }
         newSelectedBusStop = raw['busStop'] as String? ?? '';
-        newBookingID = raw['bookingID'] as String?;
+        newBookingID = raw['id'] as String? ?? raw['bookingID'] as String?;
       }
 
       // Apply all computed values atomically after the current frame
@@ -1588,8 +1806,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           _bookingStatus = BookingStatus.validBooking;
         });
       });
-    } catch (e) {
-      if (kDebugMode) print('Restore booking failed: $e');
+    } catch (e, st) {
+      if (kDebugMode) print('Restore booking failed: $e\n$st');
+
       if (!mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -1605,18 +1824,178 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   Widget build(BuildContext context) {
     final int currentBox = selectedBox;
 
+    // Extracted helper for booking section to improve readability
+    Widget bookingSection() {
+      if (loadingInitialData) {
+        if (kDebugMode) {
+          throttleDebugPrint('loadingInitialData=true → hiding booking UI');
+        }
+        return const SizedBox();
+      }
+
+      if (selectedBox == 0) {
+        if (kDebugMode) {
+          throttleDebugPrint('selectedBox=0 → show MRT selector only');
+        }
+        return const SizedBox();
+      }
+
+      if (confirmationPressed == true) {
+        if (kDebugMode) {
+          throttleDebugPrint(
+            'confirmationPressed=true → show booking confirmation',
+          );
+        }
+        // If booking has already been confirmed → show BookingConfirmation widget
+        return BookingConfirmation(
+          selectedBox: currentBox,
+          bookedTripIndexKAP: bookedTripIndexKAP,
+          bookedTripIndexCLE: bookedTripIndexCLE,
+          bookedDepartureTime: bookedDepartureTime,
+          busStop: selectedBusStop,
+          onCancel: () async {
+            // Cancel booking → reset confirmation state and delete booking if exists
+            if (!mounted) return;
+            setState(
+              () => confirmationPressed = null,
+            ); // null = cancelling in progress
+            bool? deleted = await deleteBookingOnServerByID();
+
+            if (deleted == true) {
+              await _deleteLocalBookingAndNotify(
+                message: 'Booking has been Cancelled.',
+              );
+              setState(() => confirmationPressed = false);
+            } else {
+              setState(() => confirmationPressed = true);
+              _showAsyncSnackBar('Could not delete Booking.');
+            }
+            if (!_isRefreshing) _refreshTrips();
+          },
+        );
+      } else if (confirmationPressed == false) {
+        if (kDebugMode) {
+          throttleDebugPrint(
+            'confirmationPressed=false → showing booking service',
+          );
+        }
+        // If booking not yet confirmed → show BookingService widget
+        return BookingService(
+          key: _bookingKey,
+          departureTimes: getDepartureTimes(currentBox),
+          selectedBox: currentBox,
+          bookedTripIndexKAP: bookedTripIndexKAP,
+          bookedTripIndexCLE: bookedTripIndexCLE,
+          updateBookingStatusKAP: updateBookingStatusKAP,
+          updateBookingStatusCLE: updateBookingStatusCLE,
+          countBooking: countBooking,
+          showBusStopSelectionBottomSheet: showBusStopSelectionBottomSheet,
+          selectedBusStop: selectedBusStop,
+          onPressedConfirm: () async {
+            if (kDebugMode) {
+              print('confirming Booking...');
+            }
+            // Capture values synchronously to avoid races across awaits
+            final boxAtTap = currentBox;
+            final idx = boxAtTap == 1 ? bookedTripIndexKAP : bookedTripIndexCLE;
+            final selectedBusStopAtTap = selectedBusStop;
+            final List<DateTime> list = getDepartureTimes();
+            final stationAtTap = boxAtTap == 1
+                ? 'KAP'
+                : boxAtTap == 2
+                ? 'CLE'
+                : '';
+
+            if (idx == null ||
+                selectedBusStopAtTap.isEmpty ||
+                stationAtTap.isEmpty) {
+              _showAsyncSnackBar('Please select a trip and bus stop.');
+              return;
+            }
+
+            bookedDepartureTime = list[idx];
+
+            bool? bookingValid = await createBooking(
+              stationAtTap,
+              idx + 1,
+              selectedBusStopAtTap,
+            );
+
+            if (bookingValid != true) {
+              _showAsyncSnackBar(
+                'Could not book. Trip is already fully booked.',
+              );
+              setState(() {
+                confirmationPressed = false;
+                bookedTripIndexKAP = null;
+                bookedTripIndexCLE = null;
+                bookingID = null;
+                bookedDepartureTime = null; // reset departure time too
+                _bookingStatus = BookingStatus.noBooking;
+              });
+
+              if (!_isRefreshing) _refreshTrips();
+              return;
+            }
+            if (!mounted) return;
+
+            setState(() => confirmationPressed = true);
+
+            // Capture the dialog function synchronously
+            void showDialogFn() => showBookingConfirmationDialog(context);
+
+            if (!mounted) return;
+            showDialogFn();
+          },
+        );
+      } else {
+        if (kDebugMode) {
+          throttleDebugPrint(
+            'confirmationPressed=null → cancelling/deleting state',
+          );
+        }
+        // Cancelling state
+        return Column(
+          children: [
+            Text(
+              'Cancelling Booking...',
+              style: TextStyle(
+                color: Colors.blueGrey[200],
+                fontSize: TextSizing.fontSizeText(context),
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Roboto',
+              ),
+            ),
+            LoadingScroll(),
+          ],
+        );
+      }
+    }
+
     return FutureBuilder<Map<String, dynamic>?>(
       future: futureBookingData,
       builder: (context, snapshot) {
         // 1. While waiting for the future to complete → show loading spinner
         if (snapshot.connectionState == ConnectionState.waiting) {
+          if (kDebugMode) {
+            print('waiting for snapshot to complete');
+          }
           return const Center(child: LoadingScreen());
         }
 
         // 2. If there was an error loading the data → show error message
         if (snapshot.hasError) {
-          return const Center(
-            child: Text('Error loading data', softWrap: true),
+          return Center(
+            child: Text(
+              'Error loading data. Please try again later.',
+              softWrap: true,
+              style: TextStyle(
+                color: Colors.blueGrey[200],
+                fontSize: TextSizing.fontSizeText(context),
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Roboto',
+              ),
+            ),
           );
         }
 
@@ -1627,14 +2006,19 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         }
 
         // If booking is invalid → schedule cleanup (guarded so it only runs once)
-        if (_bookingStatus == BookingStatus.invalidBooking &&
+        if ((_bookingStatus == BookingStatus.invalidBooking ||
+                _bookingStatus == BookingStatus.oldBooking) &&
             !_isClearingBooking) {
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             if (!mounted) return;
-            await deleteBookingOnServerByID();
+            final ok = await deleteBookingOnServerByID();
             await _deleteLocalBookingAndNotify(
-              message: 'Invalid booking has been deleted',
+              message: _bookingStatus == BookingStatus.invalidBooking
+                  ? 'Invalid booking has been deleted'
+                  : 'Old booking has been cleared',
             );
+            _isClearingBooking = false;
+            if (kDebugMode) print('Cleanup completed, ok=$ok');
           });
         }
 
@@ -1668,137 +2052,26 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             SizedBox(height: TextSizing.fontSizeText(context)),
 
             // Only show booking UI if a station has been selected
-            loadingInitialData
-                ? SizedBox()
-                : (currentBox != 0
-                      ?
-                        // If booking has already been confirmed → show BookingConfirmation widget
-                        (confirmationPressed == true)
-                            ? BookingConfirmation(
-                                selectedBox: currentBox,
-                                bookedTripIndexKAP: bookedTripIndexKAP,
-                                bookedTripIndexCLE: bookedTripIndexCLE,
-                                bookedDepartureTime: bookedDepartureTime,
-                                busStop: selectedBusStop,
-                                onCancel: () async {
-                                  // Cancel booking → reset confirmation state and delete booking if exists
-                                  if (!mounted) return;
-                                  setState(() => confirmationPressed = null);
-                                  bool? deleted =
-                                      await deleteBookingOnServerByID();
-
-                                  if (deleted == true) {
-                                    await _deleteLocalBookingAndNotify(
-                                      message: 'Booking has been Cancelled.',
-                                    );
-                                    setState(() => confirmationPressed = false);
-                                  } else {
-                                    setState(() => confirmationPressed = true);
-                                    _showAsyncSnackBar(
-                                      'Could not delete Booking.',
-                                    );
-                                  }
-                                  _isRefreshing ? null : _refreshTrips;
-                                },
-                              )
-                            // If booking not yet confirmed → show BookingService widget
-                            : (confirmationPressed == false)
-                            ? BookingService(
-                                key: _bookingKey,
-                                departureTimes: getDepartureTimes(currentBox),
-                                selectedBox: currentBox,
-                                bookedTripIndexKAP: bookedTripIndexKAP,
-                                bookedTripIndexCLE: bookedTripIndexCLE,
-                                updateBookingStatusKAP: updateBookingStatusKAP,
-                                updateBookingStatusCLE: updateBookingStatusCLE,
-                                countBooking: countBooking,
-                                showBusStopSelectionBottomSheet:
-                                    showBusStopSelectionBottomSheet,
-                                selectedBusStop: selectedBusStop,
-                                onPressedConfirm: () async {
-                                  if (kDebugMode) {
-                                    print('confirming Booking...');
-                                  }
-                                  // Capture values synchronously to avoid races across awaits
-                                  final boxAtTap = currentBox;
-                                  final idx = boxAtTap == 1
-                                      ? bookedTripIndexKAP
-                                      : bookedTripIndexCLE;
-                                  final selectedBusStopAtTap = selectedBusStop;
-                                  final List<DateTime> list =
-                                      getDepartureTimes();
-                                  final stationAtTap = boxAtTap == 1
-                                      ? 'KAP'
-                                      : boxAtTap == 2
-                                      ? 'CLE'
-                                      : '';
-
-                                  if (idx == null ||
-                                      selectedBusStopAtTap.isEmpty ||
-                                      stationAtTap.isEmpty) {
-                                    _showAsyncSnackBar(
-                                      'Please select a trip and bus stop.',
-                                    );
-                                    return;
-                                  }
-
-                                  bookedDepartureTime = list[idx];
-
-                                  bool? bookingValid = await createBooking(
-                                    stationAtTap,
-                                    idx + 1,
-                                    selectedBusStopAtTap,
-                                  );
-
-                                  if (bookingValid != true) {
-                                    _showAsyncSnackBar(
-                                      'Could not book. Trip is already fully booked.',
-                                    );
-                                    setState(() {
-                                      confirmationPressed = false;
-                                      bookedTripIndexKAP = null;
-                                      bookedTripIndexCLE = null;
-                                      bookingID = null;
-                                      _bookingStatus = BookingStatus.noBooking;
-                                    });
-
-                                    _isRefreshing ? null : _refreshTrips;
-                                    _bookingKey.currentState
-                                        ?.refreshFromParent();
-                                    return;
-                                  }
-                                  if (!mounted) return;
-
-                                  setState(() => confirmationPressed = true);
-
-                                  // Capture the dialog function synchronously
-                                  void showDialogFn() =>
-                                      showBookingConfirmationDialog(context);
-
-                                  if (!mounted) return;
-                                  showDialogFn();
-                                },
-                              )
-                            : Column(
-                                children: [
-                                  Text(
-                                    'Cancelling Booking...',
-                                    style: TextStyle(
-                                      color: Colors.blueGrey[200],
-                                      fontSize: TextSizing.fontSizeText(
-                                        context,
-                                      ),
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'Roboto',
-                                    ),
-                                  ),
-                                  LoadingScroll(),
-                                ],
-                              )
-                      : SizedBox()),
+            bookingSection(),
           ],
         );
       },
     );
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Helper to make selective debug prints only show up every few seconds
+  // TODO: will only let one debug print go through, need to make sure all can be printed
+
+  DateTime? _lastPrintAt;
+  final Duration _throttleInterval = const Duration(seconds: 5);
+
+  void throttleDebugPrint(String message) {
+    final now = DateTime.now();
+    if (_lastPrintAt == null ||
+        now.difference(_lastPrintAt!) >= _throttleInterval) {
+      if (kDebugMode) print(message);
+      _lastPrintAt = now;
+    }
   }
 }

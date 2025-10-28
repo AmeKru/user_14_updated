@@ -135,6 +135,7 @@ class MorningScreenState extends State<MorningScreen>
     super.dispose();
   }
 
+  // TODO: need to differentiate resume after inactive or paused as inactive happens very often
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {

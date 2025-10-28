@@ -297,28 +297,45 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   ///////////////////////////////////////////////////////////////
   // checks which MRT Station is selected by user (KAP or CLE),
   // the Time (am or pm) and then loads the corresponding Routes
+  bool _tapLocked = false;
 
-  void updateSelectedBox(int selectedBox) {
-    now =
-        DateTime.now(); // update current time now, so that routes will be shown correctly
+  Future<void> updateSelectedBox(int newBox) async {
+    if (!mounted) return;
+    if (_tapLocked) return;
+    _tapLocked = true;
+
+    final nowLocal = DateTime.now();
+
     setState(() {
-      this.selectedBox = selectedBox;
-      if (selectedBox == 1) {
+      now = nowLocal;
+      selectedBox = newBox;
+      if (newBox == 1) {
         selectedMRT = 1;
-        fetchRoute(now.hour >= startAfternoonService ? pmKAP : amKAP);
-      } else if (selectedBox == 2) {
+      } else if (newBox == 2) {
         selectedMRT = 2;
-        fetchRoute(now.hour >= startAfternoonService ? pmCLE : amCLE);
       } else {
         routePoints.clear();
         selectedMRT = 0;
         busIndex = 0;
       }
     });
+
+    try {
+      if (newBox == 1) {
+        await fetchRoute(
+          nowLocal.hour >= startAfternoonService ? pmKAP : amKAP,
+        );
+      } else if (newBox == 2) {
+        await fetchRoute(
+          nowLocal.hour >= startAfternoonService ? pmCLE : amCLE,
+        );
+      }
+    } finally {
+      _tapLocked = false;
+    }
+
     if (kDebugMode) {
-      print(
-        'updated selectedBox to $selectedBox - time now hour: ${now.hour} ',
-      );
+      print('updated selectedBox to $newBox - time now hour: ${nowLocal.hour}');
     }
   }
 
@@ -821,7 +838,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           maxHeight: TextSizing.isLandscapeMode(context)
               ? (TextSizing.isTablet(context)
                     ? screenHeight * 0.965
-                    : screenHeight * 0.975)
+                    : screenHeight * 0.98)
               : screenHeight * 0.8,
           backdropEnabled: true,
           // dim background
@@ -1001,7 +1018,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     (TextSizing.isLandscapeMode(context)
                         ? (TextSizing.isTablet(context)
                               ? screenHeight * 0.965
-                              : screenHeight * 0.975)
+                              : screenHeight * 0.98)
                         : screenHeight * 0.8) +
                     TextSizing.fontSizeText(context) *
                         2, // towards top of the open panel
