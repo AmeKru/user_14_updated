@@ -1414,9 +1414,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       builder: (_) {
         return FractionallySizedBox(
           heightFactor:
-              ((TextSizing.isTablet(context)
-                      ? screenHeight * 0.85
-                      : screenHeight * 0.98) -
+              ((TextSizing.isLandscapeMode(context)? screenHeight * 0.98: screenHeight * 0.8) -
                   TextSizing.fontSizeHeading(context) * 3) /
               screenHeight, // finite height for the sheet
           child: Material(
@@ -1449,8 +1447,11 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                     SizedBox(height: TextSizing.fontSizeMiniText(context)),
                     // Give the list bounded height via Expanded
                     Expanded(
-                      child: Scrollbar(
-                        thumbVisibility: true, // always show
+                      child: RawScrollbar(
+                        thumbVisibility: true,
+                        thickness: TextSizing.fontSizeText(context)*0.2,
+                        radius: const Radius.circular(8),
+                        thumbColor: isDarkMode? Colors.black : Colors.grey,
                         child: ListView.builder(
                           // no shrinkWrap, no NeverScrollablePhysics
                           itemCount: _busData.busStop.length - 2,
@@ -1617,8 +1618,11 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 ),
                 SizedBox(height: TextSizing.fontSizeHeading(context)),
                 Flexible(
-                  child: Scrollbar(
+                  child: RawScrollbar(
                     thumbVisibility: true,
+                    thickness: TextSizing.fontSizeText(context)*0.2,
+                    radius: const Radius.circular(8),
+                    thumbColor: isDarkMode? Colors.black : Colors.grey,
                     child: SingleChildScrollView(
                       child: Column(
                         children: [

@@ -823,6 +823,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
   Widget _buildSlidingPanel(Widget displayPage) {
     final screenHeight = MediaQuery.of(context).size.height;
+    final padding = MediaQuery.of(context).padding;
 
     // Wrapping the panel in a Stack so we can place a tap overlay above it
     return Stack(
@@ -836,9 +837,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               ? (TextSizing.isTablet(context)
                     ? screenHeight * 0.965
                     : screenHeight * 0.98)
-              : (TextSizing.isTablet(context)
-                    ? screenHeight * 0.85
-                    : screenHeight * 0.98),
+              :screenHeight * 0.8,
           backdropEnabled: true,
           // dim background
           backdropOpacity: 0.5,
@@ -994,8 +993,12 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         ),
 
         // ===== TAP OVERLAY  =====
+        // change transparent colour to something else (e.g. green) to see it
         (ignoring == false)
-            ? Positioned(
+            ?
+// when closed at the bottom, so user can also press on header
+// and open panel instead of just dragging it
+              Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0, //  anchored to bottom
@@ -1006,19 +1009,47 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   child: Container(color: Colors.transparent),
                 ),
               )
-            : (ignoring == true)
-            ? Positioned(
+            : (ignoring == true) // same here but for closing
+            ? Stack(children: [
+              // added tap overlays on both left and right if safe area exists
+          // so user can also press there and close the panel
+              if(padding.left>0)
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: padding.left,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => _panelController.close(),
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+// and at top (MooBus on-demand height) so if no safe area on left or right
+// can still close by pressing on it
+          if(padding.right>0)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: padding.right,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => _panelController.close(),
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+
+          Positioned(
                 left: 0,
                 right: 0,
                 top:
                     screenHeight -
                     (TextSizing.isLandscapeMode(context)
                         ? (TextSizing.isTablet(context)
-                              ? screenHeight * 0.965
-                              : screenHeight * 0.98)
-                        : (TextSizing.isTablet(context)
-                              ? screenHeight * 0.85
-                              : screenHeight * 0.98)) +
+                        ? screenHeight * 0.965
+                        : screenHeight * 0.98)
+                        :screenHeight * 0.8) +
                     TextSizing.fontSizeText(context) *
                         2, // towards top of the open panel
                 height: TextSizing.fontSizeHeading(context) * 1.5,
@@ -1027,7 +1058,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   onTap: () => _panelController.close(),
                   child: Container(color: Colors.transparent),
                 ),
-              )
+              ),],)
             : SizedBox(),
       ],
     );
