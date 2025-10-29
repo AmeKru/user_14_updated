@@ -148,7 +148,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
     // Make the listener a synchronous VoidCallback that spawns an async task.
     _busDataListener = () {
-      _refreshTrips(); // unified refresh
+      updateSelectedBox(0, false); // unified refresh
+      if (kDebugMode) print('BusDataListener called, _busData was refreshed');
     };
     _busData.addListener(_busDataListener!);
     loadInitialData();
@@ -263,9 +264,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // preserve original debug line
-    if (kDebugMode) throttleDebugPrint('didChangeAppLifecycleState: $state');
-
     // If the state is just a transient "inactive", ignore it entirely here.
     // Instead rely on hidden/paused as the true "background" indicators.
     switch (state) {
@@ -300,11 +298,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       case AppLifecycleState.inactive:
         // Intentionally ignore inactive as a background indicator.
         // Only schedule a short delayed stop if you still want to be conservative.
-        if (kDebugMode) {
-          throttleDebugPrint(
-            'Lifecycle inactive: ignored as background marker',
-          );
-        }
         // Do not update _previousAppLifecycleState to inactive so resume logic can know
         // whether the app was truly backgrounded earlier.
         break;
@@ -361,13 +354,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               print('Resume cooldown expired, resume guard cleared');
             }
           });
-        } else {
-          // previous state was not hidden/paused; ignore this resumed as transient
-          if (kDebugMode) {
-            throttleDebugPrint(
-              'Resumed but previous state not hidden/paused; ignoring',
-            );
-          }
         }
         // update previous state to resumed for future comparisons
         _previousAppLifecycleState = state;
@@ -1137,7 +1123,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Updates the selected box index and notifies parent widget.
   // If the same box is tapped twice, it will be deselected.
 
-  void updateSelectedBox(int box) {
+  void updateSelectedBox(int box, bool refresh) {
     if (updatingSelectedBox == true) {
       if (kDebugMode) {
         print('Tap ignored: updatingSelectedBox=$updatingSelectedBox');
@@ -1165,9 +1151,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       print('Old selected Box $selectedBox in afternoon screen');
     }
 
-    // Capture previous value (useful for debugging or potential future logic).
-    final int previousBox = selectedBox;
-
     // Update local selection state immediately so subsequent logic sees the new value.
     // This ensures any refreshes or fetches that run after setState operate on the updated selection.
     setState(() {
@@ -1180,21 +1163,21 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           selectedBox = box;
           selectedMRT = box;
         }
-
-        if (kDebugMode) {
-          print('updated SelectedBox to $selectedBox in afternoon screen');
-        }
-
         // Notify parent of the new selectedBox value (keeps parent-child synchronized).
         widget.updateSelectedBox(selectedBox);
       }
     });
+
+    if (kDebugMode) {
+      print('updated SelectedBox to $selectedBox in afternoon screen');
+    }
 
     // Kick off data refresh for the new selection after state update.
     // Placing this after setState avoids races where refresh logic reads stale selection.
     _refreshTrips();
 
     // Only attempt to refresh the child BookingService when a station is selected (selectedBox != 0).
+    // TODO: check if refresh works ok now
     // If selectedBox == 0 we intentionally skip refreshing the child.
     if (selectedBox != 0) {
       // Read the keyed child state once to avoid repeated lookups.
@@ -1203,7 +1186,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       // If the child State exists and is mounted, call its refresh method immediately.
       // This keeps booking counts up-to-date without waiting for another user action.
       if (bookingState != null && (bookingState as State).mounted) {
-        bookingState.refreshFromParent();
+        bookingState.refreshFromParent(refresh);
         if (kDebugMode) {
           print('booking service refreshed by afternoon screen');
         }
@@ -1214,7 +1197,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           final s = _bookingKey.currentState;
           if (s != null && (s as State).mounted) {
             // Child is now ready: perform the refresh.
-            s.refreshFromParent();
+            s.refreshFromParent(refresh);
             if (kDebugMode) {
               print('booking service refreshed after first build');
             }
@@ -1234,7 +1217,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         }
       }
     } else {
-      // When the selection was reset to 0, explicitly skip attempting a child refresh.
+      //When the selection was reset to 0, explicitly skip attempting a child refresh.
       if (kDebugMode) {
         print('selectedBox is 0; skipping booking service refresh');
       }
@@ -1381,9 +1364,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
       // Count the number of matching bookings (watch for pagination if dataset grows)
       final count = response.data?.items.length ?? 0;
-      if (kDebugMode) {
-        throttleDebugPrint('Booking count for $mrt trip $tripNo: $count');
-      }
       return count;
     } catch (e) {
       if (kDebugMode) {
@@ -1425,6 +1405,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       }
       return;
     }
+    final screenHeight = MediaQuery.of(context).size.height;
 
     showModalBottomSheet(
       context: context,
@@ -1432,7 +1413,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       backgroundColor: Colors.transparent, // so we can round corners
       builder: (_) {
         return FractionallySizedBox(
-          heightFactor: 0.65, // finite height for the sheet
+          heightFactor:
+              ((TextSizing.isTablet(context)
+                      ? screenHeight * 0.85
+                      : screenHeight * 0.98) -
+                  TextSizing.fontSizeHeading(context) * 3) /
+              screenHeight, // finite height for the sheet
           child: Material(
             color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             borderRadius: BorderRadius.vertical(
@@ -1440,6 +1426,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             ),
             child: SafeArea(
               top: false,
+              bottom: false,
               child: Padding(
                 padding: EdgeInsets.all(
                   TextSizing.fontSizeText(context) * 0.35,
@@ -1462,57 +1449,61 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                     SizedBox(height: TextSizing.fontSizeMiniText(context)),
                     // Give the list bounded height via Expanded
                     Expanded(
-                      child: ListView.builder(
-                        // no shrinkWrap, no NeverScrollablePhysics
-                        itemCount: _busData.busStop.length - 2,
-                        itemBuilder: (_, index) {
-                          final stopName = _busData.busStop[index + 2];
-                          return Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: TextSizing.fontSizeText(context),
-                              vertical: TextSizing.fontSizeText(context) * 0.2,
-                            ),
-                            child: Material(
-                              color: isDarkMode
-                                  ? Colors.blueGrey[800]
-                                  : const Color(0xff014689),
-                              borderRadius: BorderRadius.circular(
-                                TextSizing.fontSizeText(context) * 0.25,
+                      child: Scrollbar(
+                        thumbVisibility: true, // always show
+                        child: ListView.builder(
+                          // no shrinkWrap, no NeverScrollablePhysics
+                          itemCount: _busData.busStop.length - 2,
+                          itemBuilder: (_, index) {
+                            final stopName = _busData.busStop[index + 2];
+                            return Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: TextSizing.fontSizeText(context),
+                                vertical:
+                                    TextSizing.fontSizeText(context) * 0.2,
                               ),
-                              child: InkWell(
+                              child: Material(
+                                color: isDarkMode
+                                    ? Colors.blueGrey[800]
+                                    : const Color(0xff014689),
                                 borderRadius: BorderRadius.circular(
                                   TextSizing.fontSizeText(context) * 0.25,
                                 ),
-                                onTap: () {
-                                  setState(() {
-                                    selectedBusStop = stopName;
-                                    busIndex = index + 2;
-                                  });
-                                  Navigator.pop(context);
-                                },
-                                child: ListTile(
-                                  title: Text(
-                                    stopName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontFamily: 'Roboto',
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: TextSizing.fontSizeText(
-                                        context,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(
+                                    TextSizing.fontSizeText(context) * 0.25,
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      selectedBusStop = stopName;
+                                      busIndex = index + 2;
+                                    });
+                                    Navigator.pop(context);
+                                  },
+                                  child: ListTile(
+                                    title: Text(
+                                      stopName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: 'Roboto',
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: TextSizing.fontSizeText(
+                                          context,
+                                        ),
                                       ),
                                     ),
+                                    textColor: isDarkMode
+                                        ? Colors.cyanAccent
+                                        : Colors.white,
+                                    // No trailing/leading to keep it simple
                                   ),
-                                  textColor: isDarkMode
-                                      ? Colors.cyanAccent
-                                      : Colors.white,
-                                  // No trailing/leading to keep it simple
                                 ),
                               ),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -1725,7 +1716,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             child: GestureDetector(
               onTap: () => updatingSelectedBox
                   ? null
-                  : updateSelectedBox(1), // Select KAP
+                  : updateSelectedBox(1, false), // Select KAP
               child: BoxMRT(box: selectedBox, mrt: 'KAP'),
             ),
           ),
@@ -1737,7 +1728,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             child: GestureDetector(
               onTap: () => updatingSelectedBox
                   ? null
-                  : updateSelectedBox(2), // Select CLE
+                  : updateSelectedBox(2, false), // Select CLE
               child: BoxMRT(box: selectedBox, mrt: 'CLE'),
             ),
           ),
@@ -1860,24 +1851,16 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     Widget bookingSection() {
       if (loadingInitialData) {
         if (kDebugMode) {
-          throttleDebugPrint('loadingInitialData=true → hiding booking UI');
+          print('loadingInitialData=true → hiding booking UI');
         }
         return const SizedBox();
       }
 
       if (selectedBox == 0) {
-        if (kDebugMode) {
-          throttleDebugPrint('selectedBox=0 → show MRT selector only');
-        }
         return const SizedBox();
       }
 
       if (confirmationPressed == true) {
-        if (kDebugMode) {
-          throttleDebugPrint(
-            'confirmationPressed=true → show booking confirmation',
-          );
-        }
         // If booking has already been confirmed → show BookingConfirmation widget
         return BookingConfirmation(
           selectedBox: currentBox,
@@ -1902,15 +1885,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               setState(() => confirmationPressed = true);
               _showAsyncSnackBar('Could not delete Booking.');
             }
-            if (!_isRefreshing) _refreshTrips();
+            updateSelectedBox(0, false);
           },
         );
       } else if (confirmationPressed == false) {
-        if (kDebugMode) {
-          throttleDebugPrint(
-            'confirmationPressed=false → showing booking service',
-          );
-        }
         // If booking not yet confirmed → show BookingService widget
         return BookingService(
           key: _bookingKey,
@@ -1966,7 +1944,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 _bookingStatus = BookingStatus.noBooking;
               });
 
-              updateSelectedBox(0);
+              updateSelectedBox(0, true);
               return;
             }
             if (!mounted) return;
@@ -1981,11 +1959,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           },
         );
       } else {
-        if (kDebugMode) {
-          throttleDebugPrint(
-            'confirmationPressed=null → cancelling/deleting state',
-          );
-        }
         // Cancelling state
         return Column(
           children: [
@@ -2047,7 +2020,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             await _deleteLocalBookingAndNotify(
               message: _bookingStatus == BookingStatus.invalidBooking
                   ? 'Invalid booking has been deleted'
-                  : 'Old booking has been cleared',
+                  : '',
             );
             _isClearingBooking = false;
             if (kDebugMode) print('Cleanup completed, ok=$ok');
@@ -2089,21 +2062,5 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         );
       },
     );
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Helper to make selective debug prints only show up every few seconds
-  // TODO: will only let one debug print go through, need to make sure all can be printed
-
-  DateTime? _lastPrintAt;
-  final Duration _throttleInterval = const Duration(seconds: 5);
-
-  void throttleDebugPrint(String message) {
-    final now = DateTime.now();
-    if (_lastPrintAt == null ||
-        now.difference(_lastPrintAt!) >= _throttleInterval) {
-      if (kDebugMode) print(message);
-      _lastPrintAt = now;
-    }
   }
 }

@@ -60,7 +60,13 @@ class BookingService extends StatefulWidget {
 }
 
 class BookingServiceState extends State<BookingService> {
-  Future<void> refreshFromParent() async {
+  Future<void> refreshFromParent(bool refreshBecauseTripFull) async {
+    if (refreshBecauseTripFull == true) {
+      setState(() {
+        _loading = true;
+        bookingCounts = {};
+      });
+    }
     await _updateBookingCounts();
   }
 

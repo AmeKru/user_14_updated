@@ -8,7 +8,6 @@ import 'package:http/http.dart' as http;
 
 /// ////////////////////////////////////////////////////////////////////////////
 /// --- Get Data From AWS (NOW: Using polling, checks every time interval that is set) ---
-/// TODO: try and change to instead make app respond to changes incoming from server instead of manually checking every minute
 /// (Make server automatically push changes, if any were made)
 ///  ///////////////////////////////////////////////////////////////////////////
 

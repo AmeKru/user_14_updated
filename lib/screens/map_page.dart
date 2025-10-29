@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/cupertino.dart';
@@ -453,7 +452,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         onTap: () => showDialog(
           context: context,
           builder: (_) => AlertDialog(
-            backgroundColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
+            backgroundColor: isDarkMode ? Colors.blueGrey[800] : Colors.white,
             title: Text(
               title,
               style: TextStyle(
@@ -832,14 +831,14 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           boxShadow: null,
           controller: _panelController,
           // wire controller
-          minHeight: Platform.isAndroid
-              ? TextSizing.fontSizeHeading(context) * 4.6
-              : TextSizing.fontSizeHeading(context) * 4.2,
+          minHeight: TextSizing.fontSizeHeading(context) * 4.2,
           maxHeight: TextSizing.isLandscapeMode(context)
               ? (TextSizing.isTablet(context)
                     ? screenHeight * 0.965
                     : screenHeight * 0.98)
-              : screenHeight * 0.8,
+              : (TextSizing.isTablet(context)
+                    ? screenHeight * 0.85
+                    : screenHeight * 0.98),
           backdropEnabled: true,
           // dim background
           backdropOpacity: 0.5,
@@ -1000,9 +999,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 left: 0,
                 right: 0,
                 bottom: 0, //  anchored to bottom
-                height: Platform.isAndroid
-                    ? TextSizing.fontSizeHeading(context) * 3.3
-                    : TextSizing.fontSizeHeading(context) * 2.9,
+                height: TextSizing.fontSizeHeading(context) * 3,
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onTap: () => _panelController.open(),
@@ -1019,7 +1016,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                         ? (TextSizing.isTablet(context)
                               ? screenHeight * 0.965
                               : screenHeight * 0.98)
-                        : screenHeight * 0.8) +
+                        : (TextSizing.isTablet(context)
+                              ? screenHeight * 0.85
+                              : screenHeight * 0.98)) +
                     TextSizing.fontSizeText(context) *
                         2, // towards top of the open panel
                 height: TextSizing.fontSizeHeading(context) * 1.5,
