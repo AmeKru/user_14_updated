@@ -330,6 +330,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           restartPolling = true;
           try {
             _restartPolling();
+            updateSelectedBox(0, true);
           } catch (e, st) {
             if (kDebugMode) {
               print("Error restarting polling on resume: $e\n$st");
@@ -1124,16 +1125,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // If the same box is tapped twice, it will be deselected.
 
   void updateSelectedBox(int box, bool refresh) {
-    if (updatingSelectedBox == true) {
-      if (kDebugMode) {
-        print('Tap ignored: updatingSelectedBox=$updatingSelectedBox');
-      }
-      return; // return if update is in progress to prevent wrong UI loads
-    }
-    setState(() {
-      updatingSelectedBox = true; // setting guard to true
-    });
-
     // Prevent interactions while a confirmation/cancel flow is in progress.
     // confirmationPressed is tri-state: true = confirmed, false = normal, null = cancelling.
     if (confirmationPressed != false) {
@@ -1142,15 +1133,24 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       }
       return;
     }
-
     // Guard: ensure the State object is still mounted before making changes.
     if (!mounted) return;
+
+    if (updatingSelectedBox == true) {
+      if (kDebugMode) {
+        print('Tap ignored: updatingSelectedBox=$updatingSelectedBox');
+      }
+      return; // return if update is in progress to prevent wrong UI loads
+    }
+
+    setState(() {
+      updatingSelectedBox = true; // setting guard to true
+    });
 
     if (kDebugMode) {
       // Debug: show the previous selection before we change it.
       print('Old selected Box $selectedBox in afternoon screen');
     }
-
     // Update local selection state immediately so subsequent logic sees the new value.
     // This ensures any refreshes or fetches that run after setState operate on the updated selection.
     setState(() {
@@ -1177,7 +1177,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     _refreshTrips();
 
     // Only attempt to refresh the child BookingService when a station is selected (selectedBox != 0).
-    // TODO: check if refresh works ok now
     // If selectedBox == 0 we intentionally skip refreshing the child.
     if (selectedBox != 0) {
       // Read the keyed child state once to avoid repeated lookups.
