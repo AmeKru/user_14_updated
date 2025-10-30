@@ -405,7 +405,17 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 decoration: BoxDecoration(
                   color: isDarkMode ? Colors.black : Colors.white,
                   borderRadius: BorderRadius.circular(3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDarkMode ? Colors.black.withAlpha(
+                        150,
+                      ) : Colors.white.withAlpha(
+                          50), // ~45% opacity
+                      blurRadius: 5, // how soft the shadow is
+                      spreadRadius: 1, // how far it extends
+                    ),],
                 ),
+
                 child: Text(
                   label,
                   maxLines: 1,
@@ -492,6 +502,19 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             ],
           ),
         ),
+        child: Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: isDarkMode ? Colors.black.withAlpha(
+                  150,
+                ) : Colors.black.withAlpha(
+                  100), // ~45% opacity
+                blurRadius: isDarkMode ? 5 : 10, // how soft the shadow is
+                spreadRadius: 1, // how far it extends
+              ),
+            ],
+          ),
         child: Stack(
           alignment: Alignment.topCenter,
           children: [
@@ -513,7 +536,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             ),
           ],
         ),
-      ),
+      ),),
     );
   }
 
@@ -713,6 +736,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   ///////////////////////////////////////////////////////////////
   // the circular menu at the top right
 
+  final GlobalKey<CircularMenuState> menuKey = GlobalKey<CircularMenuState>();
+
   Widget _buildCircularMenu() {
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -724,6 +749,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
       // Circular Menu button
       child: CircularMenu(
+        key: menuKey,
         toggleButtonBoxShadow: [
           BoxShadow(
             color: Colors.blueGrey.withAlpha(100), // ~45% opacity
@@ -848,6 +874,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           color: Colors.transparent,
           onPanelOpened: () {
             setState(() => ignoring = true);
+            menuKey.currentState?.reverseAnimation();
           },
           onPanelClosed: () {
             setState(() => ignoring = false);
@@ -1003,11 +1030,16 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 right: 0,
                 bottom: 0, //  anchored to bottom
                 height: TextSizing.fontSizeHeading(context) * 3,
-                child: GestureDetector(
+                child: SafeArea(
+                  top: false,
+                  bottom: false,
+                  left: true,
+                  right: true,
+                  child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onTap: () => _panelController.open(),
                   child: Container(color: Colors.transparent),
-                ),
+                ),),
               )
             : (ignoring == true) // same here but for closing
             ? Stack(children: [

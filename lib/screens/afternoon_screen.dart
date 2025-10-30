@@ -148,8 +148,15 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
     // Make the listener a synchronous VoidCallback that spawns an async task.
     _busDataListener = () {
-      updateSelectedBox(0, false); // unified refresh
+
       if (kDebugMode) print('BusDataListener called, _busData was refreshed');
+      if(confirmationPressed != true && mounted){
+        if (kDebugMode) print('confirmation has not been pressed, now calling updateSelectedBox to refresh');
+      updateSelectedBox(0, false); // unified refresh
+      }else{
+        if (kDebugMode) print('confirmation had been pressed, now calling _refreshingTrips');
+        _refreshTrips();
+      }
     };
     _busData.addListener(_busDataListener!);
     loadInitialData();
@@ -167,7 +174,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   //////////////////////////////////////////////////////////////////////////////
   // Unified refresh function (used by polling listener AND manual button)
-
   Future<void> _refreshTrips() async {
     if (!mounted || _isRefreshing) return;
     _isRefreshing = true;
@@ -186,14 +192,36 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             await _deleteLocalBookingAndNotify(
               message: 'Your previously selected trip was removed',
             );
+            if (kDebugMode) print('deleted invalid booking and informed user');
             _isClearingBooking = false;
             confirmationPressed = false;
           });
         }
       } else {
-        if (previousStatus != _bookingStatus && mounted) {
+        if (_bookingStatus == BookingStatus.oldBooking) {
+          if (!_isClearingBooking) {
+            _isClearingBooking = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              if (!mounted) return;
+              await _deleteLocalBookingAndNotify(
+                message: '',
+              );
+              if (kDebugMode) print('deleted old booking');
+              _isClearingBooking = false;
+              confirmationPressed = false;
+            });
+          }
+        }else{
+        if (previousStatus == _bookingStatus && mounted) {
+          if (kDebugMode) print('no changes in booking Status');
           setState(() {});
         }
+        if (previousStatus != _bookingStatus && mounted) {
+          if (kDebugMode) print('Booking status changed to $_bookingStatus');
+          setState(() {});
+        }
+        }
+
       }
     } catch (e, st) {
       if (kDebugMode) print('Error refreshing trips: $e\n$st');
@@ -330,7 +358,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           restartPolling = true;
           try {
             _restartPolling();
-            updateSelectedBox(0, true);
+            if(confirmationPressed != true && mounted){
+              if (kDebugMode) print('confirmation has not been pressed, now calling updateSelectedBox to refresh');
+              updateSelectedBox(0, false); // unified refresh
+            }else{
+              if (kDebugMode) print('confirmation had been pressed, now calling _refreshingTrips');
+              _refreshTrips();
+            }
           } catch (e, st) {
             if (kDebugMode) {
               print("Error restarting polling on resume: $e\n$st");
@@ -1134,7 +1168,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       return;
     }
     // Guard: ensure the State object is still mounted before making changes.
-    if (!mounted) return;
+    if (!mounted){
+      if (kDebugMode) {
+        print('updateSelectedBox called but not mounted');
+      }
+      return;
+    }
 
     if (updatingSelectedBox == true) {
       if (kDebugMode) {
@@ -1227,13 +1266,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       setState(() {
         updatingSelectedBox =
             false; // setting guard to false when done updating
+        if (kDebugMode) {
+          print(
+            'finished updating selectedBox - now setting updatingSelectedBox to $updatingSelectedBox',
+          );
+        }
       });
     });
-    if (kDebugMode) {
-      print(
-        'finished updating selectedBox - now setting updatingSelectedBox to $updatingSelectedBox',
-      );
-    }
   }
 
   //////////////////////////////////////////////////////////////////////////////

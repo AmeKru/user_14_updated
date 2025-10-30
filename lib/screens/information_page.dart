@@ -86,7 +86,10 @@ class _InformationPageState extends State<InformationPage> {
         color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
         width: double.infinity,
         height: double.infinity,
-        child:SafeArea(child:  _isLoading
+        child:SafeArea(right:true,
+          left: true,
+          top: true,
+          bottom: false,child:  _isLoading
             ? Center(child: LoadingScreen())
             : SingleChildScrollView(
                 child: Padding(

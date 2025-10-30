@@ -164,7 +164,12 @@ class NewsAnnouncement extends StatelessWidget {
       ),
       body: Container(
         color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
-        child: SafeArea(child: Column(
+        child: SafeArea(
+          right:true,
+            left: true,
+            top: true,
+            bottom: false,
+            child: Column(
           children: [
             SizedBox(height: TextSizing.fontSizeText(context)),
             NewsAnnouncementWidget(),
