@@ -134,33 +134,55 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     if (timeNow == null || departureTime == null) return null;
 
     final List<Color?> colors = [
+      //Colors.red[100],
+      // Colors.yellow[200],
+      // Colors.white,
+      // Colors.tealAccent[100],
+      //  Colors.orangeAccent[200],
+      // Colors.greenAccent[100],
+      // Colors.indigo[100],
+      //  Colors.purpleAccent[100],
+      // Colors.grey[400],
+      //  Colors.limeAccent[100],
       Colors.red[100],
+      Colors.red[200],
+      Colors.orange[200],
+      Colors.orange[100],
       Colors.yellow[200],
-      Colors.white,
-      Colors.tealAccent[100],
-      Colors.orangeAccent[200],
-      Colors.greenAccent[100],
+      Colors.green[200],
+      Colors.blue[200],
       Colors.indigo[100],
-      Colors.purpleAccent[100],
-      Colors.grey[400],
-      Colors.limeAccent[100],
+      Colors.deepPurple[200],
+      Colors.purple[200],
     ];
 
-    // Compute a stable seed from date components instead of trying to construct
-    // a DateTime with possibly out-of-range seconds.
+    // Seconds since midnight for both times.
     final int departureSeconds =
         departureTime.hour * 3600 +
         departureTime.minute * 60 +
         departureTime.second;
+
     final int nowSeconds =
         timeNow!.hour * 3600 + timeNow!.minute * 60 + timeNow!.second;
-    final int combined = (departureSeconds + nowSeconds) & 0x7fffffff;
 
-    final int seed = combined ~/ 10; // coarse bucketed seed
+    // Day index to vary deterministically day by day.
+    final int dayIndex =
+        DateTime(
+          timeNow!.year,
+          timeNow!.month,
+          timeNow!.day,
+        ).millisecondsSinceEpoch ~/
+        (1000 * 60 * 60 * 24);
+
+    // Combine components; bucket by 10 seconds for coarse stability.
+    final int combined =
+        (departureSeconds + nowSeconds + dayIndex) & 0x7fffffff;
+    final int seed = combined ~/ 10;
+
     final Random random = Random(seed);
-    final int syncedRandomNum = random.nextInt(colors.length);
+    final int index = random.nextInt(colors.length);
 
-    return colors[syncedRandomNum];
+    return colors[index];
   }
 
   ///////////////////////////////////////////////////////////////
