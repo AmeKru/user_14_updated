@@ -685,7 +685,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   //////////////////////////////////////////////////////////////////////////////
   // Reads a booking from the backend using the stored bookingID.
-  // Returns the bookingdetails5 object if found, otherwise null.
+  // Returns the BOOKINGDETAILS5 object if found, otherwise null.
 
   Future<BOOKINGDETAILS5?> _readBookingByID() async {
     if (bookingID == null) return null;
