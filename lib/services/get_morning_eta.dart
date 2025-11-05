@@ -117,12 +117,6 @@ class CalculateMorningBus {
       currentTime.minute,
     );
 
-    // TODO: make it so these are only printed every minute or so
-    //if (kDebugMode) {
-    //  print('Current Time: $currentTime');
-    //  print('Bus Timing List: $busArrivalTimes');
-    //}
-
     // Filter to only upcoming bus times
     final upcomingArrivalTimes = busArrivalTimes
         .where((time) => time.isAfter(currentTime))

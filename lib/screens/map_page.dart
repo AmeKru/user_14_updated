@@ -407,13 +407,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   borderRadius: BorderRadius.circular(3),
                   boxShadow: [
                     BoxShadow(
-                      color: isDarkMode ? Colors.black.withAlpha(
-                        150,
-                      ) : Colors.white.withAlpha(
-                          50), // ~45% opacity
+                      color: isDarkMode
+                          ? Colors.black.withAlpha(150)
+                          : Colors.white.withAlpha(50), // ~45% opacity
                       blurRadius: 5, // how soft the shadow is
                       spreadRadius: 1, // how far it extends
-                    ),],
+                    ),
+                  ],
                 ),
 
                 child: Text(
@@ -506,37 +506,37 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: isDarkMode ? Colors.black.withAlpha(
-                  150,
-                ) : Colors.black.withAlpha(
-                  100), // ~45% opacity
+                color: isDarkMode
+                    ? Colors.black.withAlpha(150)
+                    : Colors.black.withAlpha(100), // ~45% opacity
                 blurRadius: isDarkMode ? 5 : 10, // how soft the shadow is
                 spreadRadius: 1, // how far it extends
               ),
             ],
           ),
-        child: Stack(
-          alignment: Alignment.topCenter,
-          children: [
-            Transform.flip(
-              flipY: true,
-              child: Icon(
-                CupertinoIcons.circle_fill,
-                color: isDarkMode ? Colors.black : Colors.white,
-                size: TextSizing.fontSizeText(context) * 1.75,
+          child: Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              Transform.flip(
+                flipY: true,
+                child: Icon(
+                  CupertinoIcons.circle_fill,
+                  color: isDarkMode ? Colors.black : Colors.white,
+                  size: TextSizing.fontSizeText(context) * 1.75,
+                ),
               ),
-            ),
-            Transform.flip(
-              flipY: true,
-              child: Icon(
-                CupertinoIcons.location_circle_fill,
-                color: getMarkerColor(title, busIndex),
-                size: TextSizing.fontSizeText(context) * 1.75,
+              Transform.flip(
+                flipY: true,
+                child: Icon(
+                  CupertinoIcons.location_circle_fill,
+                  color: getMarkerColor(title, busIndex),
+                  size: TextSizing.fontSizeText(context) * 1.75,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),),
+      ),
     );
   }
 
@@ -566,26 +566,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             tileBuilder: isDarkMode
                 ? (context, widget, tile) => ColorFiltered(
                     colorFilter: const ColorFilter.matrix([
-                      -1,
-                      0,
-                      0,
-                      0,
-                      100,
-                      0,
-                      -1,
-                      0,
-                      0,
-                      245,
-                      0,
-                      0,
-                      -1,
-                      0,
-                      250,
-                      0,
-                      0,
-                      0,
-                      1,
-                      0,
+                      -0.8, 0, 0, 0, 80, // R row
+                      0, -0.8, 0, 0, 196, // G row
+                      0, 0, -0.8, 0, 200, // B row
+                      0, 0, 0, 1, 0, // A row
                     ]),
                     child: widget,
                   )
@@ -594,16 +578,15 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         ),
 
         // so the map colours do not distract as much and one can see the route better
-        Positioned.fill(
-          child: IgnorePointer(
-            ignoring: true,
-            child: Container(
-              color: isDarkMode
-                  ? Color.fromRGBO(0, 0, 0, 0.2)
-                  : Color.fromRGBO(255, 255, 255, 0.1), // 20% opacity
+        if (!isDarkMode)
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: true,
+              child: Container(
+                color: const Color.fromRGBO(255, 255, 255, 0.1), // 10% opacity
+              ),
             ),
           ),
-        ),
 
         if (routePoints.isNotEmpty)
           PolylineLayer(
@@ -863,7 +846,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               ? (TextSizing.isTablet(context)
                     ? screenHeight * 0.965
                     : screenHeight * 0.98)
-              :screenHeight * 0.8,
+              : screenHeight * 0.8,
           backdropEnabled: true,
           // dim background
           backdropOpacity: 0.5,
@@ -1023,8 +1006,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         // change transparent colour to something else (e.g. green) to see it
         (ignoring == false)
             ?
-// when closed at the bottom, so user can also press on header
-// and open panel instead of just dragging it
+              // when closed at the bottom, so user can also press on header
+              // and open panel instead of just dragging it
               Positioned(
                 left: 0,
                 right: 0,
@@ -1036,61 +1019,65 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   left: true,
                   right: true,
                   child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: () => _panelController.open(),
-                  child: Container(color: Colors.transparent),
-                ),),
-              )
-            : (ignoring == true) // same here but for closing
-            ? Stack(children: [
-              // added tap overlays on both left and right if safe area exists
-          // so user can also press there and close the panel
-              if(padding.left>0)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: padding.left,
-                  child: GestureDetector(
                     behavior: HitTestBehavior.translucent,
-                    onTap: () => _panelController.close(),
+                    onTap: () => _panelController.open(),
                     child: Container(color: Colors.transparent),
                   ),
                 ),
-// and at top (MooBus on-demand height) so if no safe area on left or right
-// can still close by pressing on it
-          if(padding.right>0)
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              width: padding.right,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: () => _panelController.close(),
-                child: Container(color: Colors.transparent),
-              ),
-            ),
+              )
+            : (ignoring == true) // same here but for closing
+            ? Stack(
+                children: [
+                  // added tap overlays on both left and right if safe area exists
+                  // so user can also press there and close the panel
+                  if (padding.left > 0)
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: padding.left,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _panelController.close(),
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+                  // and at top (MooBus on-demand height) so if no safe area on left or right
+                  // can still close by pressing on it
+                  if (padding.right > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: padding.right,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () => _panelController.close(),
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
 
-          Positioned(
-                left: 0,
-                right: 0,
-                top:
-                    screenHeight -
-                    (TextSizing.isLandscapeMode(context)
-                        ? (TextSizing.isTablet(context)
-                        ? screenHeight * 0.965
-                        : screenHeight * 0.98)
-                        :screenHeight * 0.8) +
-                    TextSizing.fontSizeText(context) *
-                        2, // towards top of the open panel
-                height: TextSizing.fontSizeHeading(context) * 1.5,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: () => _panelController.close(),
-                  child: Container(color: Colors.transparent),
-                ),
-              ),],)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top:
+                        screenHeight -
+                        (TextSizing.isLandscapeMode(context)
+                            ? (TextSizing.isTablet(context)
+                                  ? screenHeight * 0.965
+                                  : screenHeight * 0.98)
+                            : screenHeight * 0.8) +
+                        TextSizing.fontSizeText(context) *
+                            2, // towards top of the open panel
+                    height: TextSizing.fontSizeHeading(context) * 1.5,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () => _panelController.close(),
+                      child: Container(color: Colors.transparent),
+                    ),
+                  ),
+                ],
+              )
             : SizedBox(),
       ],
     );

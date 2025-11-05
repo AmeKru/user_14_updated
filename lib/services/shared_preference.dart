@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// TODO: Add debug prints to see if saved/loaded properly
-
 ///////////////////////////////////////////////////////////////
 // A service class to handle saving, retrieving, and clearing
 // booking-related data using [SharedPreferences].

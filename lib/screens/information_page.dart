@@ -86,100 +86,103 @@ class _InformationPageState extends State<InformationPage> {
         color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
         width: double.infinity,
         height: double.infinity,
-        child:SafeArea(right:true,
+        child: SafeArea(
+          right: true,
           left: true,
           top: true,
-          bottom: false,child:  _isLoading
-            ? Center(child: LoadingScreen())
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(TextSizing.fontSizeText(context)),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(height: TextSizing.fontSizeMiniText(context)),
-                      Text(
-                        'Morning Schedule',
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        style: TextStyle(
-                          fontFamily: 'Roboto',
-                          fontSize: TextSizing.fontSizeHeading(context),
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black,
+          bottom: false,
+          child: _isLoading
+              ? Center(child: LoadingScreen())
+              : SingleChildScrollView(
+                  child: Padding(
+                    padding: EdgeInsets.all(TextSizing.fontSizeText(context)),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                        Text(
+                          'Morning Schedule',
+                          textAlign: TextAlign.center,
+                          softWrap: true,
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: TextSizing.fontSizeHeading(context),
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
                         ),
-                      ),
-                      SizedBox(
-                        height: TextSizing.fontSizeHeading(context) * 1.2,
-                      ),
-
-                      _buildScheduleSection(
-                        TextSizing.isTabletOrLandscapeMode(context)
-                            ? 'King Albert Park MRT Station to NP Campus'
-                            : 'KAP MRT Station to NP Campus',
-                        busData.arrivalTimeKAP,
-                        2,
-                      ),
-                      SizedBox(height: TextSizing.fontSizeText(context) * 2),
-                      _buildScheduleSection(
-                        TextSizing.isTabletOrLandscapeMode(context)
-                            ? 'Clementi MRT Station (CLE) to NP Campus'
-                            : 'CLE MRT Station to NP Campus',
-                        busData.arrivalTimeCLE,
-                        1,
-                      ),
-
-                      SizedBox(height: TextSizing.fontSizeText(context) * 3),
-                      Text(
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        'Afternoon Schedule',
-                        style: TextStyle(
-                          fontFamily: 'Roboto',
-                          fontSize: TextSizing.fontSizeHeading(context),
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black,
+                        SizedBox(
+                          height: TextSizing.fontSizeHeading(context) * 1.2,
                         ),
-                      ),
-                      Text(
-                        '(Bus Departure Times shown here refer to Bus Stop ENT)',
-                        textAlign: TextAlign.center,
-                        softWrap: true,
-                        style: TextStyle(
-                          fontFamily: 'Roboto',
-                          fontSize: TextSizing.fontSizeMiniText(context),
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode
-                              ? Colors.blueGrey[100]
-                              : Colors.black,
-                        ),
-                      ),
-                      SizedBox(
-                        height: TextSizing.fontSizeHeading(context) * 1.2,
-                      ),
 
-                      _buildScheduleSection(
-                        TextSizing.isTabletOrLandscapeMode(context)
-                            ? 'NP Campus to King Albert Park MRT Station (KAP)'
-                            : 'NP Campus to KAP MRT Station',
-                        busData.departureTimeKAP,
-                        2,
-                      ),
-                      SizedBox(height: TextSizing.fontSizeText(context) * 2),
-                      _buildScheduleSection(
-                        TextSizing.isTabletOrLandscapeMode(context)
-                            ? 'NP Campus to Clementi MRT Station (CLE)'
-                            : 'NP Campus to CLE MRT Station',
-                        busData.departureTimeCLE,
-                        1,
-                      ),
-                      SizedBox(height: TextSizing.fontSizeText(context) * 3),
-                    ],
+                        _buildScheduleSection(
+                          TextSizing.isTabletOrLandscapeMode(context)
+                              ? 'King Albert Park MRT Station (KAP)  to NP Campus'
+                              : 'KAP MRT Station to NP Campus',
+                          busData.arrivalTimeKAP,
+                          2,
+                        ),
+                        SizedBox(height: TextSizing.fontSizeText(context) * 2),
+                        _buildScheduleSection(
+                          TextSizing.isTabletOrLandscapeMode(context)
+                              ? 'Clementi MRT Station (CLE) to NP Campus'
+                              : 'CLE MRT Station to NP Campus',
+                          busData.arrivalTimeCLE,
+                          1,
+                        ),
+
+                        SizedBox(height: TextSizing.fontSizeText(context) * 3),
+                        Text(
+                          textAlign: TextAlign.center,
+                          softWrap: true,
+                          'Afternoon Schedule',
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: TextSizing.fontSizeHeading(context),
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        Text(
+                          '(Bus Departure Times shown here refer to Bus Stop ENT)',
+                          textAlign: TextAlign.center,
+                          softWrap: true,
+                          style: TextStyle(
+                            fontFamily: 'Roboto',
+                            fontSize: TextSizing.fontSizeMiniText(context),
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode
+                                ? Colors.blueGrey[100]
+                                : Colors.black,
+                          ),
+                        ),
+                        SizedBox(
+                          height: TextSizing.fontSizeHeading(context) * 1.2,
+                        ),
+
+                        _buildScheduleSection(
+                          TextSizing.isTabletOrLandscapeMode(context)
+                              ? 'NP Campus to King Albert Park MRT Station (KAP)'
+                              : 'NP Campus to KAP MRT Station',
+                          busData.departureTimeKAP,
+                          2,
+                        ),
+                        SizedBox(height: TextSizing.fontSizeText(context) * 2),
+                        _buildScheduleSection(
+                          TextSizing.isTabletOrLandscapeMode(context)
+                              ? 'NP Campus to Clementi MRT Station (CLE)'
+                              : 'NP Campus to CLE MRT Station',
+                          busData.departureTimeCLE,
+                          1,
+                        ),
+                        SizedBox(height: TextSizing.fontSizeText(context) * 3),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-      ),),
+        ),
+      ),
     );
   }
 
@@ -237,9 +240,13 @@ class _InformationPageState extends State<InformationPage> {
       rows.add(
         _buildTableRow([
           'Trip',
-          TextSizing.isTabletOrLandscapeMode(context) ? 'Bus A Departure Time' : 'Bus A',
+          TextSizing.isTabletOrLandscapeMode(context)
+              ? 'Bus A Departure Time'
+              : 'Bus A',
           'Trip',
-          TextSizing.isTabletOrLandscapeMode(context) ? 'Bus B Departure Time' : 'Bus B',
+          TextSizing.isTabletOrLandscapeMode(context)
+              ? 'Bus B Departure Time'
+              : 'Bus B',
         ], 0),
       );
 
@@ -257,7 +264,9 @@ class _InformationPageState extends State<InformationPage> {
       rows.add(
         _buildTableRow([
           'Trip',
-          TextSizing.isTabletOrLandscapeMode(context) ? 'Bus A Departure Time' : 'Bus A',
+          TextSizing.isTabletOrLandscapeMode(context)
+              ? 'Bus A Departure Time'
+              : 'Bus A',
         ], 0),
       );
 

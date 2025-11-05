@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/get_data.dart';
@@ -34,6 +36,15 @@ class MorningScreenState extends State<MorningScreen>
   List<DateTime> _lastArrivalCLE = [];
   List<DateTime> _lastDepartureKAP = [];
   List<DateTime> _lastDepartureCLE = [];
+
+  // used to check for AppLifeCycle
+  AppLifecycleState? _previousAppLifecycleState;
+  DateTime? _lastBackgroundAt;
+  final Duration _resumeCooldown = const Duration(seconds: 2);
+  final Duration _inactivityStopDelay = const Duration(milliseconds: 900);
+
+  Timer? _inactivityStopTimer;
+  Timer? _lifecycleResetTimer;
 
   @override
   void initState() {
@@ -123,40 +134,179 @@ class MorningScreenState extends State<MorningScreen>
 
   @override
   void dispose() {
-    // Clean up listener when widget is removed
     WidgetsBinding.instance.removeObserver(this);
     busData.removeListener(_busDataListener);
     // Stop BusData polling when morning screen is disposed
     try {
       busData.stopPolling();
-    } catch (_) {
-      // If BusData doesn't implement stopPolling, ignore
+    } catch (e, st) {
+      if (kDebugMode) {
+        print("Error stopping polling: $e\n$st");
+      }
     }
+    // stop polling when screen disposed
+
+    _inactivityStopTimer?.cancel();
+    _inactivityStopTimer = null;
+    _lifecycleResetTimer?.cancel();
+    _lifecycleResetTimer = null;
+    // cancel all timers when disposed
+
     super.dispose();
   }
 
-  // TODO: need to differentiate resume after inactive or paused as inactive happens very often
+  //////////////////////////////////////////////////////////////////////////////
+  // function to check if app is used in foreground or open in background
+  // (or is reopened from the background)
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Restart polling immediately
-      try {
-        busData.startPolling(interval: const Duration(seconds: 30));
-      } catch (_) {}
+    // If the state is just a transient "inactive", ignore it entirely here.
+    // Instead rely on hidden/paused as the true "background" indicators.
+    switch (state) {
+      case AppLifecycleState.hidden:
+        // The app became not visible; schedule a delayed stop so we tolerate quick returns.
+        if (kDebugMode) {
+          print('Lifecycle hidden: scheduling delayed stop of polling');
+        }
+        _scheduleInactivityStop();
+        // record the transition for later comparison
+        _previousAppLifecycleState = state;
+        break;
 
-      // Force immediate data refresh
-      busData.loadData();
+      case AppLifecycleState.paused:
+        // Paused on many platforms is the real background; stop immediately (or you can delay).
+        if (kDebugMode) {
+          print('Lifecycle paused: stopping polling immediately (background)');
+        }
+        _cancelInactivityStopTimer();
+        try {
+          busData.stopPolling();
+        } catch (e, st) {
+          if (kDebugMode) print("Error stopping polling on paused: $e\n$st");
+        }
+        _lastBackgroundAt = DateTime.now();
+        _previousAppLifecycleState = state;
+        // clear resume cooldown guard so next resume will act
+        _lifecycleResetTimer?.cancel();
+        _lifecycleResetTimer = null;
+        break;
 
-      // Rebuild UI to reflect fresh data
-      if (mounted) setState(() {});
+      case AppLifecycleState.inactive:
+        // Intentionally ignore inactive as a background indicator.
+        // Only schedule a short delayed stop if you still want to be conservative.
+        // Do not update _previousAppLifecycleState to inactive so resume logic can know
+        // whether the app was truly backgrounded earlier.
+        break;
+
+      case AppLifecycleState.resumed:
+        // We only treat this as a "foreground after background" if the previous
+        // stored state was hidden or paused (the two markers we consider background).
+        if (_previousAppLifecycleState == AppLifecycleState.hidden ||
+            _previousAppLifecycleState == AppLifecycleState.paused) {
+          // Debounce repeated resumed events
+          final now = DateTime.now();
+          if (_lastBackgroundAt != null &&
+              now.difference(_lastBackgroundAt!) < _resumeCooldown) {
+            if (kDebugMode) {
+              print(
+                'Resumed soon after background; applying cooldown and ignoring',
+              );
+            }
+            // Reset previous state anyway to avoid treating next resume the same way
+            _previousAppLifecycleState = state;
+            return;
+          }
+
+          if (kDebugMode) {
+            print(
+              'Resumed after real background; restarting polling and refreshing',
+            );
+          }
+          // Mark and restart polling safely; _restartPolling must be idempotent
+
+          try {
+            busData.startPolling(interval: const Duration(seconds: 30));
+          } catch (e, st) {
+            if (kDebugMode) {
+              print("Error restarting polling on resume: $e\n$st");
+            }
+          }
+
+          // Force immediate data refresh
+          try {
+            busData.loadData();
+          } catch (e, st) {
+            if (kDebugMode) print("Error loading bus data on resume: $e\n$st");
+          }
+
+          if (mounted) setState(() {});
+
+          // Reset resume guard after cooldown so future resumes can be handled again
+          _lifecycleResetTimer?.cancel();
+          _lifecycleResetTimer = Timer(_resumeCooldown, () {
+            _lastBackgroundAt = null;
+            _lifecycleResetTimer = null;
+            if (kDebugMode) {
+              print('Resume cooldown expired, resume guard cleared');
+            }
+          });
+        }
+        // update previous state to resumed for future comparisons
+        _previousAppLifecycleState = state;
+        break;
+
+      case AppLifecycleState.detached:
+        if (kDebugMode) {
+          print('Lifecycle detached: stopping polling and clearing guards');
+        }
+        _cancelInactivityStopTimer();
+        try {
+          busData.stopPolling();
+        } catch (e, st) {
+          if (kDebugMode) print("Error stopping polling on detached: $e\n$st");
+        }
+        _previousAppLifecycleState = state;
+        _lastBackgroundAt = null;
+        _lifecycleResetTimer?.cancel();
+        _lifecycleResetTimer = null;
+        break;
+    }
+  }
+
+  void _scheduleInactivityStop() {
+    if (_inactivityStopTimer?.isActive == true) {
+      if (kDebugMode) print('Inactivity stop already scheduled; leaving it.');
+      return;
     }
 
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      // Stop polling to conserve resources
+    _inactivityStopTimer = Timer(_inactivityStopDelay, () {
+      _inactivityStopTimer = null;
+      if (kDebugMode) print('Inactivity delay expired; stopping polling now');
       try {
         busData.stopPolling();
-      } catch (_) {}
+      } catch (e, st) {
+        if (kDebugMode) {
+          print("Error stopping polling after inactivity delay: $e\n$st");
+        }
+      }
+      _lastBackgroundAt = DateTime.now();
+      // record that we were backgrounded via hidden path
+      _previousAppLifecycleState = AppLifecycleState.hidden;
+    });
+
+    if (kDebugMode) {
+      print(
+        'Scheduled inactivity stop in ${_inactivityStopDelay.inMilliseconds}ms',
+      );
+    }
+  }
+
+  void _cancelInactivityStopTimer() {
+    if (_inactivityStopTimer?.isActive == true) {
+      _inactivityStopTimer?.cancel();
+      _inactivityStopTimer = null;
+      if (kDebugMode) print('Cancelled scheduled inactivity stop');
     }
   }
 
@@ -168,7 +318,7 @@ class MorningScreenState extends State<MorningScreen>
       // If the same box is tapped again, deselect it
       if (selectedBox == box) {
         selectedBox = 0;
-        selectedMRT = 0; // reset global
+        selectedMRT = 0; // reset globa
       } else {
         selectedBox = box;
         selectedMRT = box; // update global

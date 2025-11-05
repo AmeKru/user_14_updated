@@ -12,6 +12,7 @@ import 'data/get_data.dart';
 import 'data/global.dart';
 import 'models/model_provider.dart';
 import 'screens/map_page.dart';
+import 'utils/text_sizing.dart';
 
 // Top-level Amplify configuration helper and readiness future
 Future<void> configureAmplifyOnce() async {
@@ -80,6 +81,8 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    // sets size at start so layout will scale accordingly
+    TextSizing.setSize(context);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: isDarkMode ? ThemeData.dark() : ThemeData.light(),

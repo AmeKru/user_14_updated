@@ -4,6 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 class TextSizing {
+  static late Size size;
+
+  static void setSize(BuildContext context) {
+    size = MediaQuery.of(context).size;
+    return;
+  }
+
   static bool isTabletOrLandscapeMode(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
     final landscapeMode =
@@ -23,7 +30,6 @@ class TextSizing {
   }
 
   static double shortestSide(BuildContext context) {
-    final size = MediaQuery.of(context).size;
     return (size.width < size.height ? size.width : size.height) *
         2; // check if works better
   }
