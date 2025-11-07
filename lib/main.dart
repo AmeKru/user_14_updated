@@ -81,6 +81,9 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (kDebugMode) {
+      print('rebuilt app');
+    }
     // sets size at start so layout will scale accordingly
     TextSizing.setSize(context);
     return MaterialApp(

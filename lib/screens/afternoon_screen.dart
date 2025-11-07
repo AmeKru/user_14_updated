@@ -148,13 +148,18 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
     // Make the listener a synchronous VoidCallback that spawns an async task.
     _busDataListener = () {
-
       if (kDebugMode) print('BusDataListener called, _busData was refreshed');
-      if(confirmationPressed != true && mounted){
-        if (kDebugMode) print('confirmation has not been pressed, now calling updateSelectedBox to refresh');
-      updateSelectedBox(0, false); // unified refresh
-      }else{
-        if (kDebugMode) print('confirmation had been pressed, now calling _refreshingTrips');
+      if (confirmationPressed != true && mounted) {
+        if (kDebugMode) {
+          print(
+            'confirmation has not been pressed, now calling updateSelectedBox to refresh',
+          );
+        }
+        updateSelectedBox(0, false); // unified refresh
+      } else {
+        if (kDebugMode) {
+          print('confirmation had been pressed, now calling _refreshingTrips');
+        }
         _refreshTrips();
       }
     };
@@ -203,25 +208,22 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             _isClearingBooking = true;
             WidgetsBinding.instance.addPostFrameCallback((_) async {
               if (!mounted) return;
-              await _deleteLocalBookingAndNotify(
-                message: '',
-              );
+              await _deleteLocalBookingAndNotify(message: '');
               if (kDebugMode) print('deleted old booking');
               _isClearingBooking = false;
               confirmationPressed = false;
             });
           }
-        }else{
-        if (previousStatus == _bookingStatus && mounted) {
-          if (kDebugMode) print('no changes in booking Status');
-          setState(() {});
+        } else {
+          if (previousStatus == _bookingStatus && mounted) {
+            if (kDebugMode) print('no changes in booking Status');
+            setState(() {});
+          }
+          if (previousStatus != _bookingStatus && mounted) {
+            if (kDebugMode) print('Booking status changed to $_bookingStatus');
+            setState(() {});
+          }
         }
-        if (previousStatus != _bookingStatus && mounted) {
-          if (kDebugMode) print('Booking status changed to $_bookingStatus');
-          setState(() {});
-        }
-        }
-
       }
     } catch (e, st) {
       if (kDebugMode) print('Error refreshing trips: $e\n$st');
@@ -358,11 +360,19 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           restartPolling = true;
           try {
             _restartPolling();
-            if(confirmationPressed != true && mounted){
-              if (kDebugMode) print('confirmation has not been pressed, now calling updateSelectedBox to refresh');
-              updateSelectedBox(0, false); // unified refresh
-            }else{
-              if (kDebugMode) print('confirmation had been pressed, now calling _refreshingTrips');
+            if (confirmationPressed != true && mounted) {
+              if (kDebugMode) {
+                print(
+                  'confirmation has not been pressed, now calling updateSelectedBox to refresh',
+                );
+              }
+              updateSelectedBox(0, true); // unified refresh
+            } else {
+              if (kDebugMode) {
+                print(
+                  'confirmation had been pressed, now calling _refreshingTrips',
+                );
+              }
               _refreshTrips();
             }
           } catch (e, st) {
@@ -465,6 +475,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     int tripNo,
     String busStop,
   ) async {
+    // Checks if booking full
     int? checkIfTripFull = await countBooking(mrtStation, tripNo);
     if (checkIfTripFull == busMaxCapacity) {
       if (kDebugMode) {
@@ -481,6 +492,33 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       return null;
     }
 
+    // Checks if booking in past
+    final List<DateTime> listCheck = getDepartureTimes();
+    final int? idxCheck = selectedBox == 1
+        ? bookedTripIndexKAP
+        : bookedTripIndexCLE;
+
+    // If index is invalid, mark departure as null
+    final DateTime? departureCheck =
+        (idxCheck == null || idxCheck < 0 || idxCheck >= listCheck.length)
+        ? null
+        : listCheck[idxCheck];
+    DateTime now = DateTime.now();
+    if (departureCheck == null) {
+      if (kDebugMode) {
+        print('Create Booking failed as departureCheck == null');
+      }
+      return false;
+    }
+    if (departureCheck.hour < now.hour ||
+        departureCheck.hour == now.hour && departureCheck.minute < now.minute) {
+      if (kDebugMode) {
+        print('Create Booking failed as departure is in the past');
+      }
+      return false;
+    }
+
+    // Only if ok, will continue to create a booking
     try {
       final model = BOOKINGDETAILS5(
         id: const Uuid().v4(),
@@ -1168,7 +1206,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       return;
     }
     // Guard: ensure the State object is still mounted before making changes.
-    if (!mounted){
+    if (!mounted) {
       if (kDebugMode) {
         print('updateSelectedBox called but not mounted');
       }
@@ -1430,6 +1468,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Updates `selectedBusStop` and `busIndex` when a stop is chosen.
 
   void showBusStopSelectionBottomSheet(BuildContext context) {
+    if (kDebugMode) {
+      print('afternoon_screen => bus stop selection bottom sheet built');
+    }
     // Defensive guard: ensure there are at least two leading elements to skip (index + 2)
     if (_busData.busStop.length < 3) {
       // Provide lightweight feedback and avoid showing the sheet that would crash
@@ -1452,11 +1493,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       builder: (_) {
         return FractionallySizedBox(
           heightFactor:
-              ((TextSizing.isLandscapeMode(context)? screenHeight * 0.98: screenHeight * 0.8) -
+              ((TextSizing.isLandscapeMode(context)
+                      ? screenHeight * 0.98
+                      : screenHeight * 0.8) -
                   TextSizing.fontSizeHeading(context) * 3) /
               screenHeight, // finite height for the sheet
           child: Material(
-            color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
+            color: isDarkMode ? Colors.blueGrey[800] : Colors.white,
             borderRadius: BorderRadius.vertical(
               top: Radius.circular(TextSizing.fontSizeText(context)),
             ),
@@ -1487,9 +1530,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                     Expanded(
                       child: RawScrollbar(
                         thumbVisibility: true,
-                        thickness: TextSizing.fontSizeText(context)*0.2,
+                        thickness: TextSizing.fontSizeText(context) * 0.2,
                         radius: const Radius.circular(8),
-                        thumbColor: isDarkMode? Colors.black : Colors.grey,
+                        thumbColor: isDarkMode ? Colors.black : Colors.grey,
                         child: ListView.builder(
                           // no shrinkWrap, no NeverScrollablePhysics
                           itemCount: _busData.busStop.length - 2,
@@ -1503,7 +1546,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                               ),
                               child: Material(
                                 color: isDarkMode
-                                    ? Colors.blueGrey[800]
+                                    ? Colors.blueGrey[700]
                                     : const Color(0xff014689),
                                 borderRadius: BorderRadius.circular(
                                   TextSizing.fontSizeText(context) * 0.25,
@@ -1658,9 +1701,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 Flexible(
                   child: RawScrollbar(
                     thumbVisibility: true,
-                    thickness: TextSizing.fontSizeText(context)*0.2,
+                    thickness: TextSizing.fontSizeText(context) * 0.2,
                     radius: const Radius.circular(8),
-                    thumbColor: isDarkMode? Colors.black : Colors.grey,
+                    thumbColor: isDarkMode ? Colors.black : Colors.grey,
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
@@ -1887,6 +1930,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (kDebugMode) debugPrint('afternoon_screen built');
+
     final int currentBox = selectedBox;
 
     // Extracted helper for booking section to improve readability
@@ -1974,15 +2019,14 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             );
 
             if (bookingValid != true) {
-              _showAsyncSnackBar(
-                'Could not book. Trip is already fully booked.',
-              );
+              _showAsyncSnackBar('Could not book trip.');
               setState(() {
+                // resets everything just to be sure
                 confirmationPressed = false;
                 bookedTripIndexKAP = null;
                 bookedTripIndexCLE = null;
                 bookingID = null;
-                bookedDepartureTime = null; // reset departure time too
+                bookedDepartureTime = null;
                 _bookingStatus = BookingStatus.noBooking;
               });
 

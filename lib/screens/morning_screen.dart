@@ -335,6 +335,9 @@ class MorningScreenState extends State<MorningScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (kDebugMode) {
+      print('morning_screen built');
+    }
     return Column(
       children: [
         SizedBox(height: TextSizing.fontSizeMiniText(context)),

@@ -65,88 +65,94 @@ class _SettingsState extends State<Settings> {
       body: Padding(
         padding: EdgeInsets.all(TextSizing.fontSizeHeading(context)),
         child: SafeArea(
-          right:true,
+          right: true,
           left: true,
           top: true,
           bottom: false,
-          child:  Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Text
-            Flexible(
-              child: Text(
-                'Light Mode',
-                maxLines: 1, //  limits to 1 lines
-                overflow: TextOverflow.ellipsis, // clips text if not fitting
-                style: TextStyle(
-                  color: isDarkMode ? Colors.blueGrey[100] : Colors.black,
-                  fontFamily: 'Roboto',
-                  fontSize: TextSizing.fontSizeText(context),
-                  fontWeight: isDarkMode ? FontWeight.normal : FontWeight.bold,
-                ),
-              ),
-            ),
-
-            SizedBox(
-              width: TextSizing.fontSizeHeading(context) * 5.5,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Sun icon for no Dark Mode, either filled in or not
-                  Icon(
-                    isDarkMode ? Icons.wb_sunny_outlined : Icons.wb_sunny,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Text
+              Flexible(
+                child: Text(
+                  'Light Mode',
+                  maxLines: 1, //  limits to 1 lines
+                  overflow: TextOverflow.ellipsis, // clips text if not fitting
+                  style: TextStyle(
                     color: isDarkMode ? Colors.blueGrey[100] : Colors.black,
-                    size: TextSizing.fontSizeText(context) * 1.5,
+                    fontFamily: 'Roboto',
+                    fontSize: TextSizing.fontSizeText(context),
+                    fontWeight: isDarkMode
+                        ? FontWeight.normal
+                        : FontWeight.bold,
                   ),
-
-                  // Spacing in between switch and icon
-                  SizedBox(width: TextSizing.fontSizeMiniText(context) * 0.8),
-
-                  // Switch to toggle Dark Mode On/Off
-                  Switch(
-                    value: isDarkMode,
-                    onChanged: (value) {
-                      toggleTheme(value);
-                    },
-                    activeThumbColor: Colors.green, // Thumb color when ON
-                    activeTrackColor: Colors.green[200], // Track color when ON
-                    inactiveThumbColor: Colors.grey, // Thumb color when OFF
-                    inactiveTrackColor:
-                        Colors.grey[200], // Track color when OFF
-                  ),
-
-                  // Spacing between switch and icon
-                  SizedBox(width: TextSizing.fontSizeMiniText(context) * 0.8),
-
-                  // Moon Icon for Dark Mode, either filled or not
-                  Icon(
-                    isDarkMode
-                        ? Icons.brightness_2
-                        : Icons.brightness_2_outlined,
-                    color: isDarkMode ? Colors.white : Colors.grey[600],
-                    size: TextSizing.fontSizeText(context) * 1.5,
-                  ),
-                ],
-              ),
-            ),
-
-            // Text
-            Flexible(
-              child: Text(
-                'Dark Mode',
-                maxLines: 1, //  limits to 1 lines
-                overflow: TextOverflow.ellipsis, // clips text if not fitting
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.grey[600],
-                  fontFamily: 'Roboto',
-                  fontSize: TextSizing.fontSizeText(context),
-                  fontWeight: isDarkMode ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
-            ),
-          ],
+
+              SizedBox(
+                width: TextSizing.fontSizeHeading(context) * 5.5,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Sun icon for no Dark Mode, either filled in or not
+                    Icon(
+                      isDarkMode ? Icons.wb_sunny_outlined : Icons.wb_sunny,
+                      color: isDarkMode ? Colors.blueGrey[100] : Colors.black,
+                      size: TextSizing.fontSizeText(context) * 1.5,
+                    ),
+
+                    // Spacing in between switch and icon
+                    SizedBox(width: TextSizing.fontSizeMiniText(context) * 0.8),
+
+                    // Switch to toggle Dark Mode On/Off
+                    Switch(
+                      value: isDarkMode,
+                      onChanged: (value) {
+                        toggleTheme(value);
+                      },
+                      activeThumbColor: Colors.green, // Thumb color when ON
+                      activeTrackColor:
+                          Colors.green[200], // Track color when ON
+                      inactiveThumbColor: Colors.grey, // Thumb color when OFF
+                      inactiveTrackColor:
+                          Colors.grey[200], // Track color when OFF
+                    ),
+
+                    // Spacing between switch and icon
+                    SizedBox(width: TextSizing.fontSizeMiniText(context) * 0.8),
+
+                    // Moon Icon for Dark Mode, either filled or not
+                    Icon(
+                      isDarkMode
+                          ? Icons.brightness_2
+                          : Icons.brightness_2_outlined,
+                      color: isDarkMode ? Colors.white : Colors.grey[600],
+                      size: TextSizing.fontSizeText(context) * 1.5,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Text
+              Flexible(
+                child: Text(
+                  'Dark Mode',
+                  maxLines: 1, //  limits to 1 lines
+                  overflow: TextOverflow.ellipsis, // clips text if not fitting
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.grey[600],
+                    fontFamily: 'Roboto',
+                    fontSize: TextSizing.fontSizeText(context),
+                    fontWeight: isDarkMode
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),),
+      ),
     );
   }
 }

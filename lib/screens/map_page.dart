@@ -39,10 +39,12 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   Timer? _timer;
   int selectedBox = 0;
   LatLng? currentLocation;
-  double _heading = 0.0;
   List<LatLng> routePoints = [];
-  bool? ignoring = false;
-  DateTime now = DateTime.now();
+  DateTime now =
+      DateTime.now(); // todo: initialize with utc+8h (device time utc+8h so make a bit surer it is singapore time zone
+  double fontSizeMiniText = 0;
+  double fontSizeText = 0;
+  double fontSizeHeading = 0;
 
   // Bus1 data
   LatLng? bus1Location;
@@ -160,11 +162,19 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     _init(); // run everything in order
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // assign sizing variables once at start
+    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    fontSizeText = TextSizing.fontSizeText(context);
+    fontSizeHeading = TextSizing.fontSizeHeading(context);
+  }
+
   Future<void> _init() async {
     await _loadInitialData(); // wait for preferences to load
     _getLocation(); // now safe to run
     _mqttConnect.createState().initState();
-    _bindMQTTListeners();
   }
 
   Future<void> _loadInitialData() async {
@@ -219,79 +229,45 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   }
 
   ///////////////////////////////////////////////////////////////
-  // MQTT bindings for all 3 buses using the new MQTT_Connect.buses structure
-
-  void _bindMQTTListeners() {
-    // Generic binder for any ValueNotifier
-    void bind<T>(ValueNotifier<T> notifier, void Function(T) update) {
-      notifier.addListener(() => setState(() => update(notifier.value)));
-    }
-
-    // Loop through each bus in the buses map
-    ConnectMQTT.buses.forEach((busId, busData) {
-      bind(busData.location, (v) {
-        if (busId == 1) bus1Location = v;
-        if (busId == 2) bus2Location = v;
-        if (busId == 3) bus3Location = v;
-      });
-
-      bind(busData.speed, (v) {
-        if (busId == 1) bus1Speed = v;
-        if (busId == 2) bus2Speed = v;
-        if (busId == 3) bus3Speed = v;
-      });
-
-      bind(busData.time, (v) {
-        if (busId == 1) bus1Time = v;
-        if (busId == 2) bus2Time = v;
-        if (busId == 3) bus3Time = v;
-      });
-
-      bind(busData.stop, (v) {
-        if (busId == 1) bus1Stop = v;
-        if (busId == 2) bus2Stop = v;
-
-        if (busId == 3) bus3Stop = v;
-      });
-
-      bind(busData.eta, (v) {
-        if (busId == 1) bus1ETA = v;
-        if (busId == 2) bus2ETA = v;
-        if (busId == 3) bus3ETA = v;
-      });
-
-      bind(busData.count, (v) {
-        if (busId == 1) bus1Count = v;
-        if (busId == 2) bus2Count = v;
-        if (busId == 3) bus3Count = v;
-      });
-    });
-  }
-
-  ///////////////////////////////////////////////////////////////
   // function to acquire location of user
 
+  final ValueNotifier<LatLng?> currentLocationNotifier = ValueNotifier(null);
+  final ValueNotifier<double?> headingNotifier = ValueNotifier(null);
+
   void _getLocation() {
+    if (kDebugMode) {
+      print('_getLocation called');
+    }
+
     // initial location fetch
     _locationService.getCurrentLocation().then((location) {
-      setState(() => currentLocation = location);
+      currentLocationNotifier.value = location;
     });
-    // Set up periodic location updates (every 1 second)
+
+    // periodic updates
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       _locationService.getCurrentLocation().then((location) {
-        setState(() => currentLocation = location);
+        currentLocationNotifier.value = location;
       });
     });
+
     // Compass heading updates (direction user faces)
     _locationService.initCompass((heading) {
-      setState(() => _heading = heading);
+      headingNotifier.value = heading;
     });
   }
 
   ///////////////////////////////////////////////////////////////
   // toggle Dark mode
 
-  void _toggleTheme(bool value) => setState(() => isDarkMode = value);
+  void _toggleTheme(bool value) {
+    if (kDebugMode) {
+      print('_toggleTheme called');
+    }
+    setState(() => isDarkMode = value);
+    lastCheckIsAfternoon = null;
+    pageToBeBuilt();
+  }
 
   ///////////////////////////////////////////////////////////////
   // checks which MRT Station is selected by user (KAP or CLE),
@@ -303,7 +279,15 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     if (_tapLocked) return;
     _tapLocked = true;
 
+    if (kDebugMode) {
+      print('updateSelectedBox called in map_page');
+    }
+
+    // gets time now todo: unify get now time everywhere, use api and only fallback to device time if no internet
     final nowLocal = DateTime.now();
+    now = nowLocal;
+    // Checks if afternoon
+    pageToBeBuilt();
 
     setState(() {
       now = nowLocal;
@@ -339,9 +323,42 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   }
 
   ///////////////////////////////////////////////////////////////
+  // checks and assigns page that is shown in sliding panel
+
+  bool? lastCheckIsAfternoon;
+  bool isAfternoon = false;
+  Widget displayPage = SizedBox();
+
+  void pageToBeBuilt() {
+    // Decide which screen to show based on the current hour
+    // only changes when isAfternoon changes
+    isAfternoon = now.hour >= startAfternoonService;
+    if (isAfternoon != lastCheckIsAfternoon) {
+      if (kDebugMode) {
+        print('map_page => checked and assigned a page to be built');
+      }
+      lastCheckIsAfternoon = isAfternoon;
+      displayPage = isAfternoon
+          ? AfternoonScreen(updateSelectedBox: updateSelectedBox)
+          : MorningScreen(updateSelectedBox: updateSelectedBox);
+    }
+
+    if (kDebugMode) {
+      if (isAfternoon) {
+        print('it is afternoon');
+      } else {
+        print('it is morning');
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////
   // function to be able to draw the route on the map
 
   Future<void> fetchRoute(List<LatLng> waypoints) async {
+    if (kDebugMode) {
+      print('fetchRoute called in map_page');
+    }
     // Debug print to check if it works as it should
     if (kDebugMode) {
       print('fetching route $waypoints');
@@ -375,7 +392,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   // Function to be able to create Bus marker on map more easily
 
   Marker _buildBusMarker(String label, LatLng? location) {
-    final double iconSize = TextSizing.fontSizeText(context) * 2;
+    final double iconSize = fontSizeText * 2;
 
     return Marker(
       point: location ?? LatLng(1.3323127398440282, 103.774728443874),
@@ -397,10 +414,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               fit: BoxFit.scaleDown,
               child: Container(
                 padding: EdgeInsets.fromLTRB(
-                  TextSizing.fontSizeMiniText(context) * 0.1,
-                  TextSizing.fontSizeMiniText(context) * 0.1,
-                  TextSizing.fontSizeMiniText(context) * 0.1,
-                  TextSizing.fontSizeMiniText(context),
+                  fontSizeMiniText * 0.1,
+                  fontSizeMiniText * 0.1,
+                  fontSizeMiniText * 0.1,
+                  fontSizeMiniText,
                 ),
                 decoration: BoxDecoration(
                   color: isDarkMode ? Colors.black : Colors.white,
@@ -423,7 +440,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                   overflow: TextOverflow.clip,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: TextSizing.fontSizeMiniText(context) * 0.6,
+                    fontSize: fontSizeMiniText * 0.6,
                     fontFamily: 'Roboto',
                     color: getBusMarkerColor(label, selectedBox),
                     fontWeight: FontWeight.bold,
@@ -454,8 +471,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   ) {
     return Marker(
       point: point,
-      width: TextSizing.fontSizeText(context),
-      height: TextSizing.fontSizeText(context),
+      width: fontSizeText,
+      height: fontSizeText,
       alignment: Alignment.topCenter,
       // if one wants the tip of arrow pointing to the stop
       child: GestureDetector(
@@ -469,7 +486,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 fontFamily: 'Roboto',
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: TextSizing.fontSizeHeading(context),
+                fontSize: fontSizeHeading,
               ),
             ),
             content: Text(
@@ -477,7 +494,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               softWrap: true,
               style: TextStyle(
                 fontFamily: 'Roboto',
-                fontSize: TextSizing.fontSizeText(context),
+                fontSize: fontSizeText,
                 color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
@@ -494,7 +511,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     color: isDarkMode
                         ? Colors.tealAccent
                         : const Color(0xff014689),
-                    fontSize: TextSizing.fontSizeText(context),
+                    fontSize: fontSizeText,
                     fontFamily: 'Roboto',
                   ),
                 ),
@@ -522,7 +539,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 child: Icon(
                   CupertinoIcons.circle_fill,
                   color: isDarkMode ? Colors.black : Colors.white,
-                  size: TextSizing.fontSizeText(context) * 1.75,
+                  size: fontSizeText * 1.75,
                 ),
               ),
               Transform.flip(
@@ -530,7 +547,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 child: Icon(
                   CupertinoIcons.location_circle_fill,
                   color: getMarkerColor(title, busIndex),
-                  size: TextSizing.fontSizeText(context) * 1.75,
+                  size: fontSizeText * 1.75,
                 ),
               ),
             ],
@@ -544,6 +561,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   // Build the map with all stops, routes and buses
 
   Widget _buildMap() {
+    if (kDebugMode) {
+      print('map_page => map built');
+    }
+
     final mapCenter =
         currentLocation ?? LatLng(1.3331191965635956, 103.7765424614437);
 
@@ -594,12 +615,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               Polyline(
                 points: routePoints,
                 color: isDarkMode ? Colors.cyan : Colors.lightBlue[800]!,
-                strokeWidth: TextSizing.fontSizeText(context) * 0.25,
+                strokeWidth: fontSizeText * 0.25,
                 pattern: StrokePattern.dashed(
-                  segments: [
-                    TextSizing.fontSizeText(context) * 0.01,
-                    TextSizing.fontSizeText(context) * 0.3,
-                  ],
+                  segments: [fontSizeText * 0.01, fontSizeText * 0.3],
                   patternFit: PatternFit.scaleUp,
                 ),
               ),
@@ -686,31 +704,83 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               'Singapore Institute of Technology\nBus Stop',
               isDarkMode,
             ),
-            _buildBusMarker('Bus1', bus1Location),
-            _buildBusMarker('Bus2', bus2Location),
-            _buildBusMarker('Bus3', bus3Location),
+            //_buildBusMarker('Bus1', bus1Location),
+            //_buildBusMarker('Bus2', bus2Location),
+            //_buildBusMarker('Bus3', bus3Location),
           ],
         ),
-        MarkerLayer(
-          rotate: false,
-          markers: [
-            if (currentLocation != null)
-              Marker(
-                point: currentLocation!,
-                child: CustomPaint(
-                  size: Size(
-                    TextSizing.fontSizeText(context),
-                    TextSizing.fontSizeText(context),
-                  ),
-                  painter: CompassPainter(
-                    direction: _heading,
-                    arcSweepAngle: 360,
-                    arcStartAngle: 0,
-                    context: context,
+
+        // only necessary  markers will be rebuilt if changes in location
+        ValueListenableBuilder<LatLng?>(
+          valueListenable:
+              ConnectMQTT.buses[1]!.location, // ValueNotifier<LatLng?>
+          builder: (_, bus1LatLng, _) {
+            bus1Location = bus1LatLng;
+            // if (latLng == null) return const SizedBox.shrink(); // to hide bus if no location
+            return MarkerLayer(
+              rotate: true,
+              markers: [_buildBusMarker('Bus1', bus1Location)],
+            );
+          },
+        ),
+
+        ValueListenableBuilder<LatLng?>(
+          valueListenable:
+              ConnectMQTT.buses[2]!.location, // ValueNotifier<LatLng?>
+          builder: (_, bus2LatLng, _) {
+            bus2Location = bus2LatLng;
+            // if (latLng == null) return const SizedBox.shrink(); // to hide bus if no location
+            return MarkerLayer(
+              rotate: true,
+              markers: [_buildBusMarker('Bus2', bus2LatLng)],
+            );
+          },
+        ),
+
+        ValueListenableBuilder<LatLng?>(
+          valueListenable:
+              ConnectMQTT.buses[3]!.location, // ValueNotifier<LatLng?>
+          builder: (_, bus3LatLng, _) {
+            bus3Location = bus3LatLng;
+            // if (latLng == null) return const SizedBox.shrink(); // to hide bus if no location
+            return MarkerLayer(
+              rotate: true,
+              markers: [_buildBusMarker('Bus3', bus3LatLng)],
+            );
+          },
+        ),
+
+        AnimatedBuilder(
+          animation: Listenable.merge([
+            currentLocationNotifier,
+            headingNotifier,
+          ]),
+          builder: (context, _) {
+            final LatLng? location = currentLocationNotifier.value;
+            final double? heading = headingNotifier.value;
+
+            if (location == null || heading == null) {
+              return const SizedBox.shrink();
+            }
+
+            return MarkerLayer(
+              rotate: false,
+              markers: [
+                Marker(
+                  point: location,
+                  child: CustomPaint(
+                    size: Size(fontSizeText, fontSizeText),
+                    painter: CompassPainter(
+                      direction: heading,
+                      arcSweepAngle: 360,
+                      arcStartAngle: 0,
+                      context: context,
+                    ),
                   ),
                 ),
-              ),
-          ],
+              ],
+            );
+          },
         ),
       ],
     );
@@ -722,13 +792,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   final GlobalKey<CircularMenuState> menuKey = GlobalKey<CircularMenuState>();
 
   Widget _buildCircularMenu() {
+    if (kDebugMode) {
+      print('map_page => circular menu built');
+    }
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        0,
-        TextSizing.fontSizeText(context) * 0.5,
-        TextSizing.fontSizeText(context),
-        0,
-      ),
+      padding: EdgeInsets.fromLTRB(0, fontSizeText * 0.5, fontSizeText, 0),
 
       // Circular Menu button
       child: CircularMenu(
@@ -742,10 +810,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           ),
         ],
         toggleButtonMargin: 0,
-        toggleButtonPadding: TextSizing.fontSizeMiniText(context),
+        toggleButtonPadding: fontSizeMiniText,
         alignment: Alignment.topRight,
-        radius: TextSizing.fontSizeText(context) * 4.5,
-        toggleButtonSize: TextSizing.fontSizeText(context) * 3.75,
+        radius: fontSizeText * 4.5,
+        toggleButtonSize: fontSizeText * 3.75,
         toggleButtonColor: isDarkMode
             ? Colors.blueGrey[600]
             : const Color(0xff014689),
@@ -763,9 +831,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 offset: Offset(0, 0), // no offset = shadow all around
               ),
             ],
-            iconSize: TextSizing.fontSizeText(context) * 2.25,
-            margin: TextSizing.fontSizeText(context),
-            padding: TextSizing.fontSizeText(context) * 0.5,
+            iconSize: fontSizeText * 2.25,
+            margin: fontSizeText,
+            padding: fontSizeText * 0.5,
             icon: Icons.info_rounded,
             iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
@@ -785,9 +853,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 offset: Offset(0, 0), // no offset = shadow all around
               ),
             ],
-            iconSize: TextSizing.fontSizeText(context) * 2.25,
-            margin: TextSizing.fontSizeText(context),
-            padding: TextSizing.fontSizeText(context) * 0.5,
+            iconSize: fontSizeText * 2.25,
+            margin: fontSizeText,
+            padding: fontSizeText * 0.5,
             icon: Icons.settings,
             iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
@@ -800,7 +868,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
           // Announcement Page button
           CircularMenuItem(
-            color: Color(0xfffeb041),
+            color: const Color(0xfffeb041),
             boxShadow: [
               BoxShadow(
                 color: Colors.blueGrey.withAlpha(100), // ~45% opacity
@@ -809,9 +877,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 offset: Offset(0, 0), // no offset = shadow all around
               ),
             ],
-            iconSize: TextSizing.fontSizeText(context) * 2.25,
-            margin: TextSizing.fontSizeText(context),
-            padding: TextSizing.fontSizeText(context) * 0.5,
+            iconSize: fontSizeText * 2.25,
+            margin: fontSizeText,
+            padding: fontSizeText * 0.5,
             icon: Icons.newspaper_rounded,
             iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
@@ -825,14 +893,60 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   }
 
   ///////////////////////////////////////////////////////////////
+  // the logo at the top left
+
+  Widget _logoNP() {
+    if (kDebugMode) {
+      print('map_page => logo NP built');
+    }
+    return Padding(
+      padding: EdgeInsets.fromLTRB(fontSizeText, fontSizeText * 0.5, 0, 0),
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Container(
+          width: fontSizeHeading * 2.9,
+          height: fontSizeHeading * 2.9,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 4),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blueGrey.withAlpha(100), // ~45% opacity
+                blurRadius: 15, // how soft the shadow is
+                spreadRadius: 2, // how far it extends
+                offset: Offset(0, 0), // no offset = shadow all around
+              ),
+            ],
+          ),
+          child: const ClipOval(
+            child: Image(
+              image: AssetImage('images/np_logo.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  ///////////////////////////////////////////////////////////////
   // The panel at the bottom
 
   ScrollController? _panelScrollController;
   final PanelController _panelController = PanelController();
+  final ValueNotifier<bool> _isPanelOpen = ValueNotifier(false);
 
-  Widget _buildSlidingPanel(Widget displayPage) {
+  Widget _buildSlidingPanel() {
+    if (kDebugMode) {
+      print('map_page => Sliding Panel built');
+    }
     final screenHeight = MediaQuery.of(context).size.height;
     final padding = MediaQuery.of(context).padding;
+    double maxHeight = (TextSizing.isLandscapeMode(context)
+        ? (TextSizing.isTablet(context)
+              ? screenHeight * 0.965
+              : screenHeight * 0.98)
+        : screenHeight * 0.8);
 
     // Wrapping the panel in a Stack so we can place a tap overlay above it
     return Stack(
@@ -841,12 +955,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           boxShadow: null,
           controller: _panelController,
           // wire controller
-          minHeight: TextSizing.fontSizeHeading(context) * 4.2,
-          maxHeight: TextSizing.isLandscapeMode(context)
-              ? (TextSizing.isTablet(context)
-                    ? screenHeight * 0.965
-                    : screenHeight * 0.98)
-              : screenHeight * 0.8,
+          minHeight: fontSizeHeading * 4.2,
+          maxHeight: maxHeight,
           backdropEnabled: true,
           // dim background
           backdropOpacity: 0.5,
@@ -856,12 +966,12 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           borderRadius: BorderRadius.zero,
           color: Colors.transparent,
           onPanelOpened: () {
-            setState(() => ignoring = true);
+            _isPanelOpen.value = true;
             menuKey.currentState?.reverseAnimation();
           },
           onPanelClosed: () {
-            setState(() => ignoring = false);
             // Reset scroll position when panel closes
+            _isPanelOpen.value = false;
             if (_panelScrollController != null) {
               _panelScrollController!.animateTo(
                 0,
@@ -870,131 +980,127 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               );
             }
           },
-          onPanelSlide: (position) {
-            setState(() => ignoring = null);
-          },
 
           panelBuilder: (controller) {
             // Store the controller so we can use it in onPanelClosed
-            _panelScrollController = controller;
+            _panelScrollController ??= controller;
 
-            return Padding(
-              padding: EdgeInsetsGeometry.all(0),
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                left: true,
-                right: true,
-                child: Material(
-                  elevation: 20,
-                  color: isDarkMode
-                      ? Colors.blueGrey[700]
-                      : const Color(0xff014689),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(TextSizing.fontSizeText(context)),
-                  ),
-                  child: Column(
-                    children: [
-                      // Header section with different background
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? Colors.blueGrey[700]
-                              : const Color(0xff014689), // header color
-                          borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(
-                              TextSizing.fontSizeText(context),
-                            ),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            // Grab handle
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                vertical:
-                                    TextSizing.fontSizeText(context) * 0.5,
-                              ),
-                              child: Container(
-                                width: TextSizing.fontSizeText(context) * 3,
-                                height: TextSizing.fontSizeText(context) * 0.2,
-                                decoration: BoxDecoration(
-                                  color: isDarkMode
-                                      ? Colors.white54
-                                      : Colors.black26,
-                                  borderRadius: BorderRadius.circular(
-                                    TextSizing.fontSizeText(context),
-                                  ),
-                                ),
+            return RepaintBoundary(
+              child: Padding(
+                padding: EdgeInsetsGeometry.all(0),
+                child: SafeArea(
+                  top: false,
+                  bottom: false,
+                  left: true,
+                  right: true,
+                  child: Material(
+                    elevation: 20,
+                    color: isDarkMode
+                        ? Colors.blueGrey[700]
+                        : const Color(0xff014689),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(fontSizeText),
+                    ),
+                    child: Column(
+                      children: [
+                        // Header section with different background
+                        RepaintBoundary(
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? Colors.blueGrey[700]
+                                  : const Color(0xff014689), // header color
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(fontSizeText),
                               ),
                             ),
-                            // Title row with bus icon
-                            Padding(
-                              padding: EdgeInsets.all(
-                                TextSizing.fontSizeText(context) * 0.5,
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.directions_bus,
-                                    color: Colors.white,
-                                    size: TextSizing.fontSizeHeading(context),
+                            child: Column(
+                              children: [
+                                // Grab handle
+                                Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: fontSizeText * 0.5,
                                   ),
-                                  SizedBox(
-                                    width:
-                                        TextSizing.fontSizeText(context) * 0.5,
-                                  ),
-                                  Flexible(
-                                    child: Text(
-                                      'MooBus on-demand',
-                                      maxLines: 1,
-                                      // or more if you want multiple lines
-                                      overflow: TextOverflow.ellipsis,
-                                      // options: clip, ellipsis, fade
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: TextSizing.fontSizeHeading(
-                                          context,
-                                        ),
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'Montserrat',
+                                  child: Container(
+                                    width: fontSizeText * 3,
+                                    height: fontSizeText * 0.2,
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode
+                                          ? Colors.white54
+                                          : Colors.black26,
+                                      borderRadius: BorderRadius.circular(
+                                        fontSizeText,
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Main body section
-                      Expanded(
-                        child: Container(
-                          color: isDarkMode
-                              ? Colors.blueGrey[900]
-                              : Colors.white,
-                          child: SingleChildScrollView(
-                            controller: controller,
-                            padding: EdgeInsets.only(
-                              bottom: MediaQuery.of(context).padding.bottom,
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                displayPage,
-                                SizedBox(
-                                  height: TextSizing.fontSizeText(context),
                                 ),
-                                NewsAnnouncementWidget(),
+                                // Title row with bus icon
+                                Padding(
+                                  padding: EdgeInsets.all(fontSizeText * 0.5),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.directions_bus,
+                                        color: Colors.white,
+                                        size: fontSizeHeading,
+                                      ),
+                                      SizedBox(width: fontSizeText * 0.5),
+                                      Flexible(
+                                        child: Text(
+                                          'MooBus on-demand',
+                                          maxLines: 1,
+                                          // or more if you want multiple lines
+                                          overflow: TextOverflow.ellipsis,
+                                          // options: clip, ellipsis, fade
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize:
+                                                TextSizing.fontSizeHeading(
+                                                  context,
+                                                ),
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'Montserrat',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                         ),
-                      ),
-                    ],
+
+                        // Main body section
+                        Expanded(
+                          child: Container(
+                            color: isDarkMode
+                                ? Colors.blueGrey[900]
+                                : Colors.white,
+                            child: SingleChildScrollView(
+                              controller: controller,
+                              padding: EdgeInsets.only(
+                                bottom: MediaQuery.of(context).padding.bottom,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  RepaintBoundary(child: displayPage),
+                                  SizedBox(
+                                    height: TextSizing.fontSizeText(context),
+                                  ),
+                                  RepaintBoundary(
+                                    child: NewsAnnouncementWidget(),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1004,15 +1110,19 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
         // ===== TAP OVERLAY  =====
         // change transparent colour to something else (e.g. green) to see it
-        (ignoring == false)
-            ?
+
+        // Overlay controlled by ValueNotifier
+        ValueListenableBuilder<bool>(
+          valueListenable: _isPanelOpen,
+          builder: (context, isOpen, _) {
+            if (!isOpen) {
               // when closed at the bottom, so user can also press on header
               // and open panel instead of just dragging it
-              Positioned(
+              return Positioned(
                 left: 0,
                 right: 0,
                 bottom: 0, //  anchored to bottom
-                height: TextSizing.fontSizeHeading(context) * 3,
+                height: fontSizeHeading * 3,
                 child: SafeArea(
                   top: false,
                   bottom: false,
@@ -1024,9 +1134,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     child: Container(color: Colors.transparent),
                   ),
                 ),
-              )
-            : (ignoring == true) // same here but for closing
-            ? Stack(
+              );
+            } else {
+              // same here but for closing
+              return Stack(
                 children: [
                   // added tap overlays on both left and right if safe area exists
                   // so user can also press there and close the panel
@@ -1042,8 +1153,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                         child: Container(color: Colors.transparent),
                       ),
                     ),
-                  // and at top (MooBus on-demand height) so if no safe area on left or right
-                  // can still close by pressing on it
                   if (padding.right > 0)
                     Positioned(
                       right: 0,
@@ -1056,7 +1165,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                         child: Container(color: Colors.transparent),
                       ),
                     ),
-
+                  // and at top (MooBus on-demand height) so if no safe area on left or right
+                  // can still close by pressing on it
                   Positioned(
                     left: 0,
                     right: 0,
@@ -1067,9 +1177,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                                   ? screenHeight * 0.965
                                   : screenHeight * 0.98)
                             : screenHeight * 0.8) +
-                        TextSizing.fontSizeText(context) *
-                            2, // towards top of the open panel
-                    height: TextSizing.fontSizeHeading(context) * 1.5,
+                        fontSizeText * 2, // towards top of the open panel
+                    height: fontSizeHeading * 1.5,
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
                       onTap: () => _panelController.close(),
@@ -1077,8 +1186,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                     ),
                   ),
                 ],
-              )
-            : SizedBox(),
+              );
+            }
+          },
+        ),
       ],
     );
   }
@@ -1087,14 +1198,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-
-    // Decide which screen to show based on the current hour
-    final bool isAfternoon = now.hour >= startAfternoonService;
-
-    Widget displayPage = isAfternoon
-        ? AfternoonScreen(updateSelectedBox: updateSelectedBox)
-        : MorningScreen(updateSelectedBox: updateSelectedBox);
+    if (kDebugMode) debugPrint('map_page built');
 
     ///////////////////////////////////////////////////////////////
 
@@ -1106,51 +1210,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           SafeArea(
             top: true,
             bottom: false,
-            child: Stack(
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    TextSizing.fontSizeText(context),
-                    TextSizing.fontSizeText(context) * 0.5,
-                    0,
-                    0,
-                  ),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: Container(
-                      width: TextSizing.fontSizeHeading(context) * 2.9,
-                      height: TextSizing.fontSizeHeading(context) * 2.9,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blueGrey.withAlpha(
-                              100,
-                            ), // ~45% opacity
-                            blurRadius: 15, // how soft the shadow is
-                            spreadRadius: 2, // how far it extends
-                            offset: Offset(
-                              0,
-                              0,
-                            ), // no offset = shadow all around
-                          ),
-                        ],
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'images/np_logo.png',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                _buildCircularMenu(),
-              ],
-            ),
+            child: Stack(children: [_logoNP(), _buildCircularMenu()]),
           ),
-          _buildSlidingPanel(displayPage),
+          _buildSlidingPanel(),
         ],
       ),
     );

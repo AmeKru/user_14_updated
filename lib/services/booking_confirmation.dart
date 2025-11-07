@@ -102,7 +102,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
       updateTimeManually();
       secondsElapsed += timeUpdateInterval.inSeconds;
 
-      // If you need to update UI each second, put the change inside setState
+      // If need to update UI each second, add change here
       if (mounted) {
         setState(() {
           // update widgets that depend on the current time here, if any
@@ -124,9 +124,6 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     // Cancel timer to prevent callbacks after disposal
     _clockTimer?.cancel();
     _clockTimer = null;
-
-    // If getTime registers any listeners/subscriptions, cancel/unregister them here
-
     super.dispose();
   }
 
@@ -333,6 +330,8 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 
   @override
   Widget build(BuildContext context) {
+    if (kDebugMode) debugPrint('booking_confirmation built');
+
     // Determine which booked trip index to use based on the selected box:// If selectedBox == 1, use KAP index; otherwise, use CLE index.
 
     final int? bookedTripIndex = widget.selectedBox == 1
@@ -367,7 +366,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     final Color cardColor =
         generateColor(bookedTime, bookedTripIndex ?? 0) ?? Colors.white;
 
-    // Guard: if there is no booked trip index or booked time, show a friendly empty state
+    // Guard: if there is no booked trip index or booked time, show a user friendly empty state
     if (bookedTripIndex == null || bookedTime == null) {
       return Center(
         child: Padding(

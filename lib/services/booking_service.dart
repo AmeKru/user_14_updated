@@ -1,8 +1,10 @@
 import 'dart:async'; // For Timer functionality
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:user_14_updated/data/global.dart'; // contains shared global variables/constants
 import 'package:user_14_updated/services/get_afternoon_eta.dart'; // Service for Afternoon bus logic
+import 'package:user_14_updated/utils/get_time.dart';
 import 'package:user_14_updated/utils/loading.dart'; // Custom loading widget
 import 'package:user_14_updated/utils/text_sizing.dart';
 
@@ -61,20 +63,24 @@ class BookingService extends StatefulWidget {
 
 class BookingServiceState extends State<BookingService> {
   Future<void> refreshFromParent(bool refreshBecauseTripFull) async {
+    if (kDebugMode) {
+      print('booking service is being refreshed by parent');
+    }
     if (refreshBecauseTripFull == true) {
       setState(() {
         _loading = true;
         bookingCounts = {};
       });
     }
+    setTime();
     await _updateBookingCounts();
   }
 
   // Default color for UI elements before availability is determined
   Color finalColor = Colors.grey;
 
-  // Timer to periodically refresh booking counts
-  //late Timer _timer;
+  // needed to use getTime() - TODO: check if works
+  TimeService updateTime = TimeService();
 
   // Stores booking counts for each trip index
   // Key: trip index, Value: number of bookings (nullable if not yet fetched)
@@ -147,14 +153,12 @@ class BookingServiceState extends State<BookingService> {
 
   @override
   void dispose() {
-    //  _timer.cancel(); // Stop the timer to prevent memory leaks
     super.dispose();
     confirmingBooking = false;
   }
 
   // Fetches booking counts for all departure times and updates state.
   Future<void> _updateBookingCounts() async {
-    confirmingBooking = false;
     if (_updating) return; // avoid overlapping calls
     _updating = true;
 
@@ -232,15 +236,15 @@ class BookingServiceState extends State<BookingService> {
     }
   }
 
-  // Returns true if the given count meets or exceeds the "full" threshold.
-  bool _isFull(int? count) {
-    return count != null && count >= vacancyRed;
+  // Set time through timeAPI
+  Future<void> setTime() async {
+    now = (await updateTime.getTime()) ?? DateTime.now();
   }
 
   ///////////////////////////////////////////////////////////////
   // Returns a color based on the number of bookings:
-  // - Green: plenty of space
-  // - Yellow: limited space
+  // - Green: plenty of space left
+  // - Yellow: more than half full already
   // - Red: full
 
   Color _getColor(int count) {
@@ -256,6 +260,7 @@ class BookingServiceState extends State<BookingService> {
   @override
   Widget build(BuildContext context) {
     // Determine text color based on dark mode setting
+    if (kDebugMode) debugPrint('booking_service built');
     Color darkText = isDarkMode ? Colors.white : Colors.black;
 
     // If still loading booking data, show a loading widget
@@ -417,12 +422,11 @@ class BookingServiceState extends State<BookingService> {
                   int? count = bookingCounts[index];
 
                   // Whether this trip is full
-                  bool isFull = _isFull(count);
+                  bool isFull = (count != null && count >= vacancyRed);
 
-                  // cannot book if its way later then stated time ( will disappear 5min after stated time )
+                  // cannot book if its way then trip time
                   return (time.hour > now.hour ||
-                          time.hour >= now.hour &&
-                              time.minute + 5 >= now.minute)
+                          time.hour == now.hour && time.minute > now.minute)
                       ? Padding(
                           padding: EdgeInsets.fromLTRB(
                             TextSizing.fontSizeText(context),
@@ -792,7 +796,9 @@ class BookingServiceState extends State<BookingService> {
                                           : Colors.white),
                                     ), // Text color
                                     onPressed: () {
-                                      confirmingBooking = true;
+                                      setState(() {
+                                        confirmingBooking = true;
+                                      });
                                       widget.onPressedConfirm();
                                     },
                                     child: Padding(
