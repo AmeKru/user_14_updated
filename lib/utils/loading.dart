@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
+
+import '../data/global.dart';
+import '../utils/text_sizing.dart';
 // flutter_spinkit provides a variety of animated loading indicators
 
 //////////////////////////////////////////////////////////////

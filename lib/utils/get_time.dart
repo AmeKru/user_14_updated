@@ -2,7 +2,9 @@ import 'dart:async'; // For Timer and asynchronous operations
 import 'dart:convert'; // For decoding JSON responses from the API
 
 import 'package:flutter/foundation.dart'; // For ChangeNotifier and kDebugMode
-import 'package:http/http.dart'; // For making HTTP requests
+import 'package:http/http.dart';
+
+import '../data/global.dart'; // For making HTTP requests
 
 ///////////////////////////////////////////////////////////////
 // A singleton service that fetches and maintains the current time
@@ -18,7 +20,6 @@ class TimeService with ChangeNotifier {
       _instance; // Factory constructor returns the same instance
 
   // --- State variables ---
-  DateTime? timeNow; // Holds the current time
   Duration timeUpdateInterval = Duration(
     minutes: 1,
   ); // How often to update time
@@ -68,7 +69,9 @@ class TimeService with ChangeNotifier {
         // Notify any listeners (e.g., widgets) that the time has changed
         notifyListeners();
 
-        return timeNow;
+        if (timeNow != null) {
+          return timeNow;
+        }
       } else {
         // If request failed, log the status code
         if (kDebugMode) {
@@ -83,7 +86,18 @@ class TimeService with ChangeNotifier {
         print('Caught error1: $e');
       }
     }
-    return null; // Return null if time could not be fetched
+    // fallback to device local UTC time zone and convert to singapore time zone
+
+    if (kDebugMode) {
+      print('timeNow could not be fetched, falling back to device time');
+    }
+    // Get the current device time
+    DateTime localTime = DateTime.now();
+    // Convert local time to UTC
+    DateTime utcTime = localTime.toUtc();
+
+    timeNow = utcTime.add(Duration(hours: 8));
+    return timeNow;
   }
 
   ///////////////////////////////////////////////////////////////

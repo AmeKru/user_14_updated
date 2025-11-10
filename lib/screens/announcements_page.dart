@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/data/get_data.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
 
+import '../data/get_data.dart';
 import '../data/global.dart';
+import '../utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
 // News Announcement Page
@@ -26,6 +26,11 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
 
   // Fallback text shown when there are no announcements
   final String _fallback = 'No announcements at the moment';
+
+  // for sizing
+  double fontSizeMiniText = 0;
+  double fontSizeText = 0;
+  double fontSizeHeading = 0;
 
   @override
   void initState() {
@@ -55,6 +60,15 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // assign sizing variables once at start
+    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    fontSizeText = TextSizing.fontSizeText(context);
+    fontSizeHeading = TextSizing.fontSizeHeading(context);
+  }
+
+  @override
   void dispose() {
     // Clean up listener when widget is removed
     busData.removeListener(_busDataListener);
@@ -69,16 +83,16 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
     return Column(
       children: [
         Padding(
-          padding: EdgeInsets.all(TextSizing.fontSizeText(context)),
+          padding: EdgeInsets.all(fontSizeText),
           child: Container(
             // Announcement background color
             color: const Color(0xfffeb041),
             child: Padding(
               padding: EdgeInsets.fromLTRB(
-                TextSizing.fontSizeHeading(context),
-                TextSizing.fontSizeText(context),
-                TextSizing.fontSizeHeading(context),
-                TextSizing.fontSizeHeading(context),
+                fontSizeHeading,
+                fontSizeText,
+                fontSizeHeading,
+                fontSizeHeading,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,18 +105,16 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
                       Icon(
                         Icons.announcement,
                         color: Colors.blueGrey[900],
-                        size: TextSizing.fontSizeHeading(context),
+                        size: fontSizeHeading,
                       ),
-                      SizedBox(
-                        width: TextSizing.fontSizeMiniText(context) * 0.5,
-                      ),
+                      SizedBox(width: fontSizeMiniText * 0.5),
                       Flexible(
                         child: Text(
                           'Announcements',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: TextSizing.fontSizeHeading(context),
+                            fontSize: fontSizeHeading,
                             fontWeight: FontWeight.bold,
                             color: Colors.blueGrey[900],
                             fontFamily: 'Roboto',
@@ -111,7 +123,7 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
                       ),
                     ],
                   ),
-                  SizedBox(height: TextSizing.fontSizeText(context)),
+                  SizedBox(height: fontSizeText),
                   // Centered announcement text
                   Center(
                     child: Text(
@@ -119,7 +131,7 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
                       softWrap: true,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: TextSizing.fontSizeText(context),
+                        fontSize: fontSizeText,
                         fontFamily: 'Roboto',
                         color: Colors.blueGrey[900],
                       ),
@@ -136,13 +148,23 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
 }
 
 class NewsAnnouncement extends StatelessWidget {
-  const NewsAnnouncement({super.key});
+  // for sizing
+  final double fontSizeMiniText;
+  final double fontSizeText;
+  final double fontSizeHeading;
+
+  const NewsAnnouncement({
+    super.key,
+    required this.fontSizeMiniText,
+    required this.fontSizeText,
+    required this.fontSizeHeading,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: TextSizing.fontSizeHeading(context) * 2,
+        toolbarHeight: fontSizeHeading * 2,
         iconTheme: IconThemeData(
           color: isDarkMode
               ? Color(0xfffeb041)
@@ -156,7 +178,7 @@ class NewsAnnouncement extends StatelessWidget {
           'NP Announcements',
           style: TextStyle(
             color: isDarkMode ? Color(0xfffeb041) : Colors.white,
-            fontSize: TextSizing.fontSizeHeading(context),
+            fontSize: fontSizeHeading,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -165,17 +187,18 @@ class NewsAnnouncement extends StatelessWidget {
       body: Container(
         color: isDarkMode ? Colors.blueGrey[900] : Colors.white,
         child: SafeArea(
-          right:true,
-            left: true,
-            top: true,
-            bottom: false,
-            child: Column(
-          children: [
-            SizedBox(height: TextSizing.fontSizeText(context)),
-            NewsAnnouncementWidget(),
-          ],
+          right: true,
+          left: true,
+          top: true,
+          bottom: false,
+          child: Column(
+            children: [
+              SizedBox(height: fontSizeText),
+              NewsAnnouncementWidget(),
+            ],
+          ),
         ),
-      ),),
+      ),
     );
   }
 }

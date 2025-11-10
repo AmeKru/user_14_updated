@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/data/get_data.dart';
-import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/utils/loading.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
+
+import '../data/get_data.dart';
+import '../data/global.dart';
+import '../utils/loading.dart';
+import '../utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
 // Information Page
@@ -23,6 +24,11 @@ class _InformationPageState extends State<InformationPage> {
 
   // Listener token for BusData ChangeNotifier
   late VoidCallback _busDataListener;
+
+  // for sizing
+  double fontSizeMiniText = 0;
+  double fontSizeText = 0;
+  double fontSizeHeading = 0;
 
   @override
   void initState() {
@@ -47,6 +53,15 @@ class _InformationPageState extends State<InformationPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // assign sizing variables once at start
+    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    fontSizeText = TextSizing.fontSizeText(context);
+    fontSizeHeading = TextSizing.fontSizeHeading(context);
+  }
+
+  @override
   void dispose() {
     // Clean up listener when widget is removed
     busData.removeListener(_busDataListener);
@@ -59,7 +74,7 @@ class _InformationPageState extends State<InformationPage> {
       ///////////////////////////////////////////////////////////////
       // Top Bar
       appBar: AppBar(
-        toolbarHeight: TextSizing.fontSizeHeading(context) * 2,
+        toolbarHeight: fontSizeHeading * 2,
         // Arrow back
         iconTheme: IconThemeData(
           color: isDarkMode
@@ -72,7 +87,7 @@ class _InformationPageState extends State<InformationPage> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontSize: TextSizing.fontSizeHeading(context),
+            fontSize: fontSizeHeading,
             fontWeight: FontWeight.bold,
             color: isDarkMode ? Colors.cyan[200] : Colors.white,
           ),
@@ -95,26 +110,24 @@ class _InformationPageState extends State<InformationPage> {
               ? Center(child: LoadingScreen())
               : SingleChildScrollView(
                   child: Padding(
-                    padding: EdgeInsets.all(TextSizing.fontSizeText(context)),
+                    padding: EdgeInsets.all(fontSizeText),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                        SizedBox(height: fontSizeMiniText),
                         Text(
                           'Morning Schedule',
                           textAlign: TextAlign.center,
                           softWrap: true,
                           style: TextStyle(
                             fontFamily: 'Roboto',
-                            fontSize: TextSizing.fontSizeHeading(context),
+                            fontSize: fontSizeHeading,
                             fontWeight: FontWeight.bold,
                             color: isDarkMode ? Colors.white : Colors.black,
                           ),
                         ),
-                        SizedBox(
-                          height: TextSizing.fontSizeHeading(context) * 1.2,
-                        ),
+                        SizedBox(height: fontSizeHeading * 1.2),
 
                         _buildScheduleSection(
                           TextSizing.isTabletOrLandscapeMode(context)
@@ -123,7 +136,7 @@ class _InformationPageState extends State<InformationPage> {
                           busData.arrivalTimeKAP,
                           2,
                         ),
-                        SizedBox(height: TextSizing.fontSizeText(context) * 2),
+                        SizedBox(height: fontSizeText * 2),
                         _buildScheduleSection(
                           TextSizing.isTabletOrLandscapeMode(context)
                               ? 'Clementi MRT Station (CLE) to NP Campus'
@@ -132,14 +145,14 @@ class _InformationPageState extends State<InformationPage> {
                           1,
                         ),
 
-                        SizedBox(height: TextSizing.fontSizeText(context) * 3),
+                        SizedBox(height: fontSizeText * 3),
                         Text(
                           textAlign: TextAlign.center,
                           softWrap: true,
                           'Afternoon Schedule',
                           style: TextStyle(
                             fontFamily: 'Roboto',
-                            fontSize: TextSizing.fontSizeHeading(context),
+                            fontSize: fontSizeHeading,
                             fontWeight: FontWeight.bold,
                             color: isDarkMode ? Colors.white : Colors.black,
                           ),
@@ -150,16 +163,14 @@ class _InformationPageState extends State<InformationPage> {
                           softWrap: true,
                           style: TextStyle(
                             fontFamily: 'Roboto',
-                            fontSize: TextSizing.fontSizeMiniText(context),
+                            fontSize: fontSizeMiniText,
                             fontWeight: FontWeight.bold,
                             color: isDarkMode
                                 ? Colors.blueGrey[100]
                                 : Colors.black,
                           ),
                         ),
-                        SizedBox(
-                          height: TextSizing.fontSizeHeading(context) * 1.2,
-                        ),
+                        SizedBox(height: fontSizeHeading * 1.2),
 
                         _buildScheduleSection(
                           TextSizing.isTabletOrLandscapeMode(context)
@@ -168,7 +179,7 @@ class _InformationPageState extends State<InformationPage> {
                           busData.departureTimeKAP,
                           2,
                         ),
-                        SizedBox(height: TextSizing.fontSizeText(context) * 2),
+                        SizedBox(height: fontSizeText * 2),
                         _buildScheduleSection(
                           TextSizing.isTabletOrLandscapeMode(context)
                               ? 'NP Campus to Clementi MRT Station (CLE)'
@@ -176,7 +187,7 @@ class _InformationPageState extends State<InformationPage> {
                           busData.departureTimeCLE,
                           1,
                         ),
-                        SizedBox(height: TextSizing.fontSizeText(context) * 3),
+                        SizedBox(height: fontSizeText * 3),
                       ],
                     ),
                   ),
@@ -203,12 +214,12 @@ class _InformationPageState extends State<InformationPage> {
           textAlign: TextAlign.center,
           softWrap: true,
           style: TextStyle(
-            fontSize: TextSizing.fontSizeText(context),
+            fontSize: fontSizeText,
             color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
 
-        SizedBox(height: TextSizing.fontSizeText(context)),
+        SizedBox(height: fontSizeText),
         Table(
           columnWidths: columns == 2
               ? {
@@ -219,7 +230,7 @@ class _InformationPageState extends State<InformationPage> {
                 }
               : {0: FlexColumnWidth(1), 1: FlexColumnWidth(2)},
           border: TableBorder.all(
-            width: TextSizing.fontSizeText(context) * 0.1,
+            width: fontSizeText * 0.1,
             color: isDarkMode ? Colors.blueGrey[900]! : Colors.white,
           ),
 
@@ -240,11 +251,11 @@ class _InformationPageState extends State<InformationPage> {
       rows.add(
         _buildTableRow([
           'Trip',
-          TextSizing.isTabletOrLandscapeMode(context)
+          TextSizing.isLandscapeMode(context)
               ? 'Bus A Departure Time'
               : 'Bus A',
           'Trip',
-          TextSizing.isTabletOrLandscapeMode(context)
+          TextSizing.isLandscapeMode(context)
               ? 'Bus B Departure Time'
               : 'Bus B',
         ], 0),
@@ -264,7 +275,7 @@ class _InformationPageState extends State<InformationPage> {
       rows.add(
         _buildTableRow([
           'Trip',
-          TextSizing.isTabletOrLandscapeMode(context)
+          TextSizing.isLandscapeMode(context)
               ? 'Bus A Departure Time'
               : 'Bus A',
         ], 0),
@@ -307,7 +318,7 @@ class _InformationPageState extends State<InformationPage> {
 
         return Container(
           color: bgColor,
-          padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
+          padding: EdgeInsets.all(fontSizeMiniText),
           child: Text(
             maxLines: 1, //  limits to 1 lines
             overflow: TextOverflow.ellipsis, // clips text if not fitting
@@ -315,7 +326,7 @@ class _InformationPageState extends State<InformationPage> {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: TextSizing.fontSizeText(context),
+              fontSize: fontSizeText,
               color: (rowIndex == 0)
                   ? (isDarkMode ? Colors.cyan[200] : Colors.white)
                   : (isDarkMode ? Colors.white : Colors.black),

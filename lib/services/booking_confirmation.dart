@@ -1,16 +1,15 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
-import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/services/get_afternoon_eta.dart';
-import 'package:user_14_updated/utils/loading.dart';
-import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
-import 'package:user_14_updated/utils/text_styles_booking_confirmation.dart';
+
+import '../data/global.dart';
+import '../services/get_afternoon_eta.dart';
+import '../utils/get_time.dart';
+import '../utils/loading.dart';
+import '../utils/styling_line_and_buttons.dart';
+import '../utils/text_styles_booking_confirmation.dart';
 
 ///////////////////////////////////////////////////////////////
 // This URL returns the current time for the Asia/Singapore timezone
@@ -38,6 +37,11 @@ class BookingConfirmation extends StatefulWidget {
   // Name of the bus stop
   final String? busStop;
 
+  // for sizing
+  final double fontSizeMiniText;
+  final double fontSizeText;
+  final double fontSizeHeading;
+
   const BookingConfirmation({
     super.key,
     required this.selectedBox,
@@ -46,6 +50,9 @@ class BookingConfirmation extends StatefulWidget {
     required this.bookedDepartureTime,
     required this.onCancel,
     required this.busStop,
+    required this.fontSizeMiniText,
+    required this.fontSizeText,
+    required this.fontSizeHeading,
   });
 
   @override
@@ -54,7 +61,7 @@ class BookingConfirmation extends StatefulWidget {
 
 class _BookingConfirmationState extends State<BookingConfirmation> {
   final Duration timeUpdateInterval = const Duration(seconds: 1);
-  final Duration apiFetchInterval = const Duration(minutes: 3);
+  final Duration apiFetchInterval = const Duration(minutes: 1);
 
   int secondsElapsed = 0;
   Timer? _clockTimer;
@@ -78,12 +85,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   Future<void> _initializeTimeAndTimers() async {
     // Fetch the current time from the API first. getTime must be implemented
     // to avoid calling setState when !mounted.
-    try {
-      await getTime();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching initial time: $e');
-    }
-
+    final TimeService timeService = TimeService();
     if (!mounted) return;
 
     // Mark loading complete once time is fetched (or attempted)
@@ -92,30 +94,22 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     });
 
     // Start a periodic timer to update the time every second.
-    _clockTimer = Timer.periodic(timeUpdateInterval, (timer) async {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
+    timeService.getTime().then((_) {
+      _clockTimer = Timer.periodic(timeUpdateInterval, (timer) async {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
 
-      // Increment local time representation synchronously
-      updateTimeManually();
-      secondsElapsed += timeUpdateInterval.inSeconds;
+        // Increment local time representation synchronously
+        updateTimeManually();
+        secondsElapsed += timeUpdateInterval.inSeconds;
 
-      // If need to update UI each second, add change here
-      if (mounted) {
-        setState(() {
-          // update widgets that depend on the current time here, if any
-        });
-      }
-
-      // Every [apiFetchInterval], refresh the time from the API as a fire-and-forget Future.
-      if (secondsElapsed >= apiFetchInterval.inSeconds) {
-        getTime().catchError((e) {
-          if (kDebugMode) print('Periodic time refresh failed: $e');
-        });
-        secondsElapsed = 0;
-      }
+        // Every [apiFetchInterval], refresh the time from the API as a fire-and-forget Future.
+        if (secondsElapsed >= apiFetchInterval.inSeconds) {
+          secondsElapsed = 0;
+        }
+      });
     });
   }
 
@@ -182,41 +176,6 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     return colors[index];
   }
 
-  ///////////////////////////////////////////////////////////////
-  // Fetches the current time from the API and updates [timeNow].
-  // This ensures the displayed time stays accurate even if the
-  // device clock is off.
-
-  Future<void> getTime() async {
-    try {
-      final uri = Uri.parse(timeApiUrl);
-      final response = await get(uri).timeout(const Duration(seconds: 5));
-      final Map data = jsonDecode(response.body) as Map;
-      final String? datetime = data['dateTime'] as String?;
-      final DateTime newTime = datetime != null
-          ? DateTime.parse(datetime)
-          : DateTime.now();
-
-      if (!mounted) {
-        timeNow = newTime;
-        return;
-      }
-      setState(() {
-        timeNow = newTime;
-      });
-    } catch (e) {
-      if (kDebugMode) print('Error fetching time: $e');
-      final DateTime fallback = DateTime.now();
-      if (!mounted) {
-        timeNow = fallback;
-        return;
-      }
-      setState(() {
-        timeNow = fallback;
-      });
-    }
-  }
-
   void updateTimeManually() {
     if (timeNow == null) return;
     setState(() {
@@ -244,9 +203,9 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                   Icon(
                     Icons.cancel_rounded,
                     color: Colors.redAccent,
-                    size: TextSizing.fontSizeHeading(context),
+                    size: widget.fontSizeHeading,
                   ),
-                  SizedBox(width: TextSizing.fontSizeMiniText(context)),
+                  SizedBox(width: widget.fontSizeMiniText),
                   Flexible(
                     child: Text(
                       'Cancel Booking',
@@ -255,7 +214,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                         fontWeight: FontWeight.bold,
                         fontFamily: 'Roboto',
                         color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: TextSizing.fontSizeHeading(context),
+                        fontSize: widget.fontSizeHeading,
                       ),
                     ),
                   ),
@@ -265,8 +224,8 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
           ),
           content: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: TextSizing.fontSizeText(context),
-              vertical: TextSizing.fontSizeMiniText(context),
+              horizontal: widget.fontSizeText,
+              vertical: widget.fontSizeMiniText,
             ),
             child: Text(
               softWrap: true,
@@ -274,7 +233,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
               style: TextStyle(
                 fontFamily: 'Roboto',
                 color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: TextSizing.fontSizeText(context),
+                fontSize: widget.fontSizeText,
               ),
             ),
           ),
@@ -285,7 +244,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
-                  fontSize: TextSizing.fontSizeText(context),
+                  fontSize: widget.fontSizeText,
                   color: isDarkMode
                       ? Colors.tealAccent
                       : const Color(0xff014689),
@@ -299,7 +258,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
-                  fontSize: TextSizing.fontSizeText(context),
+                  fontSize: widget.fontSizeText,
                   color: isDarkMode
                       ? Colors.tealAccent
                       : const Color(0xff014689),
@@ -342,7 +301,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     final DateTime? bookedTime = widget.bookedDepartureTime;
 
     // Determine whether cancel button should be shown: only if bookedTime is in the future compared to timeNow
-    final DateTime now = DateTime.now();
+    final DateTime now = timeNow ?? DateTime.now();
     canCancel = bookedTime != null
         ? bookedTime.isAfter(now) || bookedTime.isAtSameMomentAs(now)
         : false;
@@ -370,7 +329,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     if (bookedTripIndex == null || bookedTime == null) {
       return Center(
         child: Padding(
-          padding: EdgeInsets.all(TextSizing.fontSizeText(context)),
+          padding: EdgeInsets.all(widget.fontSizeText),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -382,12 +341,12 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                   color: isDarkMode
                       ? Colors.blueGrey[200]
                       : Colors.blueGrey[500],
-                  fontSize: TextSizing.fontSizeText(context),
+                  fontSize: widget.fontSizeText,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
                 ),
               ),
-              SizedBox(height: TextSizing.fontSizeText(context)),
+              SizedBox(height: widget.fontSizeText),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   elevation: 0,
@@ -407,7 +366,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
                 child: Text(
                   'OK',
                   style: TextStyle(
-                    fontSize: TextSizing.fontSizeText(context),
+                    fontSize: widget.fontSizeText,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Roboto',
                   ),
@@ -436,10 +395,13 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
             color: cardColor, // Dynamic background color with fallback
             canCancel: canCancel,
             onCancel: showCancelDialog, // Show cancel confirmation dialog
+            fontSizeMiniText: widget.fontSizeMiniText,
+            fontSizeText: widget.fontSizeText,
+            fontSizeHeading: widget.fontSizeHeading,
             // Note: onCancel is synchronous dialog trigger; parent will handle async persistence
           ),
         ),
-        SizedBox(height: TextSizing.fontSizeHeading(context)),
+        SizedBox(height: widget.fontSizeHeading),
         // Show Afternoon service bus time only if current hour is after service start
         if (timeNow != null && timeNow!.hour >= startAfternoonETA)
           Center(
@@ -461,6 +423,9 @@ class _BookingDetailsCard extends StatelessWidget {
   final Color? color; // Background color for the card
   final bool? canCancel;
   final VoidCallback onCancel; // Callback for cancel button
+  final double fontSizeMiniText; // for sizing
+  final double fontSizeText;
+  final double fontSizeHeading;
 
   const _BookingDetailsCard({
     required this.bookedTripIndex,
@@ -470,10 +435,14 @@ class _BookingDetailsCard extends StatelessWidget {
     required this.color,
     required this.canCancel,
     required this.onCancel,
+    required this.fontSizeMiniText,
+    required this.fontSizeText,
+    required this.fontSizeHeading,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (kDebugMode) debugPrint('bookingDetailsCard built');
     // Defensive local values
     final int displayIndex = (bookedTripIndex ?? 0) + 1;
     final String dateLabel = bookedTime != null
@@ -485,23 +454,19 @@ class _BookingDetailsCard extends StatelessWidget {
     final String stopLabel = busStop.isNotEmpty ? busStop : '-';
 
     return Padding(
-      padding: EdgeInsets.all(
-        TextSizing.fontSizeText(context),
-      ), // Outer padding around the card
+      padding: EdgeInsets.all(fontSizeText), // Outer padding around the card
       child: Container(
         color: color, // Apply dynamic background color
         child: Padding(
           padding: EdgeInsets.all(
-            TextSizing.fontSizeText(context) * 0.5,
+            fontSizeText * 0.5,
           ), // Inner padding inside the card
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
 
             children: [
-              SizedBox(
-                height: TextSizing.fontSizeText(context) * 0.5,
-              ), // Small top spacing
+              SizedBox(height: fontSizeText * 0.5), // Small top spacing
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -509,10 +474,10 @@ class _BookingDetailsCard extends StatelessWidget {
                   Icon(
                     Icons.event_available,
                     color: Colors.black,
-                    size: TextSizing.fontSizeHeading(context),
+                    size: fontSizeHeading,
                   ), // Calendar/check icon
                   SizedBox(
-                    width: TextSizing.fontSizeText(context) * 0.5,
+                    width: fontSizeText * 0.5,
                   ), // Space between icon and text
                   Flexible(
                     child: Text(
@@ -521,7 +486,7 @@ class _BookingDetailsCard extends StatelessWidget {
                       overflow:
                           TextOverflow.ellipsis, // clips text if not fitting
                       style: TextStyle(
-                        fontSize: TextSizing.fontSizeHeading(context),
+                        fontSize: fontSizeHeading,
                         fontWeight: FontWeight.bold,
                         fontFamily: 'Roboto',
                         color: Colors.black,
@@ -531,18 +496,18 @@ class _BookingDetailsCard extends StatelessWidget {
                 ],
               ),
 
-              SizedBox(height: TextSizing.fontSizeMiniText(context)),
+              SizedBox(height: fontSizeMiniText),
               Text(
                 // Date of Trip
                 dateLabel,
                 style: TextStyle(
-                  fontSize: TextSizing.fontSizeMiniText(context),
+                  fontSize: fontSizeMiniText,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'Roboto',
                   color: Colors.black,
                 ),
               ),
-              SizedBox(height: TextSizing.fontSizeText(context)),
+              SizedBox(height: fontSizeText),
 
               // Display trip number (index + 1 for human-readable numbering)
               BookingConfirmationText(
@@ -550,32 +515,36 @@ class _BookingDetailsCard extends StatelessWidget {
                 value: bookedTripIndex != null ? '$displayIndex' : '-',
                 size: 1,
                 darkText: true,
+                fontSizeText: fontSizeText,
               ),
-              DrawLine(), // Divider line
+              DrawLine(fontSizeText: fontSizeText), // Divider line
               // Display departure time in HH:mm format
               BookingConfirmationText(
                 label: 'Time',
                 value: timeLabel,
                 size: 1,
                 darkText: true,
+                fontSizeText: fontSizeText,
               ),
-              DrawLine(),
+              DrawLine(fontSizeText: fontSizeText),
               // Display station name
               BookingConfirmationText(
                 label: 'Station',
                 value: station,
                 size: 1,
                 darkText: true,
+                fontSizeText: fontSizeText,
               ),
-              DrawLine(),
+              DrawLine(fontSizeText: fontSizeText),
               // Display bus stop name
               BookingConfirmationText(
                 label: 'Bus Stop',
                 value: stopLabel,
                 size: 1,
                 darkText: true,
+                fontSizeText: fontSizeText,
               ),
-              SizedBox(height: TextSizing.fontSizeText(context)),
+              SizedBox(height: fontSizeText),
               // Cancel button row
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -583,8 +552,8 @@ class _BookingDetailsCard extends StatelessWidget {
                 children: [
                   Padding(
                     padding: EdgeInsets.only(
-                      top: TextSizing.fontSizeText(context),
-                      bottom: TextSizing.fontSizeText(context) * 1.5,
+                      top: fontSizeText,
+                      bottom: fontSizeText * 1.5,
                     ),
                     // if trip has already started, cannot cancel anymore
                     child: ElevatedButton(
@@ -598,16 +567,14 @@ class _BookingDetailsCard extends StatelessWidget {
                           ? onCancel // Trigger cancel dialog
                           : null, // grey out button if trip already started
                       child: Padding(
-                        padding: EdgeInsets.all(
-                          TextSizing.fontSizeText(context) * 0.33,
-                        ),
+                        padding: EdgeInsets.all(fontSizeText * 0.33),
                         child: Text(
                           canCancel == true ? 'Cancel' : 'Have a good trip! [:',
                           maxLines: 1, //  limits to 1 lines
                           overflow: TextOverflow
                               .ellipsis, // clips text if not fitting
                           style: TextStyle(
-                            fontSize: TextSizing.fontSizeText(context),
+                            fontSize: fontSizeText,
                             fontFamily: 'Roboto',
                           ),
                         ),

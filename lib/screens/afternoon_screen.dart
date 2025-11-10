@@ -7,19 +7,21 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/foundation.dart';
 // Flutter UI framework
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/data/get_data.dart'; // Local bus data helper
-import 'package:user_14_updated/data/global.dart'; // Global variables
-import 'package:user_14_updated/models/model_provider.dart'; // Amplify model provider
-import 'package:user_14_updated/services/booking_confirmation.dart'; // Booking confirmation UI
-import 'package:user_14_updated/services/booking_service.dart'; // Booking servicing confirmation UI
-import 'package:user_14_updated/services/shared_preference.dart'; // SharedPreferences wrapper
-import 'package:user_14_updated/utils/booking_data_consistent_format.dart'; // to have a singular format for booking, no matter if it is loaded from save, or from server
-import 'package:user_14_updated/utils/loading.dart'; // For loading
-import 'package:user_14_updated/utils/styling_line_and_buttons.dart'; // Styling helpers
-import 'package:user_14_updated/utils/text_sizing.dart'; // sizing, so it stays consistent
-import 'package:user_14_updated/utils/text_styles_booking_confirmation.dart'; // Text style helpers
 // For generating unique IDs
 import 'package:uuid/uuid.dart';
+
+import '../data/get_data.dart'; // Local bus data helper
+import '../data/global.dart'; // Global variables
+import '../models/model_provider.dart'; // Amplify model provider
+import '../services/booking_confirmation.dart'; // Booking confirmation UI
+import '../services/booking_service.dart'; // Booking servicing confirmation UI
+import '../services/shared_preference.dart'; // SharedPreferences wrapper
+import '../utils/booking_data_consistent_format.dart'; // to have a singular format for booking, no matter if it is loaded from save, or from server
+import '../utils/get_time.dart';
+import '../utils/loading.dart'; // For loading
+import '../utils/styling_line_and_buttons.dart'; // Styling helpers
+import '../utils/text_sizing.dart'; // sizing, so it stays consistent
+import '../utils/text_styles_booking_confirmation.dart'; // Text style helpers
 
 ////////////////////////////////////////////////////////////////////////////////
 // enum to check what BookingStatus the booking has
@@ -117,8 +119,14 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   final Duration _resumeCooldown = const Duration(seconds: 2);
   final Duration _inactivityStopDelay = const Duration(milliseconds: 900);
 
+  // Timers for AppLifeCycle
   Timer? _inactivityStopTimer;
   Timer? _lifecycleResetTimer;
+
+  // for sizing
+  double fontSizeMiniText = 0;
+  double fontSizeText = 0;
+  double fontSizeHeading = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   // Init function (called when first built)
@@ -127,6 +135,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    if (kDebugMode) {
+      print('afternoon screen initState');
+    }
     _isRefreshing = false;
     loadingInitialData = true;
     selectedBox = selectedMRT; // sync with global if needed
@@ -175,6 +186,15 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       print("TimeNow ready: $timeNow");
     }
     _didRestoreSnapshot = false;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // assign sizing variables once at start
+    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    fontSizeText = TextSizing.fontSizeText(context);
+    fontSizeHeading = TextSizing.fontSizeHeading(context);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -257,7 +277,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   Future<void> loadInitialData() async {
     await _waitForTimeAndCheckBooking();
-    loadingInitialData = false;
+    setState(() {
+      loadingInitialData = false;
+    });
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -503,7 +525,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         (idxCheck == null || idxCheck < 0 || idxCheck >= listCheck.length)
         ? null
         : listCheck[idxCheck];
-    DateTime now = DateTime.now();
+
+    final TimeService timeService = TimeService();
+    await timeService.getTime();
+
+    DateTime now = timeNow ?? DateTime.now();
+
     if (departureCheck == null) {
       if (kDebugMode) {
         print('Create Booking failed as departureCheck == null');
@@ -997,7 +1024,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
     final departure = safeDateTime(bookingData['bookedDepartureTime']);
     if (departure != null) {
-      final today = DateTime.now();
+      final TimeService timeService = TimeService();
+      await timeService.getTime();
+      final today = timeNow ?? DateTime.now();
       final bookingDate = DateTime(
         departure.year,
         departure.month,
@@ -1235,10 +1264,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       if (box != 0) {
         if (selectedBox == box) {
           selectedBox = 0;
-          selectedMRT = 0;
         } else {
           selectedBox = box;
-          selectedMRT = box;
         }
         // Notify parent of the new selectedBox value (keeps parent-child synchronized).
         widget.updateSelectedBox(selectedBox);
@@ -1496,41 +1523,39 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               ((TextSizing.isLandscapeMode(context)
                       ? screenHeight * 0.98
                       : screenHeight * 0.8) -
-                  TextSizing.fontSizeHeading(context) * 3) /
+                  fontSizeHeading * 3) /
               screenHeight, // finite height for the sheet
           child: Material(
             color: isDarkMode ? Colors.blueGrey[800] : Colors.white,
             borderRadius: BorderRadius.vertical(
-              top: Radius.circular(TextSizing.fontSizeText(context)),
+              top: Radius.circular(fontSizeText),
             ),
             child: SafeArea(
               top: false,
               bottom: false,
               child: Padding(
-                padding: EdgeInsets.all(
-                  TextSizing.fontSizeText(context) * 0.35,
-                ),
+                padding: EdgeInsets.all(fontSizeText * 0.35),
                 child: Column(
                   mainAxisSize: MainAxisSize.max, // fill vertical space
                   children: [
-                    SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                    SizedBox(height: fontSizeMiniText),
                     Text(
                       'Choose bus stop:',
                       softWrap: true,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: 'Roboto',
-                        fontSize: TextSizing.fontSizeHeading(context),
+                        fontSize: fontSizeHeading,
                         fontWeight: FontWeight.bold,
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
                     ),
-                    SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                    SizedBox(height: fontSizeMiniText),
                     // Give the list bounded height via Expanded
                     Expanded(
                       child: RawScrollbar(
                         thumbVisibility: true,
-                        thickness: TextSizing.fontSizeText(context) * 0.2,
+                        thickness: fontSizeText * 0.2,
                         radius: const Radius.circular(8),
                         thumbColor: isDarkMode ? Colors.black : Colors.grey,
                         child: ListView.builder(
@@ -1540,20 +1565,19 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                             final stopName = _busData.busStop[index + 2];
                             return Padding(
                               padding: EdgeInsets.symmetric(
-                                horizontal: TextSizing.fontSizeText(context),
-                                vertical:
-                                    TextSizing.fontSizeText(context) * 0.2,
+                                horizontal: fontSizeText,
+                                vertical: fontSizeText * 0.2,
                               ),
                               child: Material(
                                 color: isDarkMode
                                     ? Colors.blueGrey[700]
                                     : const Color(0xff014689),
                                 borderRadius: BorderRadius.circular(
-                                  TextSizing.fontSizeText(context) * 0.25,
+                                  fontSizeText * 0.25,
                                 ),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(
-                                    TextSizing.fontSizeText(context) * 0.25,
+                                    fontSizeText * 0.25,
                                   ),
                                   onTap: () {
                                     setState(() {
@@ -1620,7 +1644,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               style: TextStyle(
                 color: isDarkMode ? Colors.black : Colors.white,
                 fontFamily: 'Roboto',
-                fontSize: TextSizing.fontSizeText(context),
+                fontSize: fontSizeText,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1659,9 +1683,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                   Icon(
                     Icons.check_circle,
                     color: Colors.green,
-                    size: TextSizing.fontSizeHeading(context),
+                    size: fontSizeHeading,
                   ), // Success icon
-                  SizedBox(width: TextSizing.fontSizeMiniText(context)),
+                  SizedBox(width: fontSizeMiniText),
                   Expanded(
                     child: Text(
                       softWrap: true,
@@ -1670,7 +1694,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                         fontWeight: FontWeight.bold,
                         fontFamily: 'Roboto',
                         color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: TextSizing.fontSizeHeading(context),
+                        fontSize: fontSizeHeading,
                       ),
                     ),
                   ),
@@ -1682,8 +1706,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           // Dialog content section
           content: Padding(
             padding: EdgeInsets.symmetric(
-              horizontal: TextSizing.fontSizeText(context),
-              vertical: TextSizing.fontSizeMiniText(context),
+              horizontal: fontSizeText,
+              vertical: fontSizeMiniText,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1693,15 +1717,15 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                   'Thank you for booking with us. Your booking has been confirmed.',
                   style: TextStyle(
                     fontFamily: 'Roboto',
-                    fontSize: TextSizing.fontSizeText(context),
+                    fontSize: fontSizeText,
                     color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
-                SizedBox(height: TextSizing.fontSizeHeading(context)),
+                SizedBox(height: fontSizeHeading),
                 Flexible(
                   child: RawScrollbar(
                     thumbVisibility: true,
-                    thickness: TextSizing.fontSizeText(context) * 0.2,
+                    thickness: fontSizeText * 0.2,
                     radius: const Radius.circular(8),
                     thumbColor: isDarkMode ? Colors.black : Colors.grey,
                     child: SingleChildScrollView(
@@ -1713,10 +1737,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                             value: tripValue,
                             size: 0.60,
                             darkText: isDarkMode ? false : true,
+                            fontSizeText: fontSizeText,
                           ),
-                          SizedBox(
-                            height: TextSizing.fontSizeMiniText(context),
-                          ),
+                          SizedBox(height: fontSizeMiniText),
                           // Departure time display
                           BookingConfirmationText(
                             label: 'Time:',
@@ -1725,10 +1748,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                                 : '-',
                             size: 0.60,
                             darkText: isDarkMode ? false : true,
+                            fontSizeText: fontSizeText,
                           ),
-                          SizedBox(
-                            height: TextSizing.fontSizeMiniText(context),
-                          ),
+                          SizedBox(height: fontSizeMiniText),
                           // Station name display
                           BookingConfirmationText(
                             label: 'Station:',
@@ -1739,10 +1761,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                                 : '-',
                             size: 0.60,
                             darkText: isDarkMode ? false : true,
+                            fontSizeText: fontSizeText,
                           ),
-                          SizedBox(
-                            height: TextSizing.fontSizeMiniText(context),
-                          ),
+                          SizedBox(height: fontSizeMiniText),
                           // Bus stop display
                           BookingConfirmationText(
                             label: 'Bus Stop:',
@@ -1751,6 +1772,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                                 : '-',
                             size: 0.60,
                             darkText: isDarkMode ? false : true,
+                            fontSizeText: fontSizeText,
                           ),
                         ],
                       ),
@@ -1771,7 +1793,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: TextSizing.fontSizeText(context),
+                  fontSize: fontSizeText,
                   fontFamily: 'Roboto',
                   color: isDarkMode
                       ? Colors.tealAccent
@@ -1791,9 +1813,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   Widget _mrtSelectionRow() {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: TextSizing.fontSizeMiniText(context),
-      ),
+      padding: EdgeInsets.symmetric(horizontal: fontSizeMiniText),
       child: Row(
         children: [
           // KAP selection box
@@ -1802,19 +1822,27 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               onTap: () => updatingSelectedBox
                   ? null
                   : updateSelectedBox(1, false), // Select KAP
-              child: BoxMRT(box: selectedBox, mrt: 'KAP'),
+              child: BoxMRT(
+                box: selectedBox,
+                mrt: 'KAP',
+                fontSizeText: fontSizeText,
+                fontSizeHeading: fontSizeHeading,
+              ),
             ),
           ),
-          SizedBox(
-            width: TextSizing.fontSizeMiniText(context),
-          ), // Space between boxes
+          SizedBox(width: fontSizeMiniText), // Space between boxes
           // CLE selection box
           Expanded(
             child: GestureDetector(
               onTap: () => updatingSelectedBox
                   ? null
                   : updateSelectedBox(2, false), // Select CLE
-              child: BoxMRT(box: selectedBox, mrt: 'CLE'),
+              child: BoxMRT(
+                box: selectedBox,
+                mrt: 'CLE',
+                fontSizeText: fontSizeText,
+                fontSizeHeading: fontSizeHeading,
+              ),
             ),
           ),
         ],
@@ -1955,6 +1983,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           bookedTripIndexCLE: bookedTripIndexCLE,
           bookedDepartureTime: bookedDepartureTime,
           busStop: selectedBusStop,
+          fontSizeMiniText: fontSizeMiniText,
+          fontSizeText: fontSizeText,
+          fontSizeHeading: fontSizeHeading,
           onCancel: () async {
             // Cancel booking → reset confirmation state and delete booking if exists
             if (!mounted) return;
@@ -2052,7 +2083,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               'Cancelling Booking...',
               style: TextStyle(
                 color: Colors.blueGrey[200],
-                fontSize: TextSizing.fontSizeText(context),
+                fontSize: fontSizeText,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'Roboto',
               ),
@@ -2082,7 +2113,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               softWrap: true,
               style: TextStyle(
                 color: Colors.blueGrey[200],
-                fontSize: TextSizing.fontSizeText(context),
+                fontSize: fontSizeText,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'Roboto',
               ),
@@ -2117,33 +2148,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: TextSizing.fontSizeMiniText(context)),
-
-            // Title: "Select MRT"
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Select MRT',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                    fontSize: TextSizing.fontSizeText(context),
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Roboto',
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: TextSizing.fontSizeMiniText(context)),
-
             // MRT station selection row (KAP / CLE)
-            _mrtSelectionRow(),
+            loadingInitialData ? LoadingScreen() : _mrtSelectionRow(),
 
-            SizedBox(height: TextSizing.fontSizeText(context)),
+            SizedBox(height: fontSizeText),
 
             // Only show booking UI if a station has been selected
-            bookingSection(),
+            loadingInitialData ? SizedBox() : bookingSection(),
           ],
         );
       },

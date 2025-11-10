@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/utils/get_time.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
+
+import '../data/global.dart';
+import '../utils/text_sizing.dart';
 
 //////////////////////////////////////////////////////////////
 // Utility class for calculating and displaying morning bus ETAs.
@@ -105,8 +105,7 @@ class CalculateMorningBus {
     List<DateTime> busArrivalTimes,
     BuildContext context,
   ) {
-    final timeService = TimeService();
-    DateTime currentTime = timeService.timeNow ?? DateTime.now();
+    DateTime currentTime = timeNow ?? DateTime.now();
 
     // Truncate seconds for minute-level comparison
     currentTime = DateTime(

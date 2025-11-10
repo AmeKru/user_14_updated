@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
 
 //////////////////////////////////////////////////////////////
 // Service class for handling location and compass functionality.
@@ -70,12 +69,14 @@ class CompassPainter extends CustomPainter {
   final double direction;
   final double arcStartAngle;
   final double arcSweepAngle;
+  final double fontSizeText;
   BuildContext context;
 
   CompassPainter({
     required this.direction,
     required this.arcStartAngle,
     required this.arcSweepAngle,
+    required this.fontSizeText,
     required this.context,
   });
 
@@ -90,7 +91,7 @@ class CompassPainter extends CustomPainter {
     Paint paint = Paint()
       ..color = Colors.blue
           .withAlpha(128) // 128 out of 255 = 50% opacity
-      ..strokeWidth = TextSizing.fontSizeText(context)
+      ..strokeWidth = fontSizeText
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
@@ -105,7 +106,7 @@ class CompassPainter extends CustomPainter {
     // === Draw the arrow indicating the exact heading ===
     Paint arrowPaint = Paint()
       ..color = Colors.blue
-      ..strokeWidth = TextSizing.fontSizeText(context) * 0.15
+      ..strokeWidth = fontSizeText * 0.15
       ..style = PaintingStyle.fill;
 
     // Arrow base (far end) position
@@ -125,7 +126,7 @@ class CompassPainter extends CustomPainter {
     );
 
     // Draw arrow line and tip circle
-    double arrowWidth = TextSizing.fontSizeText(context) * 0.6;
+    double arrowWidth = fontSizeText * 0.6;
     canvas.drawLine(arrowBase, arrowTip, arrowPaint);
     canvas.drawCircle(arrowTip, arrowWidth / 2, arrowPaint);
   }

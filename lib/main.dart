@@ -5,8 +5,8 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:user_14_updated/services/shared_preference.dart';
 
+import '../services/shared_preference.dart';
 import 'amplifyconfiguration.dart'; // generated config
 import 'data/get_data.dart';
 import 'data/global.dart';

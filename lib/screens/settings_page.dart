@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/services/shared_preference.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
 
 import '../data/global.dart';
+import '../services/shared_preference.dart';
+import '../utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
 // Settings Page
@@ -17,9 +17,23 @@ class Settings extends StatefulWidget {
 }
 
 class _SettingsState extends State<Settings> {
+  // for sizing
+  double fontSizeMiniText = 0;
+  double fontSizeText = 0;
+  double fontSizeHeading = 0;
+
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // assign sizing variables once at start
+    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    fontSizeText = TextSizing.fontSizeText(context);
+    fontSizeHeading = TextSizing.fontSizeHeading(context);
   }
 
   ///////////////////////////////////////////////////////////////
@@ -41,7 +55,7 @@ class _SettingsState extends State<Settings> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: TextSizing.fontSizeHeading(context) * 2,
+        toolbarHeight: fontSizeHeading * 2,
         iconTheme: IconThemeData(
           color: isDarkMode
               ? Colors.green[300]
@@ -53,7 +67,7 @@ class _SettingsState extends State<Settings> {
           'Settings',
           style: TextStyle(
             color: isDarkMode ? Colors.green[300] : Colors.white,
-            fontSize: TextSizing.fontSizeHeading(context),
+            fontSize: fontSizeHeading,
             fontWeight: FontWeight.bold,
             fontFamily: 'Roboto',
           ),
@@ -63,7 +77,7 @@ class _SettingsState extends State<Settings> {
       ),
       backgroundColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
       body: Padding(
-        padding: EdgeInsets.all(TextSizing.fontSizeHeading(context)),
+        padding: EdgeInsets.all(fontSizeHeading),
         child: SafeArea(
           right: true,
           left: true,
@@ -81,7 +95,7 @@ class _SettingsState extends State<Settings> {
                   style: TextStyle(
                     color: isDarkMode ? Colors.blueGrey[100] : Colors.black,
                     fontFamily: 'Roboto',
-                    fontSize: TextSizing.fontSizeText(context),
+                    fontSize: fontSizeText,
                     fontWeight: isDarkMode
                         ? FontWeight.normal
                         : FontWeight.bold,
@@ -90,7 +104,7 @@ class _SettingsState extends State<Settings> {
               ),
 
               SizedBox(
-                width: TextSizing.fontSizeHeading(context) * 5.5,
+                width: fontSizeHeading * 5.5,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -98,7 +112,7 @@ class _SettingsState extends State<Settings> {
                     Icon(
                       isDarkMode ? Icons.wb_sunny_outlined : Icons.wb_sunny,
                       color: isDarkMode ? Colors.blueGrey[100] : Colors.black,
-                      size: TextSizing.fontSizeText(context) * 1.5,
+                      size: fontSizeText * 1.5,
                     ),
 
                     // Spacing in between switch and icon
@@ -127,7 +141,7 @@ class _SettingsState extends State<Settings> {
                           ? Icons.brightness_2
                           : Icons.brightness_2_outlined,
                       color: isDarkMode ? Colors.white : Colors.grey[600],
-                      size: TextSizing.fontSizeText(context) * 1.5,
+                      size: fontSizeText * 1.5,
                     ),
                   ],
                 ),
@@ -142,7 +156,7 @@ class _SettingsState extends State<Settings> {
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.grey[600],
                     fontFamily: 'Roboto',
-                    fontSize: TextSizing.fontSizeText(context),
+                    fontSize: fontSizeText,
                     fontWeight: isDarkMode
                         ? FontWeight.bold
                         : FontWeight.normal,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
 
 import '../data/global.dart';
 
@@ -11,23 +10,20 @@ import '../data/global.dart';
 // Useful for visually separating sections in the UI.
 
 class DrawLine extends StatelessWidget {
-  const DrawLine({super.key});
+  final double fontSizeText;
+  const DrawLine({super.key, required this.fontSizeText});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(
-          height: TextSizing.fontSizeText(context),
-        ), // Space above the line
+        SizedBox(height: fontSizeText), // Space above the line
         Container(
           width: MediaQuery.of(context).size.width * 0.8, // 90% of screen width
-          height: TextSizing.fontSizeText(context) * 0.05, // Thin line
+          height: fontSizeText * 0.05, // Thin line
           color: Colors.blueGrey[900], // black color
         ),
-        SizedBox(
-          height: TextSizing.fontSizeText(context),
-        ), // Space below the line
+        SizedBox(height: fontSizeText), // Space below the line
       ],
     );
   }
@@ -44,8 +40,16 @@ class DrawLine extends StatelessWidget {
 class BoxMRT extends StatelessWidget {
   final int box; // The currently selected box index from parent
   final String mrt; // The MRT station name ("KAP" or "CLE")
+  final double fontSizeText;
+  final double fontSizeHeading;
 
-  const BoxMRT({super.key, required this.box, required this.mrt});
+  const BoxMRT({
+    super.key,
+    required this.box,
+    required this.mrt,
+    required this.fontSizeText,
+    required this.fontSizeHeading,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +59,11 @@ class BoxMRT extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 0), // No animation delay
-      height:
-          TextSizing.fontSizeHeading(context) * 1.8, // Fixed height for the box
+      height: fontSizeHeading * 1.8, // Fixed height for the box
       curve: Curves.easeOutCubic, // Animation curve (if duration > 0)
       child: ClipRRect(
         borderRadius: BorderRadius.circular(
-          TextSizing.fontSizeText(context) * 0.6,
+          fontSizeText * 0.6,
         ), // Rounded corners
         child: Container(
           // Background color changes based on selection and dark mode
@@ -74,7 +77,7 @@ class BoxMRT extends StatelessWidget {
                   // Selected style: white, larger, bold
                   ? TextStyle(
                       color: Colors.white,
-                      fontSize: TextSizing.fontSizeHeading(context),
+                      fontSize: fontSizeHeading,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Roboto',
                     )
@@ -83,7 +86,7 @@ class BoxMRT extends StatelessWidget {
                       color: isDarkMode
                           ? Colors.blueGrey[100]
                           : Colors.blueGrey[800],
-                      fontSize: TextSizing.fontSizeHeading(context),
+                      fontSize: fontSizeHeading,
                       fontFamily: 'Roboto',
                     ),
             ),

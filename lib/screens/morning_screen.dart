@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/data/get_data.dart';
-import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/services/get_morning_eta.dart';
-import 'package:user_14_updated/utils/styling_line_and_buttons.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
+
+import '../data/get_data.dart';
+import '../data/global.dart';
+import '../services/get_morning_eta.dart';
+import '../utils/loading.dart';
+import '../utils/styling_line_and_buttons.dart';
+import '../utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
 // Class for Morning screen
@@ -23,6 +25,8 @@ class MorningScreen extends StatefulWidget {
 class MorningScreenState extends State<MorningScreen>
     with WidgetsBindingObserver {
   int selectedBox = 0; // Default: no selection
+
+  // the busData
   final BusData busData = BusData();
 
   // Listener token for BusData ChangeNotifier
@@ -43,8 +47,14 @@ class MorningScreenState extends State<MorningScreen>
   final Duration _resumeCooldown = const Duration(seconds: 2);
   final Duration _inactivityStopDelay = const Duration(milliseconds: 900);
 
+  // timers for AppLifeCycle
   Timer? _inactivityStopTimer;
   Timer? _lifecycleResetTimer;
+
+  // for sizing
+  double fontSizeMiniText = 0;
+  double fontSizeText = 0;
+  double fontSizeHeading = 0;
 
   @override
   void initState() {
@@ -130,6 +140,15 @@ class MorningScreenState extends State<MorningScreen>
       }
     };
     busData.addListener(_busDataListener);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // assign sizing variables once at start
+    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    fontSizeText = TextSizing.fontSizeText(context);
+    fontSizeHeading = TextSizing.fontSizeHeading(context);
   }
 
   @override
@@ -311,6 +330,16 @@ class MorningScreenState extends State<MorningScreen>
   }
 
   ///////////////////////////////////////////////////////////////
+  // helper to compare DateTime lists
+  bool _listsEqual(List<DateTime> a, List<DateTime> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  ///////////////////////////////////////////////////////////////
   // So the corresponding path, information and visual box can be loaded
 
   void updateSelectedBox(int box) {
@@ -318,7 +347,7 @@ class MorningScreenState extends State<MorningScreen>
       // If the same box is tapped again, deselect it
       if (selectedBox == box) {
         selectedBox = 0;
-        selectedMRT = 0; // reset globa
+        selectedMRT = 0; // reset global
       } else {
         selectedBox = box;
         selectedMRT = box; // update global
@@ -340,23 +369,8 @@ class MorningScreenState extends State<MorningScreen>
     }
     return Column(
       children: [
-        SizedBox(height: TextSizing.fontSizeMiniText(context)),
-        Text(
-          'Select MRT',
-          maxLines: 1, //  limits to 1 lines
-          overflow: TextOverflow.ellipsis, // clips text if not fitting
-          style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
-            fontSize: TextSizing.fontSizeText(context),
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Roboto',
-          ),
-        ),
-        SizedBox(height: TextSizing.fontSizeMiniText(context)),
         Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: TextSizing.fontSizeMiniText(context),
-          ),
+          padding: EdgeInsets.symmetric(horizontal: fontSizeMiniText),
 
           ///////////////////////////////////////////////////////////////
           // The two buttons KAP and CLE
@@ -365,14 +379,24 @@ class MorningScreenState extends State<MorningScreen>
               Expanded(
                 child: GestureDetector(
                   onTap: () => updateSelectedBox(1),
-                  child: BoxMRT(box: selectedBox, mrt: 'KAP'),
+                  child: BoxMRT(
+                    box: selectedBox,
+                    mrt: 'KAP',
+                    fontSizeText: fontSizeText,
+                    fontSizeHeading: fontSizeHeading,
+                  ),
                 ),
               ),
-              SizedBox(width: TextSizing.fontSizeMiniText(context)),
+              SizedBox(width: fontSizeMiniText),
               Expanded(
                 child: GestureDetector(
                   onTap: () => updateSelectedBox(2),
-                  child: BoxMRT(box: selectedBox, mrt: 'CLE'),
+                  child: BoxMRT(
+                    box: selectedBox,
+                    mrt: 'CLE',
+                    fontSizeText: fontSizeText,
+                    fontSizeHeading: fontSizeHeading,
+                  ),
                 ),
               ),
             ],
@@ -381,24 +405,15 @@ class MorningScreenState extends State<MorningScreen>
 
         ///////////////////////////////////////////////////////////////
         // Shows bus arrival times, depending on selected MRT Station
-        SizedBox(height: TextSizing.fontSizeText(context)),
-        if (_isLoading)
+        SizedBox(height: fontSizeText),
+        if (_isLoading && selectedBox != 0)
           // Preserve existing UX: when BusData not ready, don't show ETAs
-          const SizedBox()
+          const LoadingScreen()
         else if (selectedBox != 0)
           GetMorningETA(
             selectedBox == 1 ? busData.arrivalTimeKAP : busData.arrivalTimeCLE,
           ),
       ],
     );
-  }
-
-  // helper to compare DateTime lists
-  bool _listsEqual(List<DateTime> a, List<DateTime> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
   }
 }

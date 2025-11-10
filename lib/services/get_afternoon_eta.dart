@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/data/get_data.dart';
-import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
+
+import '../data/get_data.dart';
+import '../data/global.dart';
+import '../utils/text_sizing.dart';
 
 //////////////////////////////////////////////////////////////
 // Class for Afternoon start point display and helpers
@@ -27,6 +28,9 @@ class AfternoonStartPoint {
         ? -1
         : (nextNextBusTimeDiff + (multiplier * (index - 1))).round();
 
+    final fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    final fontSizeText = TextSizing.fontSizeText(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -40,31 +44,32 @@ class AfternoonStartPoint {
 
             // Vertical coloured line
             Container(
-              height: TextSizing.fontSizeText(context) * 2.5,
+              height: fontSizeText * 2.5,
               width: MediaQuery.of(context).size.width * 0.01,
               color: isDarkMode ? Colors.cyanAccent : Colors.lightBlue[600],
             ),
 
             // Bus stop name container
-            Flexible(child:
-            Container(
-              width: MediaQuery.of(context).size.width * 0.35,
-              color: isDarkMode
-                  ? Colors.blueGrey[800]
-                  : const Color(0xff014689),
-              child: Padding(
-                padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
-                child: Text(
-                  busStop,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.cyanAccent : Colors.white,
-                    fontSize: TextSizing.fontSizeText(context),
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Roboto',
+            Flexible(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.35,
+                color: isDarkMode
+                    ? Colors.blueGrey[800]
+                    : const Color(0xff014689),
+                child: Padding(
+                  padding: EdgeInsets.all(fontSizeMiniText),
+                  child: Text(
+                    busStop,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.cyanAccent : Colors.white,
+                      fontSize: fontSizeText,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Roboto',
+                    ),
                   ),
-                ),),
+                ),
               ),
             ),
 
@@ -72,25 +77,26 @@ class AfternoonStartPoint {
             SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
             // Upcoming bus time container
-            Flexible(child:
-            Container(
-              width: MediaQuery.of(context).size.width * 0.275,
-              color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
-              child: Padding(
-                padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
-                child: Text(
-                  adjustedNext <= 0
-                      ? (adjustedNext == 0 ? 'Arr' : '-')
-                      : '$adjustedNext',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: TextSizing.fontSizeText(context),
-                    fontFamily: 'Roboto',
-                    color: isDarkMode ? Colors.white : Colors.black,
+            Flexible(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.275,
+                color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
+                child: Padding(
+                  padding: EdgeInsets.all(fontSizeMiniText),
+                  child: Text(
+                    adjustedNext <= 0
+                        ? (adjustedNext == 0 ? 'Arr' : '-')
+                        : '$adjustedNext',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: fontSizeText,
+                      fontFamily: 'Roboto',
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
-                ),),
+                ),
               ),
             ),
 
@@ -98,24 +104,25 @@ class AfternoonStartPoint {
             SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
             // Next-next bus time container
-            Flexible(child:
-            Container(
-              width: MediaQuery.of(context).size.width * 0.275,
-              color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
-              child: Padding(
-                padding: EdgeInsets.all(TextSizing.fontSizeMiniText(context)),
-                child: Text(
-                  adjustedNextNext < 0 ? '-' : '$adjustedNextNext',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: TextSizing.fontSizeText(context),
-                    fontFamily: 'Roboto',
-                    color: isDarkMode ? Colors.white : Colors.black,
+            Flexible(
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.275,
+                color: isDarkMode ? Colors.blueGrey[600] : Colors.lightBlue[50],
+                child: Padding(
+                  padding: EdgeInsets.all(fontSizeMiniText),
+                  child: Text(
+                    adjustedNextNext < 0 ? '-' : '$adjustedNextNext',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: fontSizeText,
+                      fontFamily: 'Roboto',
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
                 ),
-              ),),
+              ),
             ),
 
             // Space in between
@@ -124,7 +131,7 @@ class AfternoonStartPoint {
         ),
 
         // Space in between rows
-        SizedBox(height: TextSizing.fontSizeText(context) * 0.2),
+        SizedBox(height: fontSizeText * 0.2),
       ],
     );
   }
@@ -139,6 +146,10 @@ class AfternoonStartPoint {
     final BusData busData = BusData(); // Data source for bus stops and times
     List<DateTime> busArrivalTimes; // Holds the relevant departure times
     final List<String> busStops = busData.busStop; // List of bus stop names
+
+    final fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    final fontSizeText = TextSizing.fontSizeText(context);
+    final fontSizeHeading = TextSizing.fontSizeHeading(context);
 
     // Select departure times based on the box value
     if (box == 1) {
@@ -173,10 +184,10 @@ class AfternoonStartPoint {
             style: TextStyle(
               color: isDarkMode ? Colors.blueGrey[400] : Colors.blueGrey[600],
               fontFamily: 'Roboto',
-              fontSize: TextSizing.fontSizeText(context),
+              fontSize: fontSizeText,
             ),
           ),
-          SizedBox(height: TextSizing.fontSizeText(context)),
+          SizedBox(height: fontSizeText),
         ],
       );
     } else {
@@ -203,10 +214,10 @@ class AfternoonStartPoint {
               Flexible(
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
-                    TextSizing.fontSizeText(context),
+                    fontSizeText,
                     0,
-                    TextSizing.fontSizeText(context),
-                    TextSizing.fontSizeMiniText(context),
+                    fontSizeText,
+                    fontSizeMiniText,
                   ),
                   child: Text(
                     TextSizing.isTabletOrLandscapeMode(context)
@@ -215,7 +226,7 @@ class AfternoonStartPoint {
                     softWrap: true,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: TextSizing.fontSizeHeading(context),
+                      fontSize: fontSizeHeading,
                       fontFamily: 'Roboto',
                       fontWeight: FontWeight.bold,
                       color: isDarkMode ? Colors.white : Colors.black,
@@ -226,7 +237,7 @@ class AfternoonStartPoint {
             ],
           ),
 
-          SizedBox(height: TextSizing.fontSizeMiniText(context)),
+          SizedBox(height: fontSizeMiniText),
           // Header row for the table
           Column(
             children: [
@@ -241,52 +252,55 @@ class AfternoonStartPoint {
                   //Size of bar on left
                   SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
-                  Flexible(child:
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.35,
-                    child: Text(
-                      'Bus stop',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: TextSizing.fontSizeMiniText(context),
-                        color: isDarkMode ? Colors.white : Colors.black,
+                  Flexible(
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.35,
+                      child: Text(
+                        'Bus stop',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: fontSizeMiniText,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
                       ),
                     ),
-                  ),),
-
-                  // Space in between
-                  SizedBox(width: MediaQuery.of(context).size.width * 0.01),
-
-                  Flexible(child:
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.275,
-                    child: Text(
-                      'Upcoming bus (min)',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: TextSizing.fontSizeMiniText(context),
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),),
                   ),
 
                   // Space in between
                   SizedBox(width: MediaQuery.of(context).size.width * 0.01),
 
-                  Flexible(child:
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.275,
-                    child: Text(
-                      'Next bus (min)',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: TextSizing.fontSizeMiniText(context),
-                        color: isDarkMode ? Colors.white : Colors.black,
+                  Flexible(
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.275,
+                      child: Text(
+                        'Upcoming bus (min)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: fontSizeMiniText,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
                       ),
-                    ),),
+                    ),
+                  ),
+
+                  // Space in between
+                  SizedBox(width: MediaQuery.of(context).size.width * 0.01),
+
+                  Flexible(
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width * 0.275,
+                      child: Text(
+                        'Next bus (min)',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: fontSizeMiniText,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ),
                   ),
 
                   // Space after
@@ -294,7 +308,7 @@ class AfternoonStartPoint {
                 ],
               ),
               // Space in between rows
-              SizedBox(height: TextSizing.fontSizeText(context) * 0.2),
+              SizedBox(height: fontSizeText * 0.2),
             ],
           ),
 
@@ -308,7 +322,7 @@ class AfternoonStartPoint {
               i, // Index of the stop
               timeBetweenBusStops, // Multiplier for travel time between stops
             ),
-          SizedBox(height: TextSizing.fontSizeHeading(context)),
+          SizedBox(height: fontSizeHeading),
         ],
       );
     }

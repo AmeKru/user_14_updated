@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
+
+import '../utils/text_sizing.dart';
 
 //////////////////////////////////////////////////////////////
 // A reusable widget for displaying a label–value pair in a booking confirmation.
@@ -17,6 +18,7 @@ class BookingConfirmationText extends StatelessWidget {
   final String label; // The descriptive label text
   final String value; // The value to display next to the label
   final bool darkText; // if true then black text, else white text
+  final double fontSizeText;
   final double
   size; // Spacing between label and value (fraction of screen width)
 
@@ -24,8 +26,10 @@ class BookingConfirmationText extends StatelessWidget {
     super.key,
     required this.label,
     required this.value,
-    required this.size,
+
     required this.darkText,
+    required this.fontSizeText,
+    required this.size,
   });
 
   @override
@@ -43,11 +47,9 @@ class BookingConfirmationText extends StatelessWidget {
           // Fixed-size box for the label
           Flexible(
             child: SizedBox(
-              height:
-                  TextSizing.fontSizeText(context) *
-                  1.25, // Fixed height for alignment
+              height: fontSizeText * 1.25, // Fixed height for alignment
               width:
-                  TextSizing.fontSizeText(context) *
+                  fontSizeText *
                   6, // Fixed width so labels align vertically in a list
               child: Text(
                 label,
@@ -70,10 +72,9 @@ class BookingConfirmationText extends StatelessWidget {
           // Fixed-size box for the value
           Flexible(
             child: SizedBox(
-              height: TextSizing.fontSizeText(context) * 1.25,
+              height: fontSizeText * 1.25,
               width:
-                  TextSizing.fontSizeText(context) *
-                  3, // 1/2 width as label for cleaner alignment
+                  fontSizeText * 3, // 1/2 width as label for cleaner alignment
               child: Text(
                 value,
                 maxLines: 1, //  limits to 1 lines

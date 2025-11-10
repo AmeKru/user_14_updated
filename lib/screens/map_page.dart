@@ -10,17 +10,20 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
-import 'package:user_14_updated/data/global.dart';
-import 'package:user_14_updated/screens/afternoon_screen.dart';
-import 'package:user_14_updated/screens/announcements_page.dart';
-import 'package:user_14_updated/screens/information_page.dart';
-import 'package:user_14_updated/screens/morning_screen.dart';
-import 'package:user_14_updated/screens/settings_page.dart';
-import 'package:user_14_updated/services/get_location.dart';
-import 'package:user_14_updated/services/mqtt.dart';
-import 'package:user_14_updated/services/shared_preference.dart';
-import 'package:user_14_updated/utils/marker_colour.dart';
-import 'package:user_14_updated/utils/text_sizing.dart';
+
+import '../data/global.dart';
+import '../screens/afternoon_screen.dart';
+import '../screens/announcements_page.dart';
+import '../screens/information_page.dart';
+import '../screens/morning_screen.dart';
+import '../screens/settings_page.dart';
+import '../services/get_location.dart';
+import '../services/mqtt.dart';
+import '../services/shared_preference.dart';
+import '../utils/get_time.dart';
+import '../utils/loading.dart';
+import '../utils/marker_colour.dart';
+import '../utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
 // Map Page
@@ -40,8 +43,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   int selectedBox = 0;
   LatLng? currentLocation;
   List<LatLng> routePoints = [];
-  DateTime now =
-      DateTime.now(); // todo: initialize with utc+8h (device time utc+8h so make a bit surer it is singapore time zone
+  DateTime now = DateTime.now();
   double fontSizeMiniText = 0;
   double fontSizeText = 0;
   double fontSizeHeading = 0;
@@ -178,50 +180,83 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   }
 
   Future<void> _loadInitialData() async {
+    if (kDebugMode) {
+      print('_loadInitialData called');
+    }
     final prefsService = SharedPreferenceService();
 
     // getBookingData returns Map<String, dynamic>? so await it directly
     final Map<String, dynamic>? bookingData = await prefsService
         .getBookingData();
 
-    // Wait for timeNow to be initialized, but avoid waiting forever
-    Future<void> waitForTimeNow({
-      Duration timeout = const Duration(seconds: 5),
-    }) async {
-      final end = DateTime.now().add(timeout);
-      while (timeNow == null && DateTime.now().isBefore(end)) {
-        await Future.delayed(const Duration(milliseconds: 50));
+    if (bookingData != null) {
+      final TimeService timeService = TimeService();
+      await timeService.getTime();
+
+      if (kDebugMode) {
+        print('TimeNow: $timeNow');
       }
-    }
 
-    await waitForTimeNow();
+      // Snapshot timeNow once
+      final now = timeNow;
+      final bool isAfternoonReady =
+          now != null && now.hour >= startAfternoonService;
 
-    // Snapshot timeNow once
-    final now = timeNow;
-    final bool isAfternoonReady =
-        now != null && now.hour >= startAfternoonService;
-
-    // Compute selectedBox safely from bookingData
-    int selectedBoxComputed = 0;
-    if (isAfternoonReady && bookingData != null) {
-      final dynamic sb = bookingData['selectedBox'];
-      if (sb is int) {
-        selectedBoxComputed = sb;
-      } else if (sb is String) {
-        selectedBoxComputed = int.tryParse(sb) ?? 0;
+      if (kDebugMode) {
+        print('isAfternoonReady = $isAfternoonReady');
       }
-    }
 
-    // Compute busIndex safely
-    final int busIndexComputed = (bookingData != null && isAfternoonReady)
-        ? bookingData['busIndex']
-        : 0;
+      // Compute selectedBox safely from bookingData
+      int selectedBoxComputed = 0;
+      if (isAfternoonReady) {
+        final dynamic sb = bookingData['selectedBox'];
+        if (sb is int) {
+          selectedBoxComputed = sb;
+          if (kDebugMode) {
+            print('selectedBoxComputed was int and = $sb');
+          }
+        } else if (sb is String) {
+          selectedBoxComputed = int.tryParse(sb) ?? 0;
+          if (kDebugMode) {
+            print('selectedBoxComputed was not an int and = $sb');
+          }
+        }
+      }
+
+      selectedBox = selectedBoxComputed;
+
+      // Compute busIndex safely
+      final int busIndexComputed = (isAfternoonReady)
+          ? bookingData['busIndex']
+          : 0;
+
+      busIndex = busIndexComputed;
+    }
 
     // Update state once
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+    if (selectedBox == 0) {
+      if (kDebugMode) {
+        print('no booking was loaded, no initial states to be set');
+      }
+      pageToBeBuilt();
+      updateSelectedBox(selectedBox);
+      return;
+    }
+    if (kDebugMode) {
+      print(
+        'booking was loaded, with selectedBox $selectedBox and busIndex $busIndex',
+      );
+    }
+
+    if (kDebugMode) {
+      print('initial data load, booking existed so setting state');
+    }
+
     setState(() {
-      selectedBox = selectedBoxComputed;
-      busIndex = busIndexComputed;
+      selectedMRT = selectedBox;
     });
 
     // Apply side-effects after state update
@@ -283,42 +318,40 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       print('updateSelectedBox called in map_page');
     }
 
-    // gets time now todo: unify get now time everywhere, use api and only fallback to device time if no internet
-    final nowLocal = DateTime.now();
-    now = nowLocal;
+    // gets time now
+    final TimeService timeService = TimeService();
+    now = await timeService.getTime() ?? DateTime.now();
+
+    if (kDebugMode) {
+      print('TimeNow: $timeNow');
+    }
+    timeNow!;
     // Checks if afternoon
     pageToBeBuilt();
 
-    setState(() {
-      now = nowLocal;
-      selectedBox = newBox;
-      if (newBox == 1) {
-        selectedMRT = 1;
-      } else if (newBox == 2) {
-        selectedMRT = 2;
-      } else {
-        routePoints.clear();
-        selectedMRT = 0;
-        busIndex = 0;
-      }
-    });
+    selectedBox = newBox;
+    if (newBox == 1) {
+      selectedMRT = 1;
+    } else if (newBox == 2) {
+      selectedMRT = 2;
+    } else {
+      routePoints.clear();
+      selectedMRT = 0;
+      busIndex = 0;
+    }
 
     try {
       if (newBox == 1) {
-        await fetchRoute(
-          nowLocal.hour >= startAfternoonService ? pmKAP : amKAP,
-        );
+        await fetchRoute(now.hour >= startAfternoonService ? pmKAP : amKAP);
       } else if (newBox == 2) {
-        await fetchRoute(
-          nowLocal.hour >= startAfternoonService ? pmCLE : amCLE,
-        );
+        await fetchRoute(now.hour >= startAfternoonService ? pmCLE : amCLE);
       }
     } finally {
       _tapLocked = false;
     }
 
     if (kDebugMode) {
-      print('updated selectedBox to $newBox - time now hour: ${nowLocal.hour}');
+      print('updated selectedBox to $newBox - time now hour: ${now.hour}');
     }
   }
 
@@ -327,7 +360,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
   bool? lastCheckIsAfternoon;
   bool isAfternoon = false;
-  Widget displayPage = SizedBox();
+  Widget displayPage = LoadingScreen();
 
   void pageToBeBuilt() {
     // Decide which screen to show based on the current hour
@@ -338,9 +371,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         print('map_page => checked and assigned a page to be built');
       }
       lastCheckIsAfternoon = isAfternoon;
-      displayPage = isAfternoon
-          ? AfternoonScreen(updateSelectedBox: updateSelectedBox)
-          : MorningScreen(updateSelectedBox: updateSelectedBox);
+      setState(() {
+        displayPage = isAfternoon
+            ? AfternoonScreen(updateSelectedBox: updateSelectedBox)
+            : MorningScreen(updateSelectedBox: updateSelectedBox);
+      });
     }
 
     if (kDebugMode) {
@@ -774,6 +809,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                       direction: heading,
                       arcSweepAngle: 360,
                       arcStartAngle: 0,
+                      fontSizeText: fontSizeText,
                       context: context,
                     ),
                   ),
@@ -884,7 +920,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             iconColor: isDarkMode ? Colors.blueGrey[900] : Colors.white,
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => NewsAnnouncement()),
+              MaterialPageRoute(
+                builder: (_) => NewsAnnouncement(
+                  fontSizeMiniText: fontSizeMiniText,
+                  fontSizeText: fontSizeText,
+                  fontSizeHeading: fontSizeHeading,
+                ),
+              ),
             ),
           ),
         ],
@@ -1087,10 +1129,27 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  RepaintBoundary(child: displayPage),
-                                  SizedBox(
-                                    height: TextSizing.fontSizeText(context),
+                                  SizedBox(height: fontSizeMiniText),
+                                  // Title: "Select MRT"
+                                  Text(
+                                    'Select MRT',
+                                    maxLines: 1, //  limits to 1 lines
+                                    overflow: TextOverflow
+                                        .ellipsis, // clips text if not fitting
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                      fontSize: fontSizeText,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Roboto',
+                                    ),
                                   ),
+
+                                  SizedBox(height: fontSizeMiniText),
+
+                                  RepaintBoundary(child: displayPage),
+                                  SizedBox(height: fontSizeText),
                                   RepaintBoundary(
                                     child: NewsAnnouncementWidget(),
                                   ),

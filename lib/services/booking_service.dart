@@ -2,11 +2,12 @@ import 'dart:async'; // For Timer functionality
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:user_14_updated/data/global.dart'; // contains shared global variables/constants
-import 'package:user_14_updated/services/get_afternoon_eta.dart'; // Service for Afternoon bus logic
-import 'package:user_14_updated/utils/get_time.dart';
-import 'package:user_14_updated/utils/loading.dart'; // Custom loading widget
-import 'package:user_14_updated/utils/text_sizing.dart';
+
+import '../data/global.dart'; // contains shared global variables/constants
+import '../services/get_afternoon_eta.dart'; // Service for Afternoon bus logic
+import '../utils/get_time.dart';
+import '../utils/loading.dart'; // Custom loading widget
+import '../utils/text_sizing.dart';
 
 ///////////////////////////////////////////////////////////////
 // Booking Service
@@ -104,6 +105,11 @@ class BookingServiceState extends State<BookingService> {
   // To prevent pressing confirm multiple times
   bool confirmingBooking = false;
 
+  // for sizing
+  double fontSizeMiniText = 0;
+  double fontSizeText = 0;
+  double fontSizeHeading = 0;
+
   // Checks if the user can confirm a booking.
   // Returns true if a trip index is selected for the current station.
   bool canConfirm() {
@@ -149,6 +155,15 @@ class BookingServiceState extends State<BookingService> {
     super.initState();
     bookingCounts = {};
     confirmingBooking = false;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // assign sizing variables once at start
+    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    fontSizeText = TextSizing.fontSizeText(context);
+    fontSizeHeading = TextSizing.fontSizeHeading(context);
   }
 
   @override
@@ -268,7 +283,7 @@ class BookingServiceState extends State<BookingService> {
         ? LoadingScroll()
         : Column(
             children: [
-              SizedBox(height: TextSizing.fontSizeMiniText(context) * 0.8),
+              SizedBox(height: fontSizeMiniText * 0.8),
               Text(
                 widget.selectedBox == 1
                     ? 'Bus to King Albert Park'
@@ -277,7 +292,7 @@ class BookingServiceState extends State<BookingService> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Roboto',
-                  fontSize: TextSizing.fontSizeHeading(context),
+                  fontSize: fontSizeHeading,
                   color: darkText,
                   fontWeight: FontWeight.bold,
                 ),
@@ -290,12 +305,12 @@ class BookingServiceState extends State<BookingService> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Roboto',
-                  fontSize: TextSizing.fontSizeText(context),
+                  fontSize: fontSizeText,
                   color: darkText,
                 ),
               ),
 
-              SizedBox(height: TextSizing.fontSizeMiniText(context)),
+              SizedBox(height: fontSizeMiniText),
 
               // === Legend Row: Available & Half Full ===
               Row(
@@ -305,7 +320,7 @@ class BookingServiceState extends State<BookingService> {
                   // Available indicator
                   Container(
                     width: MediaQuery.of(context).size.width * 0.1,
-                    height: TextSizing.fontSizeText(context) * 0.25,
+                    height: fontSizeText * 0.25,
                     color: Colors.green[400],
                   ),
                   SizedBox(width: MediaQuery.of(context).size.width * 0.015),
@@ -317,7 +332,7 @@ class BookingServiceState extends State<BookingService> {
                           TextOverflow.ellipsis, // clips text if not fitting
                       style: TextStyle(
                         color: darkText,
-                        fontSize: TextSizing.fontSizeMiniText(context),
+                        fontSize: fontSizeMiniText,
                         fontFamily: 'Roboto',
                       ),
                     ),
@@ -333,7 +348,7 @@ class BookingServiceState extends State<BookingService> {
                   // Half full indicator
                   Container(
                     width: MediaQuery.of(context).size.width * 0.1,
-                    height: TextSizing.fontSizeText(context) * 0.25,
+                    height: fontSizeText * 0.25,
                     color: Color(0xfffeb041),
                   ),
                   SizedBox(width: MediaQuery.of(context).size.width * 0.02),
@@ -345,7 +360,7 @@ class BookingServiceState extends State<BookingService> {
                           TextOverflow.ellipsis, // clips text if not fitting
                       style: TextStyle(
                         color: darkText,
-                        fontSize: TextSizing.fontSizeMiniText(context),
+                        fontSize: fontSizeMiniText,
                         fontFamily: 'Roboto',
                       ),
                     ),
@@ -361,7 +376,7 @@ class BookingServiceState extends State<BookingService> {
                   // Full indicator
                   Container(
                     width: MediaQuery.of(context).size.width * 0.1,
-                    height: TextSizing.fontSizeText(context) * 0.25,
+                    height: fontSizeText * 0.25,
                     color: Colors.red, // Full indicator
                   ),
                   SizedBox(width: MediaQuery.of(context).size.width * 0.01),
@@ -373,7 +388,7 @@ class BookingServiceState extends State<BookingService> {
                           TextOverflow.ellipsis, // clips text if not fitting
                       style: TextStyle(
                         color: darkText,
-                        fontSize: TextSizing.fontSizeMiniText(context),
+                        fontSize: fontSizeMiniText,
                         fontFamily: 'Roboto',
                       ),
                     ),
@@ -381,7 +396,7 @@ class BookingServiceState extends State<BookingService> {
                 ],
               ),
 
-              SizedBox(height: TextSizing.fontSizeText(context) * 1.5),
+              SizedBox(height: fontSizeText * 1.5),
 
               Row(
                 children: [
@@ -393,7 +408,7 @@ class BookingServiceState extends State<BookingService> {
                       textAlign: TextAlign.center,
                       softWrap: true,
                       style: TextStyle(
-                        fontSize: TextSizing.fontSizeMiniText(context),
+                        fontSize: fontSizeMiniText,
                         color: (isDarkMode ? Colors.white : Colors.black),
                         fontFamily: 'Roboto',
                       ),
@@ -429,9 +444,9 @@ class BookingServiceState extends State<BookingService> {
                           time.hour == now.hour && time.minute > now.minute)
                       ? Padding(
                           padding: EdgeInsets.fromLTRB(
-                            TextSizing.fontSizeText(context),
+                            fontSizeText,
                             0.0,
-                            TextSizing.fontSizeText(context),
+                            fontSizeText,
                             0.0,
                           ),
                           child: Column(
@@ -463,7 +478,7 @@ class BookingServiceState extends State<BookingService> {
                                         padding: EdgeInsets.fromLTRB(
                                           0,
                                           0,
-                                          TextSizing.fontSizeText(context),
+                                          fontSizeText,
                                           0,
                                         ),
                                         child: Row(
@@ -755,7 +770,7 @@ class BookingServiceState extends State<BookingService> {
                                           : (isDarkMode
                                                 ? Colors.blueGrey[50]
                                                 : const Color(0xff014689)),
-                                      size: TextSizing.fontSizeHeading(context),
+                                      size: fontSizeHeading,
                                     ),
                                   ),
                                 ],
@@ -778,9 +793,7 @@ class BookingServiceState extends State<BookingService> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: Padding(
-                            padding: EdgeInsets.all(
-                              TextSizing.fontSizeText(context),
-                            ),
+                            padding: EdgeInsets.all(fontSizeText),
                             child: confirmingBooking
                                 ? LoadingScreen()
                                 : ElevatedButton(
@@ -803,7 +816,7 @@ class BookingServiceState extends State<BookingService> {
                                     },
                                     child: Padding(
                                       padding: EdgeInsets.all(
-                                        TextSizing.fontSizeText(context) * 0.33,
+                                        fontSizeText * 0.33,
                                       ),
                                       child: Text(
                                         softWrap: true,
@@ -820,12 +833,8 @@ class BookingServiceState extends State<BookingService> {
                                   ),
                           ),
                         ),
-                      if (!canConfirm())
-                        SizedBox(width: TextSizing.fontSizeText(context) * 6),
-                      SizedBox(
-                        width: TextSizing.fontSizeText(context),
-                        height: TextSizing.fontSizeText(context) * 4,
-                      ),
+                      if (!canConfirm()) SizedBox(width: fontSizeText * 6),
+                      SizedBox(width: fontSizeText, height: fontSizeText * 4),
                     ],
                   ),
                 ],
@@ -835,13 +844,13 @@ class BookingServiceState extends State<BookingService> {
               now.hour >= startAfternoonETA
                   ? Column(
                       children: [
-                        SizedBox(height: TextSizing.fontSizeHeading(context)),
+                        SizedBox(height: fontSizeHeading),
                         AfternoonStartPointAutoRefresh(box: widget.selectedBox),
                       ],
                     )
                   : Column(
                       children: [
-                        SizedBox(height: TextSizing.fontSizeMiniText(context)),
+                        SizedBox(height: fontSizeMiniText),
                         Text(
                           'ETAs will be shown in the afternoon',
                           softWrap: true,
@@ -851,10 +860,10 @@ class BookingServiceState extends State<BookingService> {
                                 ? Colors.blueGrey[400]
                                 : Colors.blueGrey[600],
                             fontFamily: 'Roboto',
-                            fontSize: TextSizing.fontSizeText(context),
+                            fontSize: fontSizeText,
                           ),
                         ),
-                        SizedBox(height: TextSizing.fontSizeText(context)),
+                        SizedBox(height: fontSizeText),
                       ],
                     ),
             ],
