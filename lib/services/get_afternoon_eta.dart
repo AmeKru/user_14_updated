@@ -6,10 +6,18 @@ import '../data/get_data.dart';
 import '../data/global.dart';
 import '../utils/text_sizing.dart';
 
-//////////////////////////////////////////////////////////////
-// Class for Afternoon start point display and helpers
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- Afternoon ETAs ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-class AfternoonStartPoint {
+////////////////////////////////////////////////////////////////////////////////
+// Afternoon ETAs class
+// returns a list of ETAs at all bus stops for the next two offered trips
+
+class AfternoonETAs {
+  //////////////////////////////////////////////////////////////////////////////
   // Builds a single row widget showing:
   // - Bus stop name
   // - Time until the upcoming bus
@@ -136,8 +144,10 @@ class AfternoonStartPoint {
     );
   }
 
+  //////////////////////////////////////////////////////////////////////////////
   // Returns a widget showing the bus arrival times for a given MRT start point (KAP or CLE)
-  // No separate polling here — this method reads BusData state when called by the parent.
+  // No separate polling here — this method reads BusData state when called by the parent
+
   static Widget getBusTime(int box, BuildContext context) {
     final DateTime currentTime = DateTime.now(); // Current time
     final double timeBetweenBusStops =
@@ -157,11 +167,6 @@ class AfternoonStartPoint {
     } else {
       busArrivalTimes = busData.departureTimeCLE;
     }
-
-    //if (kDebugMode) {
-    //  print('AfternoonStartPoint: bus stops: $busStops');
-    //  print('AfternoonStartPoint: bus arrival times: $busArrivalTimes');
-    //}
 
     // Filter to keep recent and upcoming times.
     // Keep buses that are after (currentTime - travel buffer)
@@ -329,24 +334,31 @@ class AfternoonStartPoint {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- Afternoon ETAs auto refresh ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 // Can use to count down every 0.5 minutes, redundant at the moment
-class AfternoonStartPointAutoRefresh extends StatefulWidget {
+
+class AfternoonETAsAutoRefresh extends StatefulWidget {
   final int box;
   final Duration interval;
 
-  const AfternoonStartPointAutoRefresh({
+  const AfternoonETAsAutoRefresh({
     super.key,
     required this.box,
     this.interval = const Duration(seconds: 30),
   });
 
   @override
-  State<AfternoonStartPointAutoRefresh> createState() =>
-      _AfternoonStartPointAutoRefreshState();
+  State<AfternoonETAsAutoRefresh> createState() =>
+      _AfternoonETAsAutoRefreshState();
 }
 
-class _AfternoonStartPointAutoRefreshState
-    extends State<AfternoonStartPointAutoRefresh> {
+class _AfternoonETAsAutoRefreshState extends State<AfternoonETAsAutoRefresh> {
   Timer? _timer;
 
   @override
@@ -360,7 +372,7 @@ class _AfternoonStartPointAutoRefreshState
   }
 
   @override
-  void didUpdateWidget(covariant AfternoonStartPointAutoRefresh oldWidget) {
+  void didUpdateWidget(covariant AfternoonETAsAutoRefresh oldWidget) {
     super.didUpdateWidget(oldWidget);
     // If polling interval changes, restart timer
     if (oldWidget.interval != widget.interval) {
@@ -380,6 +392,6 @@ class _AfternoonStartPointAutoRefreshState
 
   @override
   Widget build(BuildContext context) {
-    return AfternoonStartPoint.getBusTime(widget.box, context);
+    return AfternoonETAs.getBusTime(widget.box, context);
   }
 }

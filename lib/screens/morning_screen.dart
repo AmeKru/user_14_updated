@@ -10,8 +10,15 @@ import '../utils/loading.dart';
 import '../utils/styling_line_and_buttons.dart';
 import '../utils/text_sizing.dart';
 
-///////////////////////////////////////////////////////////////
-// Class for Morning screen
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- Morning Screen ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// MorningScreen class
+// used to show etas of morning buses during the morning
 
 class MorningScreen extends StatefulWidget {
   final Function(int) updateSelectedBox;
@@ -40,6 +47,9 @@ class MorningScreenState extends State<MorningScreen>
   List<DateTime> _lastArrivalCLE = [];
   List<DateTime> _lastDepartureKAP = [];
   List<DateTime> _lastDepartureCLE = [];
+
+  // Guard to ensure that button presses between MRT stations do not lead to quirks in UI
+  bool updatingSelectedBox = false;
 
   // used to check for AppLifeCycle
   AppLifecycleState? _previousAppLifecycleState;
@@ -142,6 +152,9 @@ class MorningScreenState extends State<MorningScreen>
     busData.addListener(_busDataListener);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // set sizes at start
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -150,6 +163,9 @@ class MorningScreenState extends State<MorningScreen>
     fontSizeText = TextSizing.fontSizeText(context);
     fontSizeHeading = TextSizing.fontSizeHeading(context);
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // remove listener, stop polling and timers whn widget is disposed
 
   @override
   void dispose() {
@@ -173,6 +189,12 @@ class MorningScreenState extends State<MorningScreen>
 
     super.dispose();
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- App Lifecycle ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
   // function to check if app is used in foreground or open in background
@@ -329,7 +351,13 @@ class MorningScreenState extends State<MorningScreen>
     }
   }
 
-  ///////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// ////////////////////////////////////////////////////////////////////////////
+  /// --- Helpers ---
+  /// ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ////////////////////////////////////////////////////////////////////////////////
   // helper to compare DateTime lists
   bool _listsEqual(List<DateTime> a, List<DateTime> b) {
     if (a.length != b.length) return false;
@@ -339,11 +367,32 @@ class MorningScreenState extends State<MorningScreen>
     return true;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- Update selected MRT box ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
   ///////////////////////////////////////////////////////////////
   // So the corresponding path, information and visual box can be loaded
 
   void updateSelectedBox(int box) {
+    // Guard: ensure the State object is still mounted before making changes.
+    if (!mounted) {
+      if (kDebugMode) {
+        print('updateSelectedBox called but not mounted');
+      }
+      return;
+    }
+    if (updatingSelectedBox == true) {
+      if (kDebugMode) {
+        print('Tap ignored: updatingSelectedBox=$updatingSelectedBox');
+      }
+      return; // return if update is in progress to prevent wrong UI loads
+    }
+
     setState(() {
+      updatingSelectedBox = true; // setting guard to true
       // If the same box is tapped again, deselect it
       if (selectedBox == box) {
         selectedBox = 0;
@@ -356,10 +405,34 @@ class MorningScreenState extends State<MorningScreen>
         print('Printing selectedBox = $selectedBox');
       }
     });
+
+    // Inform parent of change so corresponding routes can be loaded
     widget.updateSelectedBox(selectedBox);
+
+    // waits 1s before freeing up guard, as parents updateSelected box may also take a while before loading correct route
+    // to prevent UI bug of not showing the correct routes on map etc.
+    Future.delayed(Duration(seconds: 1), () {
+      // waits one second before freeing up guard to completely prevent loading issues
+      // (not too obvious to user as animation of loading takes similar amount of time)
+      setState(() {
+        updatingSelectedBox =
+            false; // setting guard to false when done updating
+        if (kDebugMode) {
+          print(
+            'finished updating selectedBox - now setting updatingSelectedBox to $updatingSelectedBox',
+          );
+        }
+      });
+    });
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- Build function ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
   // everything that is shown in the screen if morning and open
 
   @override
@@ -372,7 +445,6 @@ class MorningScreenState extends State<MorningScreen>
         Container(
           padding: EdgeInsets.symmetric(horizontal: fontSizeMiniText),
 
-          ///////////////////////////////////////////////////////////////
           // The two buttons KAP and CLE
           child: Row(
             children: [
@@ -403,16 +475,19 @@ class MorningScreenState extends State<MorningScreen>
           ),
         ),
 
-        ///////////////////////////////////////////////////////////////
         // Shows bus arrival times, depending on selected MRT Station
         SizedBox(height: fontSizeText),
         if (_isLoading && selectedBox != 0)
           // Preserve existing UX: when BusData not ready, don't show ETAs
           const LoadingScreen()
         else if (selectedBox != 0)
-          GetMorningETA(
-            selectedBox == 1 ? busData.arrivalTimeKAP : busData.arrivalTimeCLE,
-          ),
+          updatingSelectedBox
+              ? const LoadingScroll()
+              : GetMorningETA(
+                  selectedBox == 1
+                      ? busData.arrivalTimeKAP
+                      : busData.arrivalTimeCLE,
+                ),
       ],
     );
   }

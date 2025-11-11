@@ -11,14 +11,15 @@ import '../utils/loading.dart';
 import '../utils/styling_line_and_buttons.dart';
 import '../utils/text_styles_booking_confirmation.dart';
 
-///////////////////////////////////////////////////////////////
-// This URL returns the current time for the Asia/Singapore timezone
-// Moved API URL to a constant for easier maintenance
-const String timeApiUrl =
-    'https://www.timeapi.io/api/time/current/zone?timeZone=ASIA%2FSINGAPORE';
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- Afternoon Screen ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////
-// Booking Confirmation
+////////////////////////////////////////////////////////////////////////////////
+// Booking Confirmation class
+// used to show the booking confirmation when user books a trip
 
 class BookingConfirmation extends StatefulWidget {
   // Index of the selected booking option (e.g., which trip card was tapped)
@@ -72,6 +73,9 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   // If trip has started/was in the past no cancel option should be given
   bool canCancel = true;
 
+  //////////////////////////////////////////////////////////////////////////////
+  // initState
+
   @override
   void initState() {
     super.initState();
@@ -81,7 +85,9 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     _initializeTimeAndTimers();
   }
 
+  //////////////////////////////////////////////////////////////////////////////
   // Async initializer started from initState.
+
   Future<void> _initializeTimeAndTimers() async {
     // Fetch the current time from the API first. getTime must be implemented
     // to avoid calling setState when !mounted.
@@ -113,6 +119,9 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     });
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // dispose to cancel timers
+
   @override
   void dispose() {
     // Cancel timer to prevent callbacks after disposal
@@ -121,20 +130,13 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     super.dispose();
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // function to generate 'random' colors based on booked trip
+
   Color? generateColor(DateTime? departureTime, int selectedTripNo) {
     if (timeNow == null || departureTime == null) return null;
 
     final List<Color?> colors = [
-      //Colors.red[100],
-      // Colors.yellow[200],
-      // Colors.white,
-      // Colors.tealAccent[100],
-      //  Colors.orangeAccent[200],
-      // Colors.greenAccent[100],
-      // Colors.indigo[100],
-      //  Colors.purpleAccent[100],
-      // Colors.grey[400],
-      //  Colors.limeAccent[100],
       Colors.red[100],
       Colors.red[200],
       Colors.orange[200],
@@ -183,7 +185,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     });
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Shows a confirmation dialog before cancelling the booking.
   // If the user confirms, it triggers the onCancel callback and
   // clears booking data from shared preferences.
@@ -284,7 +286,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     );
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Booking Card
 
   @override
@@ -406,15 +408,16 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
         if (timeNow != null && timeNow!.hour >= startAfternoonETA)
           Center(
             // Wrap bus time in Center to align it horizontally
-            child: AfternoonStartPointAutoRefresh(box: widget.selectedBox),
+            child: AfternoonETAsAutoRefresh(box: widget.selectedBox),
           ),
       ],
     );
   }
 }
 
-///////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Layout for Booking Details
+
 class _BookingDetailsCard extends StatelessWidget {
   final int? bookedTripIndex; // Index of the booked trip
   final DateTime? bookedTime; // Departure time of the booked trip
@@ -557,12 +560,34 @@ class _BookingDetailsCard extends StatelessWidget {
                     ),
                     // if trip has already started, cannot cancel anymore
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
+                      style: ButtonStyle(
+                        elevation: WidgetStateProperty.all(0),
                         backgroundColor:
-                            Colors.blueGrey[900], // Button background color
-                        foregroundColor: Colors.white, // Text (and icon) color
+                            WidgetStateProperty.resolveWith<Color?>((
+                              Set<WidgetState> states,
+                            ) {
+                              if (states.contains(WidgetState.disabled)) {
+                                return const Color.fromRGBO(
+                                  38,
+                                  50,
+                                  56,
+                                  0.75,
+                                ); // Background when disabled
+                              }
+                              return Colors
+                                  .blueGrey[900]; // Button background color
+                            }),
+                        foregroundColor:
+                            WidgetStateProperty.resolveWith<Color?>((
+                              Set<WidgetState> states,
+                            ) {
+                              if (states.contains(WidgetState.disabled)) {
+                                return color; // Text color when disabled
+                              }
+                              return Colors.white; // Text (and icon) color
+                            }),
                       ),
+
                       onPressed: canCancel == true
                           ? onCancel // Trigger cancel dialog
                           : null, // grey out button if trip already started

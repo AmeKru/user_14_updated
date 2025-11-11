@@ -4,8 +4,16 @@ import '../data/get_data.dart';
 import '../data/global.dart';
 import '../utils/text_sizing.dart';
 
-///////////////////////////////////////////////////////////////
-// News Announcement Page
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- News Announcement Page ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// NewsAnnouncementWidget class
+// used for np announcement page, shows the announcements widget that is
+// also used in the main sliding panel on map_page
 
 class NewsAnnouncementWidget extends StatefulWidget {
   const NewsAnnouncementWidget({super.key});
@@ -31,6 +39,9 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
   double fontSizeMiniText = 0;
   double fontSizeText = 0;
   double fontSizeHeading = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  // initState
 
   @override
   void initState() {
@@ -59,6 +70,9 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
     busData.addListener(_busDataListener);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // get sizing at start
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -68,12 +82,18 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
     fontSizeHeading = TextSizing.fontSizeHeading(context);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // dispose of listener when widget is destroyed
+
   @override
   void dispose() {
     // Clean up listener when widget is removed
     busData.removeListener(_busDataListener);
     super.dispose();
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // the yellow widget that shows the announcements
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +153,9 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
                       style: TextStyle(
                         fontSize: fontSizeText,
                         fontFamily: 'Roboto',
-                        color: Colors.blueGrey[900],
+                        color: newsContent.trim().isEmpty
+                            ? const Color.fromRGBO(38, 50, 56, 0.5)
+                            : Colors.blueGrey[900],
                       ),
                     ),
                   ),
@@ -146,6 +168,9 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
     );
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// the actual announcement page
 
 class NewsAnnouncement extends StatelessWidget {
   // for sizing

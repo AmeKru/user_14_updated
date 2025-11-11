@@ -25,8 +25,16 @@ import '../utils/loading.dart';
 import '../utils/marker_colour.dart';
 import '../utils/text_sizing.dart';
 
-///////////////////////////////////////////////////////////////
-// Map Page
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- Map Page ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// MapPage class
+// the 'main page', shows the map and stuff on it, and all the menus,
+// logo and screens through sliding panel at the bottom
 
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
@@ -36,14 +44,25 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
-  ///////////////////////////////////////////////////////////////
-  // Variables?
-
-  Timer? _timer;
+  // selected MRT but as local variable
   int selectedBox = 0;
+
+  // to save current user location
   LatLng? currentLocation;
-  List<LatLng> routePoints = [];
+
+  // Timer to update location every defined interval
+  Timer? _timer;
+
+  // for route; ValueNotifier used as it will rebuild only route if route is reassigned
+  ValueNotifier<List<LatLng>> routePoints = ValueNotifier<List<LatLng>>([]);
+
+  // used to determine what route to show etc.
   DateTime now = DateTime.now();
+
+  // needed to gate updateSelectedBox and prevent too many interactions at once
+  bool _tapLocked = false;
+
+  // for sizing
   double fontSizeMiniText = 0;
   double fontSizeText = 0;
   double fontSizeHeading = 0;
@@ -72,15 +91,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   String? bus3ETA;
   int? bus3Count;
 
-  ///////////////////////////////////////////////////////////////
   // Location and mqtt service
-
   final LocationService _locationService = LocationService();
   final ConnectMQTT _mqttConnect = ConnectMQTT();
 
-  ///////////////////////////////////////////////////////////////
-  // Stops, needed to be static const so later can just use defined names in Routes
-
+  // All the bus stops
   static const LatLng busStopENT = LatLng(
     1.3329143792222058,
     103.77742909276205,
@@ -105,7 +120,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     103.7761976140868,
   );
 
-  // others
+  // other necessary points for correct routing
   static const LatLng uTurn = LatLng(1.326394, 103.775705);
   static const LatLng betweenHSCAndLCT = LatLng(
     1.3307778258080973,
@@ -117,9 +132,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   );
   static const LatLng uTurnCLE = LatLng(1.314967973664341, 103.765121458707);
 
-  ///////////////////////////////////////////////////////////////
   // All the Bus Routes
-
   final List<LatLng> amKAP = [busStopKAP, uTurn, busStopENT, busStopMAP];
   final List<LatLng> amCLE = [busStopCLE, busStopENT, busStopMAP];
   final List<LatLng> pmKAP = [
@@ -154,7 +167,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     busStopCLEa,
   ];
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // initState
 
   @override
@@ -163,6 +176,10 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _init(); // run everything in order
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // called at start after initState (cannot access context in initState)
+  // to assign necessary variables
 
   @override
   void didChangeDependencies() {
@@ -173,11 +190,33 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     fontSizeHeading = TextSizing.fontSizeHeading(context);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // dispose to remove listeners and stop timers when widget gets deleted
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- loading initial data ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
+  // function to load async data in order and at start in initState
+
   Future<void> _init() async {
     await _loadInitialData(); // wait for preferences to load
     _getLocation(); // now safe to run
     _mqttConnect.createState().initState();
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // function to load data and check for saved booking
 
   Future<void> _loadInitialData() async {
     if (kDebugMode) {
@@ -230,7 +269,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           ? bookingData['busIndex']
           : 0;
 
-      busIndex = busIndexComputed;
+      busIndex.value = busIndexComputed;
     }
 
     // Update state once
@@ -247,7 +286,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     }
     if (kDebugMode) {
       print(
-        'booking was loaded, with selectedBox $selectedBox and busIndex $busIndex',
+        'booking was loaded, with selectedBox $selectedBox and busIndex ${busIndex.value}',
       );
     }
 
@@ -255,6 +294,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       print('initial data load, booking existed so setting state');
     }
 
+    // so UI updates accordingly?
     setState(() {
       selectedMRT = selectedBox;
     });
@@ -263,36 +303,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     updateSelectedBox(selectedBox);
   }
 
-  ///////////////////////////////////////////////////////////////
-  // function to acquire location of user
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- Dark Mode ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
-  final ValueNotifier<LatLng?> currentLocationNotifier = ValueNotifier(null);
-  final ValueNotifier<double?> headingNotifier = ValueNotifier(null);
-
-  void _getLocation() {
-    if (kDebugMode) {
-      print('_getLocation called');
-    }
-
-    // initial location fetch
-    _locationService.getCurrentLocation().then((location) {
-      currentLocationNotifier.value = location;
-    });
-
-    // periodic updates
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _locationService.getCurrentLocation().then((location) {
-        currentLocationNotifier.value = location;
-      });
-    });
-
-    // Compass heading updates (direction user faces)
-    _locationService.initCompass((heading) {
-      headingNotifier.value = heading;
-    });
-  }
-
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // toggle Dark mode
 
   void _toggleTheme(bool value) {
@@ -304,10 +321,15 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     pageToBeBuilt();
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- Update Selected Box and check which page is to be shown ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
   // checks which MRT Station is selected by user (KAP or CLE),
   // the Time (am or pm) and then loads the corresponding Routes
-  bool _tapLocked = false;
 
   Future<void> updateSelectedBox(int newBox) async {
     if (!mounted) return;
@@ -315,17 +337,35 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     _tapLocked = true;
 
     if (kDebugMode) {
-      print('updateSelectedBox called in map_page');
+      print('updateSelectedBox called in map_page with newBox $newBox');
     }
 
     // gets time now
     final TimeService timeService = TimeService();
-    now = await timeService.getTime() ?? DateTime.now();
+
+    try {
+      now =
+          (await timeService.getTime().timeout(
+            const Duration(milliseconds: 500),
+          )) ??
+          DateTime.now(); // max wait 1s
+    } on TimeoutException {
+      if (kDebugMode) {
+        print(
+          'getTime took too long (>500ms) will fallback to device singaporean time',
+        );
+      }
+      // Get the current device time
+      DateTime localTime = DateTime.now();
+      // Convert local time to UTC
+      DateTime utcTime = localTime.toUtc();
+      now = utcTime.add(Duration(hours: 8));
+    }
 
     if (kDebugMode) {
-      print('TimeNow: $timeNow');
+      print('updateSelectedBox map_page now: $now');
     }
-    timeNow!;
+
     // Checks if afternoon
     pageToBeBuilt();
 
@@ -335,20 +375,23 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     } else if (newBox == 2) {
       selectedMRT = 2;
     } else {
-      routePoints.clear();
+      routePoints.value.clear();
       selectedMRT = 0;
-      busIndex = 0;
+      busIndex.value = 0;
     }
 
-    try {
-      if (newBox == 1) {
-        await fetchRoute(now.hour >= startAfternoonService ? pmKAP : amKAP);
-      } else if (newBox == 2) {
-        await fetchRoute(now.hour >= startAfternoonService ? pmCLE : amCLE);
+    if (newBox == 1) {
+      if (kDebugMode) {
+        print('map_page fetching route for KAP');
       }
-    } finally {
-      _tapLocked = false;
+      await fetchRoute(now.hour >= startAfternoonService ? pmKAP : amKAP);
+    } else if (newBox == 2) {
+      if (kDebugMode) {
+        print('map_page fetching route for CLE');
+      }
+      await fetchRoute(now.hour >= startAfternoonService ? pmCLE : amCLE);
     }
+    _tapLocked = false;
 
     if (kDebugMode) {
       print('updated selectedBox to $newBox - time now hour: ${now.hour}');
@@ -387,7 +430,42 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     }
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- Functions for map and everything on it ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
+  // function to acquire location of user
+
+  final ValueNotifier<LatLng?> currentLocationNotifier = ValueNotifier(null);
+  final ValueNotifier<double?> headingNotifier = ValueNotifier(null);
+
+  void _getLocation() {
+    if (kDebugMode) {
+      print('_getLocation called');
+    }
+
+    // initial location fetch
+    _locationService.getCurrentLocation().then((location) {
+      currentLocationNotifier.value = location;
+    });
+
+    // periodic updates
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _locationService.getCurrentLocation().then((location) {
+        currentLocationNotifier.value = location;
+      });
+    });
+
+    // Compass heading updates (direction user faces)
+    _locationService.initCompass((heading) {
+      headingNotifier.value = heading;
+    });
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   // function to be able to draw the route on the map
 
   Future<void> fetchRoute(List<LatLng> waypoints) async {
@@ -411,19 +489,20 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       if (data['routes'] != null && data['routes'].isNotEmpty) {
+        if (kDebugMode) {
+          print('assigning new route to routePoints');
+        }
         //only if there is a route, then decodes it into LatLng and draws it on map
         final encodedPolyline = data['routes'][0]['geometry'];
         final points = PolylinePoints.decodePolyline(encodedPolyline);
-        setState(() {
-          routePoints
-            ..clear()
-            ..addAll(points.map((p) => LatLng(p.latitude, p.longitude)));
-        });
+        routePoints.value = points
+            .map((p) => LatLng(p.latitude, p.longitude))
+            .toList();
       }
     }
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Function to be able to create Bus marker on map more easily
 
   Marker _buildBusMarker(String label, LatLng? location) {
@@ -494,7 +573,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     );
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Function to be able to easily create Bus stops on Map
   // instead of having to do them all separately
 
@@ -581,7 +660,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 flipY: true,
                 child: Icon(
                   CupertinoIcons.location_circle_fill,
-                  color: getMarkerColor(title, busIndex),
+                  color: getMarkerColor(title, busIndex.value),
                   size: fontSizeText * 1.75,
                 ),
               ),
@@ -592,7 +671,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     );
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Build the map with all stops, routes and buses
 
   Widget _buildMap() {
@@ -644,105 +723,114 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             ),
           ),
 
-        if (routePoints.isNotEmpty)
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: routePoints,
-                color: isDarkMode ? Colors.cyan : Colors.lightBlue[800]!,
-                strokeWidth: fontSizeText * 0.25,
-                pattern: StrokePattern.dashed(
-                  segments: [fontSizeText * 0.01, fontSizeText * 0.3],
-                  patternFit: PatternFit.scaleUp,
+        ValueListenableBuilder<List<LatLng>>(
+          valueListenable: routePoints,
+          builder: (context, points, child) {
+            if (points.isEmpty) return const SizedBox.shrink();
+
+            return PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: points,
+                  color: isDarkMode ? Colors.cyan : Colors.lightBlue[800]!,
+                  strokeWidth: fontSizeText * 0.25,
+                  pattern: StrokePattern.dashed(
+                    segments: [fontSizeText * 0.01, fontSizeText * 0.3],
+                    patternFit: PatternFit.scaleUp,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        MarkerLayer(
-          rotate: true,
-          markers: [
-            _buildStopMarker(
-              busStopENT,
-              'ENT',
-              'Entrance Bus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopOppositeKAP,
-              'OPP KAP',
-              'Opposite King Albert Park',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopB23,
-              'B23',
-              'Block 23 Bus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopSPH,
-              'SPH',
-              'Sports Hall Bus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopB44,
-              'B44',
-              'Block 44 Bus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopB37,
-              'B37',
-              'Block 37 Bus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopB72,
-              'B72',
-              'Block 72 Bus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopMAP,
-              'MAP',
-              'Makan Place Bus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopCLE,
-              'CLE',
-              'Clementi MRT Bus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopKAP,
-              'KAP',
-              'King Albert Park MRT\nBus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopHSC,
-              'HSC',
-              'School of Health Sciences\nBus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopLCT,
-              'LCT',
-              'School of Life Sciences & Technology\nBus Stop',
-              isDarkMode,
-            ),
-            _buildStopMarker(
-              busStopSIT,
-              'SIT',
-              'Singapore Institute of Technology\nBus Stop',
-              isDarkMode,
-            ),
-            //_buildBusMarker('Bus1', bus1Location),
-            //_buildBusMarker('Bus2', bus2Location),
-            //_buildBusMarker('Bus3', bus3Location),
-          ],
+              ],
+            );
+          },
+        ),
+
+        ValueListenableBuilder<int>(
+          valueListenable: busIndex,
+          builder: (context, value, child) {
+            return MarkerLayer(
+              rotate: true,
+              markers: [
+                _buildStopMarker(
+                  busStopENT,
+                  'ENT',
+                  'Entrance Bus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopOppositeKAP,
+                  'OPP KAP',
+                  'Opposite King Albert Park',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopB23,
+                  'B23',
+                  'Block 23 Bus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopSPH,
+                  'SPH',
+                  'Sports Hall Bus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopB44,
+                  'B44',
+                  'Block 44 Bus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopB37,
+                  'B37',
+                  'Block 37 Bus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopB72,
+                  'B72',
+                  'Block 72 Bus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopMAP,
+                  'MAP',
+                  'Makan Place Bus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopCLE,
+                  'CLE',
+                  'Clementi MRT Bus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopKAP,
+                  'KAP',
+                  'King Albert Park MRT\nBus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopHSC,
+                  'HSC',
+                  'School of Health Sciences\nBus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopLCT,
+                  'LCT',
+                  'School of Life Sciences & Technology\nBus Stop',
+                  isDarkMode,
+                ),
+                _buildStopMarker(
+                  busStopSIT,
+                  'SIT',
+                  'Singapore Institute of Technology\nBus Stop',
+                  isDarkMode,
+                ),
+              ],
+            );
+          },
         ),
 
         // only necessary  markers will be rebuilt if changes in location
@@ -751,7 +839,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               ConnectMQTT.buses[1]!.location, // ValueNotifier<LatLng?>
           builder: (_, bus1LatLng, _) {
             bus1Location = bus1LatLng;
-            // if (latLng == null) return const SizedBox.shrink(); // to hide bus if no location
+            if (bus1LatLng == null) {
+              return const SizedBox.shrink(); // to hide bus if no location
+            }
             return MarkerLayer(
               rotate: true,
               markers: [_buildBusMarker('Bus1', bus1Location)],
@@ -764,7 +854,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               ConnectMQTT.buses[2]!.location, // ValueNotifier<LatLng?>
           builder: (_, bus2LatLng, _) {
             bus2Location = bus2LatLng;
-            // if (latLng == null) return const SizedBox.shrink(); // to hide bus if no location
+            if (bus2LatLng == null) {
+              return const SizedBox.shrink(); // to hide bus if no location
+            }
             return MarkerLayer(
               rotate: true,
               markers: [_buildBusMarker('Bus2', bus2LatLng)],
@@ -777,7 +869,9 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
               ConnectMQTT.buses[3]!.location, // ValueNotifier<LatLng?>
           builder: (_, bus3LatLng, _) {
             bus3Location = bus3LatLng;
-            // if (latLng == null) return const SizedBox.shrink(); // to hide bus if no location
+            if (bus3LatLng == null) {
+              return const SizedBox.shrink(); // to hide bus if no location
+            }
             return MarkerLayer(
               rotate: true,
               markers: [_buildBusMarker('Bus3', bus3LatLng)],
@@ -822,7 +916,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     );
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- Circular menu ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
   // the circular menu at the top right
 
   final GlobalKey<CircularMenuState> menuKey = GlobalKey<CircularMenuState>();
@@ -934,7 +1034,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     );
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- NP Logo  ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
   // the logo at the top left
 
   Widget _logoNP() {
@@ -971,7 +1077,13 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     );
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- Main sliding panel  ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
   // The panel at the bottom
 
   ScrollController? _panelScrollController;
@@ -1253,13 +1365,18 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     );
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- build function of Map Page  ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
+  // build
 
   @override
   Widget build(BuildContext context) {
     if (kDebugMode) debugPrint('map_page built');
-
-    ///////////////////////////////////////////////////////////////
 
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.black : Colors.lightBlueAccent[50],
@@ -1275,12 +1392,5 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _timer?.cancel();
-    super.dispose();
   }
 }

@@ -24,6 +24,12 @@ import '../utils/text_sizing.dart'; // sizing, so it stays consistent
 import '../utils/text_styles_booking_confirmation.dart'; // Text style helpers
 
 ////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- Afternoon Screen---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 // enum to check what BookingStatus the booking has
 
 enum BookingStatus {
@@ -35,15 +41,9 @@ enum BookingStatus {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-/// ////////////////////////////////////////////////////////////////////////////
-/// --- Afternoon Screen---
-/// ////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 // AfternoonScreen class
-// Displays the afternoon booking interface, handles user selection,
-// booking creation, and integration with Amplify backend.
+// displays the afternoon booking interface, handles user selection,
+// booking creation, and integration with Amplify backend
 
 class AfternoonScreen extends StatefulWidget {
   final Function(int)
@@ -188,6 +188,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     _didRestoreSnapshot = false;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // function called at start (after initState or similar)
+  // to determine sizing variables
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -195,6 +199,34 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     fontSizeMiniText = TextSizing.fontSizeMiniText(context);
     fontSizeText = TextSizing.fontSizeText(context);
     fontSizeHeading = TextSizing.fontSizeHeading(context);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // dispose function (called when build is destroyed)
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    if (_busDataListener != null) {
+      _busData.removeListener(_busDataListener!);
+      _busDataListener = null;
+    }
+    try {
+      // stop polling when screen disposed
+      _busData.stopPolling();
+    } catch (e, st) {
+      if (kDebugMode) {
+        print("Error stopping polling: $e\n$st");
+      }
+    }
+
+    // cancel all timers when disposed
+    _inactivityStopTimer?.cancel();
+    _inactivityStopTimer = null;
+    _lifecycleResetTimer?.cancel();
+    _lifecycleResetTimer = null;
+
+    super.dispose();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -283,35 +315,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // dispose function (called when build is destroyed)
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    if (_busDataListener != null) {
-      _busData.removeListener(_busDataListener!);
-      _busDataListener = null;
-    }
-    try {
-      _busData.stopPolling();
-    } catch (e, st) {
-      if (kDebugMode) {
-        print("Error stopping polling: $e\n$st");
-      }
-    }
-    // stop polling when screen disposed
-
-    _inactivityStopTimer?.cancel();
-    _inactivityStopTimer = null;
-    _lifecycleResetTimer?.cancel();
-    _lifecycleResetTimer = null;
-    // cancel all timers when disposed
-
-    super.dispose();
-  }
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- App Lifecycle ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
-  // function to check if app is used in foreground or open in background
+  // functions to check if app is used in foreground or open in background
   // (or is reopened from the background)
 
   @override
@@ -444,6 +454,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  // helpers for didChangeAppLifecycleState
+
   void _scheduleInactivityStop() {
     if (_inactivityStopTimer?.isActive == true) {
       if (kDebugMode) print('Inactivity stop already scheduled; leaving it.');
@@ -481,10 +494,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
   ///  /////////////////////////////////////////////////////////////////////////
   /// --- Creating Booking ---
   ///  /////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
   // Creates a booking record in the backend via Amplify API.
@@ -584,7 +597,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         station: mrtStation,
         tripIndex: idx ?? -1,
         busStop: selectedBusStop,
-        busIndex: busIndex,
+        busIndex: busIndex.value,
         departure: departure, // nullable departure; no DateTime.now fallback
       );
 
@@ -627,10 +640,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           bookedDepartureTime = departure;
           selectedBusStop = booking.busStop;
           // other fields used by BookingConfirmation:
-          // busIndex already present; keep it
           _bookingStatus = newStatus;
-          // Do not flip confirmationPressed here if you show confirmation via dialog;
-          // if you need to show BookingConfirmation widget inline, set confirmationPressed = true here.
           futureBookingData = refreshedFuture;
         });
 
@@ -660,10 +670,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
   /// //////////////////////////////////////////////////////////////////////////
   /// --- Checks if Booking is old ---
   /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
   // To check if Time has been set and then goes to check if booking is still valid
@@ -743,10 +753,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
   ///  /////////////////////////////////////////////////////////////////////////
   /// --- Checking/Finding Booking on Server through Amplify---
   ///  /////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
   // Reads a booking from the backend using the stored bookingID.
@@ -807,6 +817,16 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         return await call.timeout(const Duration(seconds: 8));
       }, attempts: 2);
 
+      // check for server/network errors
+      if (resp.errors.isNotEmpty) {
+        if (kDebugMode) {
+          print(
+            'doesBookingExistByID GraphQL errors for ID=$id (server unreachable?): ${resp.errors}',
+          );
+        }
+        return null; // could not verify due to server/network issue
+      }
+
       final items = resp.data?.items;
       if (items != null && items.isNotEmpty) return true;
       return false;
@@ -829,10 +849,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
   ///  /////////////////////////////////////////////////////////////////////////
   /// --- Deleting Booking ---
   ///  /////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
   // Supposed to delete Booking Confirmation locally (through sharedPreferences)
@@ -857,7 +877,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       // Map/route-critical
       selectedMRT = 0;
       selectedBox = 0;
-      busIndex = 0;
+      busIndex.value = 0;
       selectedBusStop = '';
 
       // Booking state
@@ -879,7 +899,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       print(
         'After local delete → bookingID=$bookingID, '
         'selectedBox=$selectedBox, selectedMRT=$selectedMRT, '
-        'busIndex=$busIndex, selectedBusStop="$selectedBusStop", '
+        'busIndex=${busIndex.value}, selectedBusStop="$selectedBusStop", '
         'bookedDepartureTime=$bookedDepartureTime, '
         'confirmationPressed=$confirmationPressed, '
         '_bookingStatus=$_bookingStatus',
@@ -921,7 +941,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         }
         return true; // treat as success, proceed to local cleanup
       }
-
+      if (exists == null) {
+        if (kDebugMode) {
+          print('could not reach server, so cannot cancel booking');
+        }
+        return false;
+      }
       // Attempt delete; if mutation throws or returns null, we’ll handle errors below
       final booking = await _readBookingByID(); // returns model or null
       if (booking == null) {
@@ -945,10 +970,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
   /// //////////////////////////////////////////////////////////////////////////
   /// --- Local saves, loads, checks if locally saved stuff is still valid ---
   /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
   // saves booking data locally in SharedPreferences via your prefsService
@@ -1161,12 +1186,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
   ///  /////////////////////////////////////////////////////////////////////////
   /// --- Helper ---
   ///  /////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
+  // to retry connecting to server a few times instead of giving up after one try
 
   Future<T> _retry<T>(
     Future<T> Function() operation, {
@@ -1216,10 +1242,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
   /// //////////////////////////////////////////////////////////////////////////
   /// --- updates and get stuff ---
   /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
   // Updates the selected box index and notifies parent widget.
@@ -1485,10 +1511,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       : _busData.departureTimeCLE;
 
   //////////////////////////////////////////////////////////////////////////////
-
   /// //////////////////////////////////////////////////////////////////////////
   /// --- UI Helpers ---
   /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
   // Shows a bottom sheet allowing the user to select a bus stop.
@@ -1582,7 +1608,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                                   onTap: () {
                                     setState(() {
                                       selectedBusStop = stopName;
-                                      busIndex = index + 2;
+                                      busIndex.value = index + 2;
                                     });
                                     Navigator.pop(context);
                                   },
@@ -1851,11 +1877,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
   /// //////////////////////////////////////////////////////////////////////////
   /// --- The Overall UI of Afternoon Screen ---
   /// //////////////////////////////////////////////////////////////////////////
-
   //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
@@ -2020,6 +2044,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           showBusStopSelectionBottomSheet: showBusStopSelectionBottomSheet,
           selectedBusStop: selectedBusStop,
           onPressedConfirm: () async {
+            updatingSelectedBox = true;
             if (kDebugMode) {
               print('confirming Booking...');
             }
@@ -2038,6 +2063,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 selectedBusStopAtTap.isEmpty ||
                 stationAtTap.isEmpty) {
               _showAsyncSnackBar('Please select a trip and bus stop.');
+              updatingSelectedBox = false;
               return;
             }
 
@@ -2061,18 +2087,26 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 _bookingStatus = BookingStatus.noBooking;
               });
 
+              updatingSelectedBox = false;
               updateSelectedBox(0, true);
               return;
             }
-            if (!mounted) return;
+            if (!mounted) {
+              updatingSelectedBox = false;
+              return;
+            }
 
             setState(() => confirmationPressed = true);
 
             // Capture the dialog function synchronously
             void showDialogFn() => showBookingConfirmationDialog(context);
 
-            if (!mounted) return;
+            if (!mounted) {
+              updatingSelectedBox = false;
+              return;
+            }
             showDialogFn();
+            updatingSelectedBox = false;
           },
         );
       } else {

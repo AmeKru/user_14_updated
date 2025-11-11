@@ -9,10 +9,15 @@ import '../utils/get_time.dart';
 import '../utils/loading.dart'; // Custom loading widget
 import '../utils/text_sizing.dart';
 
-///////////////////////////////////////////////////////////////
-// Booking Service
-// A stateful widget that manages and displays booking availability for bus trips.
-// It periodically checks booking counts and updates the UI accordingly
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- Booking Service ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// BookingService class
+// used for booking trips in the afternoon
 
 class BookingService extends StatefulWidget {
   // List of departure times for the currently selected station
@@ -116,11 +121,11 @@ class BookingServiceState extends State<BookingService> {
     if (widget.selectedBox == 1
         ? widget.bookedTripIndexKAP == null
         : widget.bookedTripIndexCLE == null) {
-      busIndex = 0;
+      busIndex.value = 0;
     }
     return widget.selectedBox == 1
-        ? widget.bookedTripIndexKAP != null && busIndex != 0
-        : widget.bookedTripIndexCLE != null && busIndex != 0;
+        ? widget.bookedTripIndexKAP != null && busIndex.value != 0
+        : widget.bookedTripIndexCLE != null && busIndex.value != 0;
   }
 
   ///////////////////////////////////////////////////////////////
@@ -398,184 +403,148 @@ class BookingServiceState extends State<BookingService> {
 
               SizedBox(height: fontSizeText * 1.5),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      TextSizing.isLandscapeMode(context)
-                          ? '* Departure time stated refers to bus stop at entrance (ENT). Check below for more information about the other stops.'
-                          : '* Departure time stated refers to bus stop at entrance (ENT).\nCheck below for more information about the other stops.',
-                      textAlign: TextAlign.center,
-                      softWrap: true,
-                      style: TextStyle(
-                        fontSize: fontSizeMiniText,
-                        color: (isDarkMode ? Colors.white : Colors.black),
-                        fontFamily: 'Roboto',
+              if (widget.departureTimes.isNotEmpty)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        TextSizing.isLandscapeMode(context)
+                            ? '* Departure time stated refers to bus stop at entrance (ENT). Check below for more information about the other stops.'
+                            : '* Departure time stated refers to bus stop at entrance (ENT).\nCheck below for more information about the other stops.',
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        style: TextStyle(
+                          fontSize: fontSizeMiniText,
+                          color: (isDarkMode ? Colors.white : Colors.black),
+                          fontFamily: 'Roboto',
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+
+              if (widget.departureTimes.isEmpty)
+                Column(
+                  children: [
+                    SizedBox(height: fontSizeHeading * 2),
+                    Text(
+                      'no Trips found - check Internet connection',
+                      softWrap: true,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isDarkMode
+                            ? Colors.blueGrey[400]
+                            : Colors.blueGrey[600],
+                        fontFamily: 'Roboto',
+                        fontSize: fontSizeText,
+                      ),
+                    ),
+                  ],
+                ),
 
               // === List of Departure Trips ===
-              ListView.builder(
-                shrinkWrap: true,
-                // Allow list to size itself within Column
-                physics: const NeverScrollableScrollPhysics(),
-                // Disable scrolling (parent scrolls)
-                itemCount: widget.departureTimes.length,
-                itemBuilder: (context, index) {
-                  final time = widget.departureTimes[index];
+              if (widget.departureTimes.isNotEmpty)
+                ListView.builder(
+                  shrinkWrap: true,
+                  // Allow list to size itself within Column
+                  physics: const NeverScrollableScrollPhysics(),
+                  // Disable scrolling (parent scrolls)
+                  itemCount: widget.departureTimes.length,
+                  itemBuilder: (context, index) {
+                    final time = widget.departureTimes[index];
 
-                  // Whether this trip is currently booked for each station
-                  bool isBookedKAP =
-                      (index == widget.bookedTripIndexKAP) && busIndex != 0;
-                  bool isBookedCLE =
-                      (index == widget.bookedTripIndexCLE) && busIndex != 0;
+                    // Whether this trip is currently booked for each station
+                    bool isBookedKAP =
+                        (index == widget.bookedTripIndexKAP) &&
+                        busIndex.value != 0;
+                    bool isBookedCLE =
+                        (index == widget.bookedTripIndexCLE) &&
+                        busIndex.value != 0;
 
-                  // Current booking count for this trip
-                  int? count = bookingCounts[index];
+                    // Current booking count for this trip
+                    int? count = bookingCounts[index];
 
-                  // Whether this trip is full
-                  bool isFull = (count != null && count >= vacancyRed);
+                    // Whether this trip is full
+                    bool isFull = (count != null && count >= vacancyRed);
 
-                  // cannot book if its way then trip time
-                  return (time.hour > now.hour ||
-                          time.hour == now.hour && time.minute > now.minute)
-                      ? Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            fontSizeText,
-                            0.0,
-                            fontSizeText,
-                            0.0,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // === Trip Card ===
-                                  // if time now > trip time, trip wont be offered to book anymore
-                                  Expanded(
-                                    child: Card(
-                                      elevation: 0,
-                                      color: isFull
-                                          ? (isDarkMode
-                                                ? Colors.blueGrey[800]
-                                                : Colors.grey[300])
-                                          : (isDarkMode
-                                                ? Colors.blueGrey[600]
-                                                : Colors.blue[50]),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          0.0,
-                                        ), // Square corners
-                                      ),
-                                      child: Padding(
-                                        padding: EdgeInsets.fromLTRB(
-                                          0,
-                                          0,
-                                          fontSizeText,
-                                          0,
+                    // cannot book if its way then trip time
+                    return (time.hour > now.hour ||
+                            time.hour == now.hour && time.minute > now.minute)
+                        ? Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              fontSizeText,
+                              0.0,
+                              fontSizeText,
+                              0.0,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // === Trip Card ===
+                                    // if time now > trip time, trip wont be offered to book anymore
+                                    Expanded(
+                                      child: Card(
+                                        elevation: 0,
+                                        color: isFull
+                                            ? (isDarkMode
+                                                  ? Colors.blueGrey[800]
+                                                  : Colors.grey[300])
+                                            : (isDarkMode
+                                                  ? Colors.blueGrey[600]
+                                                  : Colors.blue[50]),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            0.0,
+                                          ), // Square corners
                                         ),
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            // Capacity color bar (only if count known)
-                                            Container(
-                                              width:
-                                                  TextSizing.fontSizeText(
-                                                    context,
-                                                  ) *
-                                                  0.5,
-                                              height:
-                                                  TextSizing.fontSizeText(
-                                                    context,
-                                                  ) *
-                                                  4,
-                                              color: count != null
-                                                  ? _getColor(count)
-                                                  : (isDarkMode
-                                                        ? Colors.blueGrey[200]
-                                                        : Colors.blueGrey[500]),
-                                            ),
-                                            Expanded(
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceEvenly,
-                                                children: [
-                                                  Text(
-                                                    'Trip ${index + 1}',
-                                                    textAlign: TextAlign.center,
-                                                    softWrap: true,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    maxLines:
-                                                        1, //  limits to 1 lines
-                                                    style: TextStyle(
-                                                      fontFamily: 'Roboto',
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize:
-                                                          TextSizing.fontSizeText(
-                                                            context,
-                                                          ),
-                                                      color: isFull
-                                                          ? (isDarkMode
-                                                                ? Colors
-                                                                      .blueGrey[400]
-                                                                : Colors
-                                                                      .grey[600])
-                                                          : (isDarkMode
-                                                                ? Colors.white
-                                                                : Colors.black),
-                                                    ),
-                                                  ),
-
-                                                  // Vertical divider
-                                                  Padding(
-                                                    padding: EdgeInsets.all(
-                                                      TextSizing.fontSizeText(
-                                                        context,
-                                                      ),
-                                                    ),
-                                                    child: Container(
-                                                      width:
-                                                          TextSizing.fontSizeText(
-                                                            context,
-                                                          ) *
-                                                          0.1,
-                                                      height:
-                                                          TextSizing.fontSizeHeading(
-                                                            context,
-                                                          ) *
-                                                          1.2,
-                                                      color: isFull
-                                                          ? (isDarkMode
-                                                                ? Colors
-                                                                      .blueGrey[500]
-                                                                : Colors
-                                                                      .grey[600])
-                                                          : (isDarkMode
-                                                                ? Colors
-                                                                      .blueGrey[200]
-                                                                : Colors
-                                                                      .blueGrey[500]),
-                                                    ),
-                                                  ),
-
-                                                  // Departure time
-                                                  Flexible(
-                                                    child: Text(
-                                                      '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} *',
-
+                                        child: Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                            0,
+                                            0,
+                                            fontSizeText,
+                                            0,
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              // Capacity color bar (only if count known)
+                                              Container(
+                                                width:
+                                                    TextSizing.fontSizeText(
+                                                      context,
+                                                    ) *
+                                                    0.5,
+                                                height:
+                                                    TextSizing.fontSizeText(
+                                                      context,
+                                                    ) *
+                                                    4,
+                                                color: count != null
+                                                    ? _getColor(count)
+                                                    : (isDarkMode
+                                                          ? Colors.blueGrey[200]
+                                                          : Colors
+                                                                .blueGrey[500]),
+                                              ),
+                                              Expanded(
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceEvenly,
+                                                  children: [
+                                                    Text(
+                                                      'Trip ${index + 1}',
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      softWrap: true,
                                                       overflow:
                                                           TextOverflow.ellipsis,
                                                       maxLines:
@@ -600,10 +569,9 @@ class BookingServiceState extends State<BookingService> {
                                                                         .black),
                                                       ),
                                                     ),
-                                                  ),
-                                                  // Vertical divider
-                                                  Flexible(
-                                                    child: Padding(
+
+                                                    // Vertical divider
+                                                    Padding(
                                                       padding: EdgeInsets.all(
                                                         TextSizing.fontSizeText(
                                                           context,
@@ -633,14 +601,12 @@ class BookingServiceState extends State<BookingService> {
                                                                         .blueGrey[500]),
                                                       ),
                                                     ),
-                                                  ),
 
-                                                  if (canConfirm())
+                                                    // Departure time
                                                     Flexible(
                                                       child: Text(
-                                                        widget.selectedBusStop,
-                                                        textAlign:
-                                                            TextAlign.center,
+                                                        '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')} *',
+
                                                         overflow: TextOverflow
                                                             .ellipsis,
                                                         maxLines:
@@ -667,120 +633,196 @@ class BookingServiceState extends State<BookingService> {
                                                         ),
                                                       ),
                                                     ),
-                                                  if (!canConfirm())
+                                                    // Vertical divider
                                                     Flexible(
-                                                      child: Text(
-                                                        ' ---- ',
-                                                        textAlign:
-                                                            TextAlign.center,
-                                                        overflow:
-                                                            TextOverflow.clip,
-                                                        maxLines:
-                                                            1, //  limits to 1 lines
-                                                        style: TextStyle(
-                                                          fontSize:
+                                                      child: Padding(
+                                                        padding: EdgeInsets.all(
+                                                          TextSizing.fontSizeText(
+                                                            context,
+                                                          ),
+                                                        ),
+                                                        child: Container(
+                                                          width:
                                                               TextSizing.fontSizeText(
                                                                 context,
-                                                              ),
+                                                              ) *
+                                                              0.1,
+                                                          height:
+                                                              TextSizing.fontSizeHeading(
+                                                                context,
+                                                              ) *
+                                                              1.2,
                                                           color: isFull
                                                               ? (isDarkMode
                                                                     ? Colors
-                                                                          .blueGrey[400]
+                                                                          .blueGrey[500]
                                                                     : Colors
                                                                           .grey[600])
                                                               : (isDarkMode
                                                                     ? Colors
-                                                                          .white
+                                                                          .blueGrey[200]
                                                                     : Colors
-                                                                          .black),
-                                                          fontFamily: 'Roboto',
-                                                          fontWeight:
-                                                              FontWeight.bold,
+                                                                          .blueGrey[500]),
                                                         ),
                                                       ),
                                                     ),
-                                                ],
+
+                                                    if (canConfirm())
+                                                      Flexible(
+                                                        child: Text(
+                                                          widget
+                                                              .selectedBusStop,
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          maxLines:
+                                                              1, //  limits to 1 lines
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                'Roboto',
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            fontSize:
+                                                                TextSizing.fontSizeText(
+                                                                  context,
+                                                                ),
+                                                            color: isFull
+                                                                ? (isDarkMode
+                                                                      ? Colors
+                                                                            .blueGrey[400]
+                                                                      : Colors
+                                                                            .grey[600])
+                                                                : (isDarkMode
+                                                                      ? Colors
+                                                                            .white
+                                                                      : Colors
+                                                                            .black),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    if (!canConfirm())
+                                                      Flexible(
+                                                        child: Text(
+                                                          ' ---- ',
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          overflow:
+                                                              TextOverflow.clip,
+                                                          maxLines:
+                                                              1, //  limits to 1 lines
+                                                          style: TextStyle(
+                                                            fontSize:
+                                                                TextSizing.fontSizeText(
+                                                                  context,
+                                                                ),
+                                                            color: isFull
+                                                                ? (isDarkMode
+                                                                      ? Colors
+                                                                            .blueGrey[400]
+                                                                      : Colors
+                                                                            .grey[600])
+                                                                : (isDarkMode
+                                                                      ? Colors
+                                                                            .white
+                                                                      : Colors
+                                                                            .black),
+                                                            fontFamily:
+                                                                'Roboto',
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  // === Booking Checkbox Icon ===
-                                  GestureDetector(
-                                    onTap: (isFull || count == null)
-                                        ? null // Disable tap if full
-                                        : () {
-                                            if (!isFull) {
-                                              if (widget.selectedBox == 1) {
-                                                // KAP station booking logic
-                                                if (!isBookedKAP) {
-                                                  widget.updateBookingStatusKAP(
-                                                    index,
-                                                    true,
-                                                  );
-                                                  if (busIndex == 0) {
+                                    // === Booking Checkbox Icon ===
+                                    GestureDetector(
+                                      onTap: (isFull || count == null)
+                                          ? null // Disable tap if full
+                                          : () {
+                                              if (!isFull) {
+                                                if (widget.selectedBox == 1) {
+                                                  // KAP station booking logic
+                                                  if (!isBookedKAP) {
                                                     widget
-                                                        .showBusStopSelectionBottomSheet(
-                                                          context,
+                                                        .updateBookingStatusKAP(
+                                                          index,
+                                                          true,
+                                                        );
+                                                    if (busIndex.value == 0) {
+                                                      widget
+                                                          .showBusStopSelectionBottomSheet(
+                                                            context,
+                                                          );
+                                                    }
+                                                  } else {
+                                                    busIndex.value = 0;
+                                                    widget
+                                                        .updateBookingStatusKAP(
+                                                          index,
+                                                          false,
                                                         );
                                                   }
                                                 } else {
-                                                  widget.updateBookingStatusKAP(
-                                                    index,
-                                                    false,
-                                                  );
-                                                }
-                                              } else {
-                                                // CLE station booking logic
-                                                if (!isBookedCLE) {
-                                                  widget.updateBookingStatusCLE(
-                                                    index,
-                                                    true,
-                                                  );
-                                                  if (busIndex == 0) {
+                                                  // CLE station booking logic
+                                                  if (!isBookedCLE) {
                                                     widget
-                                                        .showBusStopSelectionBottomSheet(
-                                                          context,
+                                                        .updateBookingStatusCLE(
+                                                          index,
+                                                          true,
+                                                        );
+                                                    if (busIndex.value == 0) {
+                                                      widget
+                                                          .showBusStopSelectionBottomSheet(
+                                                            context,
+                                                          );
+                                                    }
+                                                  } else {
+                                                    busIndex.value = 0;
+                                                    widget
+                                                        .updateBookingStatusCLE(
+                                                          index,
+                                                          false,
                                                         );
                                                   }
-                                                } else {
-                                                  widget.updateBookingStatusCLE(
-                                                    index,
-                                                    false,
-                                                  );
                                                 }
                                               }
-                                            }
-                                          },
-                                    child: Icon(
-                                      widget.selectedBox == 1
-                                          ? (isBookedKAP
-                                                ? Icons.check_box
-                                                : Icons.check_box_outline_blank)
-                                          : (isBookedCLE
-                                                ? Icons.check_box
-                                                : Icons
-                                                      .check_box_outline_blank),
-                                      color: isFull
-                                          ? (isDarkMode
-                                                ? Colors.blueGrey[500]
-                                                : Colors.grey[400])
-                                          : (isDarkMode
-                                                ? Colors.blueGrey[50]
-                                                : const Color(0xff014689)),
-                                      size: fontSizeHeading,
+                                            },
+                                      child: Icon(
+                                        widget.selectedBox == 1
+                                            ? (isBookedKAP
+                                                  ? Icons.check_box
+                                                  : Icons
+                                                        .check_box_outline_blank)
+                                            : (isBookedCLE
+                                                  ? Icons.check_box
+                                                  : Icons
+                                                        .check_box_outline_blank),
+                                        color: isFull
+                                            ? (isDarkMode
+                                                  ? Colors.blueGrey[500]
+                                                  : Colors.grey[400])
+                                            : (isDarkMode
+                                                  ? Colors.blueGrey[50]
+                                                  : const Color(0xff014689)),
+                                        size: fontSizeHeading,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        )
-                      : SizedBox();
-                },
-              ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          )
+                        : SizedBox();
+                  },
+                ),
 
               Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -841,31 +883,32 @@ class BookingServiceState extends State<BookingService> {
               ),
 
               // === Afternoon Service Info ===
-              now.hour >= startAfternoonETA
-                  ? Column(
-                      children: [
-                        SizedBox(height: fontSizeHeading),
-                        AfternoonStartPointAutoRefresh(box: widget.selectedBox),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        SizedBox(height: fontSizeMiniText),
-                        Text(
-                          'ETAs will be shown in the afternoon',
-                          softWrap: true,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: isDarkMode
-                                ? Colors.blueGrey[400]
-                                : Colors.blueGrey[600],
-                            fontFamily: 'Roboto',
-                            fontSize: fontSizeText,
+              if (widget.departureTimes.isNotEmpty)
+                now.hour >= startAfternoonETA
+                    ? Column(
+                        children: [
+                          SizedBox(height: fontSizeHeading),
+                          AfternoonETAsAutoRefresh(box: widget.selectedBox),
+                        ],
+                      )
+                    : Column(
+                        children: [
+                          SizedBox(height: fontSizeMiniText),
+                          Text(
+                            'ETAs will be shown in the afternoon',
+                            softWrap: true,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.blueGrey[400]
+                                  : Colors.blueGrey[600],
+                              fontFamily: 'Roboto',
+                              fontSize: fontSizeText,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: fontSizeText),
-                      ],
-                    ),
+                          SizedBox(height: fontSizeText),
+                        ],
+                      ),
             ],
           );
   }

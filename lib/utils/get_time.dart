@@ -6,11 +6,19 @@ import 'package:http/http.dart';
 
 import '../data/global.dart'; // For making HTTP requests
 
-///////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- get time ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 // A singleton service that fetches and maintains the current time
-// from an online API, and updates it periodically.
+// from an online API, and updates it periodically
 //
-// Uses [ChangeNotifier] so that widgets can listen for updates.
+// Uses [ChangeNotifier] so that widgets can listen for updates
+//
+// will fallback to device time it server cannot be reached
 
 class TimeService with ChangeNotifier {
   // --- Singleton setup ---
@@ -31,9 +39,9 @@ class TimeService with ChangeNotifier {
     _startTimer();
   }
 
-  ///////////////////////////////////////////////////////////////
-  // Fetches the current time from the API and updates [timeNow].
-  // Notifies listeners when the time changes.
+  //////////////////////////////////////////////////////////////////////////////
+  // Fetches the current time from the API and updates [timeNow]
+  // Notifies listeners when the time changes
 
   Future<DateTime?> getTime() async {
     try {
@@ -100,10 +108,10 @@ class TimeService with ChangeNotifier {
     return timeNow;
   }
 
-  ///////////////////////////////////////////////////////////////
-  // Starts a periodic timer that updates the time.
+  //////////////////////////////////////////////////////////////////////////////
+  // Starts a periodic timer that updates the time
   // Calls [updateTimeManually] every [timeUpdateInterval],
-  // and fetches fresh time from the API at the same interval.
+  // and fetches fresh time from the API at the same interval
 
   void _startTimer() {
     _clockTimer = Timer.periodic(timeUpdateInterval, (timer) {
@@ -117,9 +125,9 @@ class TimeService with ChangeNotifier {
     });
   }
 
-  ///////////////////////////////////////////////////////////////
-  // Manually increments [timeNow] by [timeUpdateInterval].
-  // Useful between API fetches to keep the clock moving.
+  //////////////////////////////////////////////////////////////////////////////
+  // Manually increments [timeNow] by [timeUpdateInterval]
+  // Useful between API fetches to keep the clock moving
 
   void updateTimeManually() {
     if (timeNow != null) {
@@ -140,8 +148,8 @@ class TimeService with ChangeNotifier {
     }
   }
 
-  ///////////////////////////////////////////////////////////////
-  // Cancels the timer when the service is disposed.
+  //////////////////////////////////////////////////////////////////////////////
+  // Cancels the timer when the service is disposed
 
   @override
   void dispose() {

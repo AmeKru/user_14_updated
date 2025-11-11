@@ -9,7 +9,13 @@ import 'package:latlong2/latlong.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart' as mqtt;
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- MQTT ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 // Data model for storing MQTT-related values for a single bus.
 //
 // Each property is wrapped in a [ValueNotifier] so that UI widgets
@@ -28,7 +34,7 @@ class BusData {
   final ValueNotifier<int?> count = ValueNotifier(0); // Passenger count
 }
 
-//////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Widget that connects to an MQTT broker and listens for bus telemetry.
 //
 // Displays bus markers on a map based on live location updates.
@@ -36,7 +42,7 @@ class BusData {
 class ConnectMQTT extends StatefulWidget {
   const ConnectMQTT({super.key});
 
-  //////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Static map of bus IDs to their [BusData] instances.
   // This allows easy access to bus data from anywhere in the app.
 
@@ -64,7 +70,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   );
   // Chelsters
 
-  //////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Topics for each bus and data type.
   //
   // Keys: bus ID → Map of data type → MQTT topic name.
@@ -153,7 +159,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     );
   }
 
-  //////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Initiates connection to the MQTT broker.
 
   Future<void> _connect() async {
@@ -175,11 +181,10 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     }
   }
 
-  //////////////////////////////////////////////////////////////
-  // Configures and connects the MQTT client to AWS IoT Core.
-  //
-  // Loads TLS certificates from assets, sets up secure connection,
-  // subscribes to all bus topics, and starts listening for updates.
+  //////////////////////////////////////////////////////////////////////////////
+  // configures and connects the MQTT client to AWS IoT Core
+  // loads TLS certificates from assets, sets up secure connection
+  // subscribes to all bus topics, and starts listening for updates
 
   Future<bool> mqttConnect() async {
     try {
@@ -243,9 +248,9 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     }
   }
 
-  //////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Handles incoming MQTT messages and routes them to the
-  // correct bus/data type.
+  // correct bus/data type
 
   void _onMessage(List<MqttReceivedMessage<MqttMessage?>>? messages) {
     final recMess = messages![0].payload as MqttPublishMessage;
@@ -264,8 +269,8 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     });
   }
 
-  //////////////////////////////////////////////////////////////
-  // Safely retrieves a value from a JSON map, returning a default if missing.
+  //////////////////////////////////////////////////////////////////////////////
+  // Safely retrieves a value from a JSON map, returning a default if missing
 
   String _safeGet(
     Map<String, dynamic> data,
@@ -275,10 +280,9 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     return data.containsKey(key) ? data[key].toString() : defaultValue;
   }
 
-  //////////////////////////////////////////////////////////////
-  // Processes a decoded MQTT message for a specific bus and data type.
-  //
-  // Updates the corresponding [ValueNotifier] in [BusData] so the UI refreshes.
+  //////////////////////////////////////////////////////////////////////////////
+  // Processes a decoded MQTT message for a specific bus and data type
+  // Updates the corresponding [ValueNotifier] in [BusData] so the UI refreshes
 
   void _processMessage(int busId, String type, String payload) {
     try {
@@ -334,8 +338,8 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     }
   }
 
-  //////////////////////////////////////////////////////////////
-  // Updates the connection status text in the UI.
+  //////////////////////////////////////////////////////////////////////////////
+  // Updates the connection status text in the UI
 
   void setStatus(String content) {
     // Always keep the internal value up to date
@@ -353,8 +357,8 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     });
   }
 
-  //////////////////////////////////////////////////////////////
-  // Called when the MQTT client successfully connects to the broker.
+  ////////////////////////////////////////////////////////////////////////////////
+  // Called when the MQTT client successfully connects to the broker
 
   void onConnected() {
     logDebug("MQTT connection established.");
@@ -363,9 +367,9 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     setStatus("Client connection was successful");
   }
 
-  //////////////////////////////////////////////////////////////
-  // Called when the MQTT client disconnects from the broker.
-  // Also attempts to auto-reconnect after 5 seconds if still disconnected.
+  //////////////////////////////////////////////////////////////////////////////
+  // Called when the MQTT client disconnects from the broker
+  // Also attempts to auto-reconnect after 5 seconds if still disconnected
 
   void onDisconnected() {
     logDebug("MQTT connection lost.");
@@ -384,8 +388,8 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     });
   }
 
-  //////////////////////////////////////////////////////////////
-  // Called when a PING RESP (pong) is received from the broker.
+  //////////////////////////////////////////////////////////////////////////////
+  // Called when a PING RESP (pong) is received from the broker
 
   void pong() {
     logDebug('Ping response client callback invoked');

@@ -3,13 +3,18 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 
 import '../data/global.dart';
 import '../utils/text_sizing.dart';
-// flutter_spinkit provides a variety of animated loading indicators
 
-//////////////////////////////////////////////////////////////
-// A full-screen loading screen widget.
+////////////////////////////////////////////////////////////////////////////////
+/// ////////////////////////////////////////////////////////////////////////////
+/// --- loading widgets ---
+/// ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+// A full-screen loading screen widget
 // Displays a centered spinning lines animation while the app is busy
-// (e.g., during initial data load or a blocking operation).
-// The background color changes depending on whether dark mode is enabled.
+// (e.g., during initial data load or a blocking operation)
+// The background color changes depending on whether dark mode is enabled
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -35,12 +40,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 }
 
-//////////////////////////////////////////////////////////////
-// Used when choosing a button, whilst the Bus list loads.
-// This is a smaller, inline loading indicator rather than a full-screen one.
-// A compact loading widget intended for use inside scrollable content.
-// Typically shown while a list (e.g., bus list) is loading after a user action.
-// The background color adapts to dark mode.
+////////////////////////////////////////////////////////////////////////////////
+// Used when choosing a button, whilst the Bus list loads (and routes)
+// This is a smaller, inline loading indicator rather than a full-screen one
 
 class LoadingScroll extends StatefulWidget {
   const LoadingScroll({super.key});
