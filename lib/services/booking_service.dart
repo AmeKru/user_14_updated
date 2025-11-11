@@ -85,7 +85,7 @@ class BookingServiceState extends State<BookingService> {
   // Default color for UI elements before availability is determined
   Color finalColor = Colors.grey;
 
-  // needed to use getTime() - TODO: check if works
+  // needed to use getTime()
   TimeService updateTime = TimeService();
 
   // Stores booking counts for each trip index
