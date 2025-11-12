@@ -340,15 +340,29 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       print('updateSelectedBox called in map_page with newBox $newBox');
     }
 
+
+      selectedBox = newBox;
+      if (newBox == 1) {
+        selectedMRT = 1;
+      } else if (newBox == 2) {
+        selectedMRT = 2;
+      } else {
+        routePoints.value=[];
+        selectedMRT = 0;
+        busIndex.value = 0;
+      }
+
+
+
     // gets time now
     final TimeService timeService = TimeService();
 
     try {
       now =
           (await timeService.getTime().timeout(
-            const Duration(milliseconds: 500),
+            const Duration(milliseconds: 100),
           )) ??
-          DateTime.now(); // max wait 1s
+          DateTime.now(); // max wait 100ms
     } on TimeoutException {
       if (kDebugMode) {
         print(
@@ -368,17 +382,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
     // Checks if afternoon
     pageToBeBuilt();
-
-    selectedBox = newBox;
-    if (newBox == 1) {
-      selectedMRT = 1;
-    } else if (newBox == 2) {
-      selectedMRT = 2;
-    } else {
-      routePoints.value.clear();
-      selectedMRT = 0;
-      busIndex.value = 0;
-    }
 
     if (newBox == 1) {
       if (kDebugMode) {
