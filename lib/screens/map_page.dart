@@ -56,11 +56,28 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   // for route; ValueNotifier used as it will rebuild only route if route is reassigned
   ValueNotifier<List<LatLng>> routePoints = ValueNotifier<List<LatLng>>([]);
 
+  // same as route but for getLocation
+  final ValueNotifier<LatLng?> currentLocationNotifier = ValueNotifier(null);
+  final ValueNotifier<double?> headingNotifier = ValueNotifier(null);
+
   // used to determine what route to show etc.
   DateTime now = DateTime.now();
 
   // needed to gate updateSelectedBox and prevent too many interactions at once
   bool _tapLocked = false;
+
+  // to check which page is to be shown in sliding panel
+  bool? lastCheckIsAfternoon;
+  bool isAfternoon = false;
+  Widget displayPage = LoadingScreen();
+
+  // for circularMenu so that one can close it when panel is open
+  final GlobalKey<CircularMenuState> menuKey = GlobalKey<CircularMenuState>();
+
+  // for Sliding Panel
+  ScrollController? _panelScrollController;
+  final PanelController _panelController = PanelController();
+  final ValueNotifier<bool> _isPanelOpen = ValueNotifier(false);
 
   // for sizing
   double fontSizeMiniText = 0;
@@ -340,19 +357,16 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       print('updateSelectedBox called in map_page with newBox $newBox');
     }
 
-
-      selectedBox = newBox;
-      if (newBox == 1) {
-        selectedMRT = 1;
-      } else if (newBox == 2) {
-        selectedMRT = 2;
-      } else {
-        routePoints.value=[];
-        selectedMRT = 0;
-        busIndex.value = 0;
-      }
-
-
+    selectedBox = newBox;
+    if (newBox == 1) {
+      selectedMRT = 1;
+    } else if (newBox == 2) {
+      selectedMRT = 2;
+    } else {
+      routePoints.value = [];
+      selectedMRT = 0;
+      busIndex.value = 0;
+    }
 
     // gets time now
     final TimeService timeService = TimeService();
@@ -366,7 +380,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     } on TimeoutException {
       if (kDebugMode) {
         print(
-          'getTime took too long (>500ms) will fallback to device singaporean time',
+          'getTime took too long (>100ms) will fallback to device singaporean time',
         );
       }
       // Get the current device time
@@ -404,10 +418,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   ///////////////////////////////////////////////////////////////
   // checks and assigns page that is shown in sliding panel
 
-  bool? lastCheckIsAfternoon;
-  bool isAfternoon = false;
-  Widget displayPage = LoadingScreen();
-
   void pageToBeBuilt() {
     // Decide which screen to show based on the current hour
     // only changes when isAfternoon changes
@@ -441,9 +451,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
 
   //////////////////////////////////////////////////////////////////////////////
   // function to acquire location of user
-
-  final ValueNotifier<LatLng?> currentLocationNotifier = ValueNotifier(null);
-  final ValueNotifier<double?> headingNotifier = ValueNotifier(null);
 
   void _getLocation() {
     if (kDebugMode) {
@@ -928,8 +935,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   //////////////////////////////////////////////////////////////////////////////
   // the circular menu at the top right
 
-  final GlobalKey<CircularMenuState> menuKey = GlobalKey<CircularMenuState>();
-
   Widget _buildCircularMenu() {
     if (kDebugMode) {
       print('map_page => circular menu built');
@@ -1089,10 +1094,6 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   //////////////////////////////////////////////////////////////////////////////
   // The panel at the bottom
 
-  ScrollController? _panelScrollController;
-  final PanelController _panelController = PanelController();
-  final ValueNotifier<bool> _isPanelOpen = ValueNotifier(false);
-
   Widget _buildSlidingPanel() {
     if (kDebugMode) {
       print('map_page => Sliding Panel built');
@@ -1142,139 +1143,147 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
             // Store the controller so we can use it in onPanelClosed
             _panelScrollController ??= controller;
 
-            return RepaintBoundary(
-              child: Padding(
-                padding: EdgeInsetsGeometry.all(0),
-                child: SafeArea(
-                  top: false,
-                  bottom: false,
-                  left: true,
-                  right: true,
-                  child: Material(
-                    elevation: 20,
-                    color: isDarkMode
-                        ? Colors.blueGrey[700]
-                        : const Color(0xff014689),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(fontSizeText),
-                    ),
-                    child: Column(
-                      children: [
-                        // Header section with different background
-                        RepaintBoundary(
-                          child: Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: isDarkMode
-                                  ? Colors.blueGrey[700]
-                                  : const Color(0xff014689), // header color
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(fontSizeText),
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                // Grab handle
-                                Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: fontSizeText * 0.5,
-                                  ),
-                                  child: Container(
-                                    width: fontSizeText * 3,
-                                    height: fontSizeText * 0.2,
-                                    decoration: BoxDecoration(
-                                      color: isDarkMode
-                                          ? Colors.white54
-                                          : Colors.black26,
-                                      borderRadius: BorderRadius.circular(
-                                        fontSizeText,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                // Title row with bus icon
-                                Padding(
-                                  padding: EdgeInsets.all(fontSizeText * 0.5),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.directions_bus,
-                                        color: Colors.white,
-                                        size: fontSizeHeading,
-                                      ),
-                                      SizedBox(width: fontSizeText * 0.5),
-                                      Flexible(
-                                        child: Text(
-                                          'MooBus on-demand',
-                                          maxLines: 1,
-                                          // or more if you want multiple lines
-                                          overflow: TextOverflow.ellipsis,
-                                          // options: clip, ellipsis, fade
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize:
-                                                TextSizing.fontSizeHeading(
-                                                  context,
-                                                ),
-                                            fontWeight: FontWeight.bold,
-                                            fontFamily: 'Montserrat',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+            return Padding(
+              padding: EdgeInsetsGeometry.all(0),
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                left: true,
+                right: true,
+                child: Material(
+                  elevation: 20,
+                  color: isDarkMode
+                      ? Colors.blueGrey[700]
+                      : const Color(0xff014689),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(fontSizeText),
+                  ),
+                  child: Column(
+                    children: [
+                      // Header section with different background
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? Colors.blueGrey[700]
+                              : const Color(0xff014689), // header color
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(fontSizeText),
                           ),
                         ),
-
-                        // Main body section
-                        Expanded(
-                          child: Container(
-                            color: isDarkMode
-                                ? Colors.blueGrey[900]
-                                : Colors.white,
-                            child: SingleChildScrollView(
-                              controller: controller,
-                              padding: EdgeInsets.only(
-                                bottom: MediaQuery.of(context).padding.bottom,
+                        child: Column(
+                          children: [
+                            // Grab handle
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: fontSizeText * 0.5,
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(height: fontSizeMiniText),
-                                  // Title: "Select MRT"
-                                  Text(
-                                    'Select MRT',
-                                    maxLines: 1, //  limits to 1 lines
-                                    overflow: TextOverflow
-                                        .ellipsis, // clips text if not fitting
-                                    style: TextStyle(
-                                      color: isDarkMode
-                                          ? Colors.white
-                                          : Colors.black,
-                                      fontSize: fontSizeText,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'Roboto',
-                                    ),
+                              child: Container(
+                                width: fontSizeText * 3,
+                                height: fontSizeText * 0.2,
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? Colors.white54
+                                      : Colors.black26,
+                                  borderRadius: BorderRadius.circular(
+                                    fontSizeText,
                                   ),
-
-                                  SizedBox(height: fontSizeMiniText),
-
-                                  RepaintBoundary(child: displayPage),
-                                  SizedBox(height: fontSizeText),
-                                  RepaintBoundary(
-                                    child: NewsAnnouncementWidget(),
+                                ),
+                              ),
+                            ),
+                            // Title row with bus icon
+                            Padding(
+                              padding: EdgeInsets.all(fontSizeText * 0.5),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.directions_bus,
+                                    color: Colors.white,
+                                    size: fontSizeHeading,
+                                  ),
+                                  SizedBox(width: fontSizeText * 0.5),
+                                  Flexible(
+                                    child: Text(
+                                      'MooBus on-demand',
+                                      maxLines: 1,
+                                      // or more if you want multiple lines
+                                      overflow: TextOverflow.ellipsis,
+                                      // options: clip, ellipsis, fade
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: TextSizing.fontSizeHeading(
+                                          context,
+                                        ),
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'Montserrat',
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
+                          ],
+                        ),
+                      ),
+
+                      // Main body section
+                      Expanded(
+                        child: Container(
+                          color: isDarkMode
+                              ? Colors.blueGrey[900]
+                              : Colors.white,
+                          child: ListView.builder(
+                            controller: controller,
+                            padding: EdgeInsets.only(
+                              bottom: MediaQuery.of(context).padding.bottom,
+                            ),
+                            // We have 6 visual "slots" to build:
+                            // 0: SizedBox(height: fontSizeMiniText)
+                            // 1: Title Text 'Select MRT'
+                            // 2: SizedBox(height: fontSizeMiniText)
+                            // 3: displayPage
+                            // 4: SizedBox(height: fontSizeText)
+                            // 5: NewsAnnouncementWidget
+                            itemCount: 6,
+                            itemBuilder: (context, index) {
+                              switch (index) {
+                                case 0:
+                                  return SizedBox(height: fontSizeMiniText);
+                                case 1:
+                                  return Center(
+                                    child: Text(
+                                      'Select MRT',
+                                      maxLines: 1, //  limits to 1 lines
+                                      overflow: TextOverflow
+                                          .ellipsis, // clips text if not fitting
+                                      style: TextStyle(
+                                        color: isDarkMode
+                                            ? Colors.white
+                                            : Colors.black,
+                                        fontSize: fontSizeText,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'Roboto',
+                                      ),
+                                    ),
+                                  );
+
+                                case 2:
+                                  return SizedBox(height: fontSizeMiniText);
+                                case 3:
+                                  return RepaintBoundary(child: displayPage);
+                                case 4:
+                                  return SizedBox(height: fontSizeText);
+                                case 5:
+                                  return NewsAnnouncementWidget();
+                                default:
+                                  return const SizedBox.shrink();
+                              }
+                            },
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
