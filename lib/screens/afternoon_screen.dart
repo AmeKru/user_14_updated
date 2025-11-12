@@ -1688,7 +1688,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   void showBookingConfirmationDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (_) {
+      builder: (dialogContext) {
         // Precompute trip number display for readability
         final tripIndex = selectedBox == 1
             ? bookedTripIndexKAP
@@ -1812,7 +1812,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           // Dialog action buttons
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(
                 'Close',
                 maxLines: 1,
