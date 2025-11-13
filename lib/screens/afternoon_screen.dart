@@ -147,7 +147,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     futureBookingData = prefsService.getBookingData();
 
     // Defer running the restore check until after the first frame so setState
-    // inside the loader will not run during build.
+    // inside the loader will not run during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // don't await here; we spawn the async task safely
       _loadAndCheckIfSavedBookingValid();
@@ -157,7 +157,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       _busData.removeListener(_busDataListener!);
     }
 
-    // Make the listener a synchronous VoidCallback that spawns an async task.
+    // Make the listener a synchronous VoidCallback that spawns an async task
     _busDataListener = () {
       if (kDebugMode) print('BusDataListener called, _busData was refreshed');
       if (confirmationPressed != true && mounted) {
@@ -309,9 +309,11 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   Future<void> loadInitialData() async {
     await _waitForTimeAndCheckBooking();
-    setState(() {
-      loadingInitialData = false;
-    });
+    if (mounted) {
+      setState(() {
+        loadingInitialData = false;
+      });
+    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -873,6 +875,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     }
 
     // Atomically clear UI state used by map and booking
+    if (!mounted) return;
     setState(() {
       // Map/route-critical
       selectedMRT = 0;
@@ -1275,17 +1278,15 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       return; // return if update is in progress to prevent wrong UI loads
     }
 
-    setState(() {
-      updatingSelectedBox = true; // setting guard to true
-    });
-
     if (kDebugMode) {
       // Debug: show the previous selection before we change it.
       print('Old selected Box $selectedBox in afternoon screen');
     }
+
     // Update local selection state immediately so subsequent logic sees the new value.
     // This ensures any refreshes or fetches that run after setState operate on the updated selection.
     setState(() {
+      updatingSelectedBox = true; // setting guard to true
       // Toggle behaviour: tapping the same box deselects it (resets to 0).
       if (box != 0) {
         if (selectedBox == box) {
@@ -1354,6 +1355,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     Future.delayed(Duration(seconds: 1), () {
       // waits one second before freeing up guard to completely prevent loading issues
       // (not too obvious to user as animation of loading takes similar amount of time)
+      if (!mounted) return;
       setState(() {
         updatingSelectedBox =
             false; // setting guard to false when done updating
@@ -2022,6 +2024,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               await _deleteLocalBookingAndNotify(
                 message: 'Booking has been Cancelled.',
               );
+              if (!mounted) return;
               setState(() => confirmationPressed = false);
             } else {
               setState(() => confirmationPressed = true);
@@ -2076,6 +2079,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             );
 
             if (bookingValid != true) {
+              if (!mounted) return;
               _showAsyncSnackBar('Could not book trip.');
               setState(() {
                 // resets everything just to be sure

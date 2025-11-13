@@ -29,7 +29,6 @@ class _SettingsState extends State<Settings> {
   double fontSizeText = 0;
   double fontSizeHeading = 0;
 
-
   ////////////////////////////////////////////////////////////////////////////////
   // initState
 
@@ -54,6 +53,7 @@ class _SettingsState extends State<Settings> {
   // To switch from Light to Dark Mode and vice versa
 
   void toggleTheme(bool value) {
+    if (!mounted) return;
     setState(() {
       // sets state when called to update complete UI at once
       isDarkMode = value;

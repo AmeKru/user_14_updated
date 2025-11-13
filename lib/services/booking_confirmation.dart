@@ -179,7 +179,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   }
 
   void updateTimeManually() {
-    if (timeNow == null) return;
+    if (timeNow == null || !mounted) return;
     setState(() {
       timeNow = timeNow!.add(timeUpdateInterval);
     });

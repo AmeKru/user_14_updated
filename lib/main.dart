@@ -57,8 +57,6 @@ Future<void> main() async {
     await amplifyReady;
   } catch (e) {
     if (kDebugMode) print('Amplify failed to configure in main: $e');
-    // Choose to continue in local-only mode or rethrow during development
-    // rethrow;
   }
 
   // load other app data

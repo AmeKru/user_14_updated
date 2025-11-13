@@ -67,8 +67,11 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   bool _tapLocked = false;
 
   // to check which page is to be shown in sliding panel
-  bool? lastCheckIsAfternoon;
-  bool isAfternoon = false;
+  bool? lastCheckIsAfternoon; // to check if page is to be reassigned
+  bool isAfternoon = false; // if it is afternoon
+  bool isSwitching =
+      false; // when switching between morning/afternoon to prevent flicker
+  int oldSelectedBox = 0; // to check box that was selected before
   Widget displayPage = LoadingScreen();
 
   // for circularMenu so that one can close it when panel is open
@@ -333,6 +336,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     if (kDebugMode) {
       print('_toggleTheme called');
     }
+    if (!mounted) return;
     setState(() => isDarkMode = value);
     lastCheckIsAfternoon = null;
     pageToBeBuilt();
@@ -372,15 +376,14 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
     final TimeService timeService = TimeService();
 
     try {
-      now =
-          (await timeService.getTime().timeout(
-            const Duration(milliseconds: 100),
-          )) ??
-          DateTime.now(); // max wait 100ms
+      await timeService.getTime().timeout(
+        const Duration(milliseconds: 100),
+      ); // max wait 100ms
+      now = timeNow ?? DateTime.now();
     } on TimeoutException {
       if (kDebugMode) {
         print(
-          'getTime took too long (>100ms) will fallback to device singaporean time',
+          'getTime took too long (>100ms) - will fallback to device singaporean time',
         );
       }
       // Get the current device time
@@ -426,14 +429,55 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
       if (kDebugMode) {
         print('map_page => checked and assigned a page to be built');
       }
-      lastCheckIsAfternoon = isAfternoon;
-      setState(() {
-        displayPage = isAfternoon
-            ? AfternoonScreen(updateSelectedBox: updateSelectedBox)
-            : MorningScreen(updateSelectedBox: updateSelectedBox);
-      });
-    }
+      if (lastCheckIsAfternoon != null) {
+        // only null when first loading and setting page
+        // if switching between morning/afternoon
+        if (!mounted) return;
+        String loadingText = isAfternoon ? 'Afternoon' : 'Morning';
+        setState(() {
+          // show a loading screen in between switch
+          selectedMRT = 0;
+          updateSelectedBox(0);
+          isSwitching = true;
+          displayPage = Column(
+            children: [
+              Text(
+                'Loading $loadingText Service...',
+                style: TextStyle(
+                  color: Colors.blueGrey[200],
+                  fontSize: fontSizeText,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Roboto',
+                ),
+              ),
+              LoadingScreen(),
+            ],
+          );
+        });
 
+        Future.delayed(const Duration(milliseconds: 500)).then((_) {
+          if (!mounted) return;
+          setState(() {
+            // switch to the real page
+            displayPage = isAfternoon
+                ? AfternoonScreen(updateSelectedBox: updateSelectedBox)
+                : MorningScreen(updateSelectedBox: updateSelectedBox);
+            isSwitching = false;
+          });
+        });
+      } else {
+        // just sets page when first startup of app
+        if (!mounted) return;
+        setState(() {
+          displayPage = isAfternoon
+              ? AfternoonScreen(updateSelectedBox: updateSelectedBox)
+              : MorningScreen(updateSelectedBox: updateSelectedBox);
+        });
+      }
+      // remember last check to know if need to reassign
+      lastCheckIsAfternoon = isAfternoon;
+    }
+    // Debug prints
     if (kDebugMode) {
       if (isAfternoon) {
         print('it is afternoon');

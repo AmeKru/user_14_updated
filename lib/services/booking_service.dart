@@ -73,6 +73,7 @@ class BookingServiceState extends State<BookingService> {
       print('booking service is being refreshed by parent');
     }
     if (refreshBecauseTripFull == true) {
+      if (!mounted) return;
       setState(() {
         _loading = true;
         bookingCounts = {};
@@ -138,6 +139,7 @@ class BookingServiceState extends State<BookingService> {
         oldWidget.departureTimes.length != widget.departureTimes.length ||
         !_listsEqual(oldWidget.departureTimes, widget.departureTimes);
     if (oldWidget.selectedBox != widget.selectedBox || timesChanged) {
+      if (!mounted) return;
       setState(() {
         _loading = true;
         bookingCounts = {};
@@ -200,7 +202,7 @@ class BookingServiceState extends State<BookingService> {
             widget.bookedTripIndexCLE != null) {
           widget.updateBookingStatusCLE(widget.bookedTripIndexCLE!, false);
         }
-
+        if (!mounted) return;
         setState(() {
           for (final k in staleKeys) {
             bookingCounts.remove(k);

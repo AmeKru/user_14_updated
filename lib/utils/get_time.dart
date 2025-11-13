@@ -27,6 +27,9 @@ class TimeService with ChangeNotifier {
   factory TimeService() =>
       _instance; // Factory constructor returns the same instance
 
+  // as a gate to prevent multiple quick calls to async function
+  static bool isTryingToGetTime = false;
+
   // --- State variables ---
   Duration timeUpdateInterval = Duration(
     minutes: 1,
@@ -44,13 +47,13 @@ class TimeService with ChangeNotifier {
   // Notifies listeners when the time changes
 
   Future<DateTime?> getTime() async {
+    if (isTryingToGetTime) return null;
+    isTryingToGetTime = true;
     try {
       // API endpoint for Singapore time (timeapi.io)
       final uri = Uri.parse(
         'https://www.timeapi.io/api/time/current/zone?timeZone=ASIA%2FSINGAPORE',
       );
-      // Alternative API (commented out):
-      // final uri = Uri.parse('https://worldtimeapi.org/api/timezone/Singapore');
 
       // Make GET request to the API
       final response = await get(uri);
@@ -78,6 +81,7 @@ class TimeService with ChangeNotifier {
         notifyListeners();
 
         if (timeNow != null) {
+          isTryingToGetTime = false;
           return timeNow;
         }
       } else {
@@ -105,6 +109,7 @@ class TimeService with ChangeNotifier {
     DateTime utcTime = localTime.toUtc();
 
     timeNow = utcTime.add(Duration(hours: 8));
+    isTryingToGetTime = false;
     return timeNow;
   }
 
