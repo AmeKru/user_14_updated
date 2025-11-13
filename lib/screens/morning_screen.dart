@@ -143,7 +143,7 @@ class MorningScreenState extends State<MorningScreen>
       // Update loading state and trigger rebuild only if something changed
       if (wasLoading != !nowLoaded) changed = true;
 
-      if (changed) {
+      if (changed && mounted) {
         setState(() {
           _isLoading = !busData.isDataLoaded;
         });
@@ -390,30 +390,31 @@ class MorningScreenState extends State<MorningScreen>
       }
       return; // return if update is in progress to prevent wrong UI loads
     }
+    if (!mounted) return;
+      setState(() {
+        updatingSelectedBox = true; // setting guard to true
+        // If the same box is tapped again, deselect it
+        if (selectedBox == box) {
+          selectedBox = 0;
+          selectedMRT = 0; // reset global
+        } else {
+          selectedBox = box;
+          selectedMRT = box; // update global
+        }
+        if (kDebugMode) {
+          print('Printing selectedBox = $selectedBox');
+        }
+        // Inform parent of change so corresponding routes can be loaded
+        widget.updateSelectedBox(selectedBox);
+      });
 
-    setState(() {
-      updatingSelectedBox = true; // setting guard to true
-      // If the same box is tapped again, deselect it
-      if (selectedBox == box) {
-        selectedBox = 0;
-        selectedMRT = 0; // reset global
-      } else {
-        selectedBox = box;
-        selectedMRT = box; // update global
-      }
-      if (kDebugMode) {
-        print('Printing selectedBox = $selectedBox');
-      }
-    });
-
-    // Inform parent of change so corresponding routes can be loaded
-    widget.updateSelectedBox(selectedBox);
 
     // waits 1s before freeing up guard, as parents updateSelected box may also take a while before loading correct route
     // to prevent UI bug of not showing the correct routes on map etc.
     Future.delayed(Duration(seconds: 1), () {
       // waits one second before freeing up guard to completely prevent loading issues
       // (not too obvious to user as animation of loading takes similar amount of time)
+      if (!mounted) return;
       setState(() {
         updatingSelectedBox =
             false; // setting guard to false when done updating
