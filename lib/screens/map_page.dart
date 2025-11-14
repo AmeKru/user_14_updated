@@ -5,6 +5,7 @@ import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:http/http.dart' as http;
@@ -1434,18 +1435,24 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     if (kDebugMode) debugPrint('map_page built');
 
-    return Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.lightBlueAccent[50],
-      body: Stack(
-        children: [
-          _buildMap(),
-          SafeArea(
-            top: true,
-            bottom: false,
-            child: Stack(children: [_logoNP(), _buildCircularMenu()]),
-          ),
-          _buildSlidingPanel(),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value:
+          isDarkMode // changes System UI depending on if it is dark mode or not
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: isDarkMode ? Colors.black : Colors.lightBlueAccent[50],
+        body: Stack(
+          children: [
+            _buildMap(),
+            SafeArea(
+              top: true,
+              bottom: false,
+              child: Stack(children: [_logoNP(), _buildCircularMenu()]),
+            ),
+            _buildSlidingPanel(),
+          ],
+        ),
       ),
     );
   }
