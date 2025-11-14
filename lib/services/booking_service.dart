@@ -746,7 +746,10 @@ class BookingServiceState extends State<BookingService> {
                                     ),
                                     // === Booking Checkbox Icon ===
                                     GestureDetector(
-                                      onTap: (isFull || count == null)
+                                      onTap:
+                                          (isFull ||
+                                              count == null ||
+                                              confirmingBooking) // prevent taps when necessary
                                           ? null // Disable tap if full
                                           : () {
                                               if (!isFull) {
