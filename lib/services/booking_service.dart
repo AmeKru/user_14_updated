@@ -525,7 +525,7 @@ class BookingServiceState extends State<BookingService> {
                                                     ) *
                                                     0.5,
                                                 height:
-                                                    TextSizing.fontSizeText(
+                                                TextSizing.fontSizeText(
                                                       context,
                                                     ) *
                                                     4,
@@ -543,7 +543,7 @@ class BookingServiceState extends State<BookingService> {
                                                           .spaceEvenly,
                                                   children: [
                                                     Text(
-                                                      'Trip ${index + 1}',
+                                                      '  Trip ${index + 1}',
                                                       textAlign:
                                                           TextAlign.center,
                                                       softWrap: true,

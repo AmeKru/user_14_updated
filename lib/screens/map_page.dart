@@ -1350,7 +1350,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 left: 0,
                 right: 0,
                 bottom: 0, //  anchored to bottom
-                height: fontSizeHeading * 3,
+                height: fontSizeHeading*2,
                 child: SafeArea(
                   top: false,
                   bottom: false,
@@ -1405,8 +1405,8 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                                   ? screenHeight * 0.965
                                   : screenHeight * 0.98)
                             : screenHeight * 0.8) +
-                        fontSizeText * 2, // towards top of the open panel
-                    height: fontSizeHeading * 1.5,
+                        fontSizeText * 3, // towards top of the open panel
+                    height: fontSizeHeading * 1,
                     child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
                       onTap: () => _panelController.close(),
