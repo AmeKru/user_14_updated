@@ -79,7 +79,7 @@ class BookingServiceState extends State<BookingService> {
         bookingCounts = {};
       });
     }
-    setTime();
+    await setTime();
     await _updateBookingCounts();
   }
 
@@ -492,13 +492,15 @@ class BookingServiceState extends State<BookingService> {
                                     Expanded(
                                       child: Card(
                                         elevation: 0,
-                                        color: isFull
+                                        color: count!= null ? isFull
                                             ? (isDarkMode
                                                   ? Colors.blueGrey[800]
                                                   : Colors.grey[300])
                                             : (isDarkMode
                                                   ? Colors.blueGrey[600]
-                                                  : Colors.blue[50]),
+                                                  : Colors.blue[50]) : isDarkMode
+                                            ? Colors.blueGrey[700]
+                                            : Colors.grey[200],
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             0.0,
@@ -532,9 +534,9 @@ class BookingServiceState extends State<BookingService> {
                                                 color: count != null
                                                     ? _getColor(count)
                                                     : (isDarkMode
-                                                          ? Colors.blueGrey[200]
+                                                          ? Colors.blueGrey[400]
                                                           : Colors
-                                                                .blueGrey[500]),
+                                                                .blueGrey[300]),
                                               ),
                                               Expanded(
                                                 child: Row(
@@ -810,13 +812,16 @@ class BookingServiceState extends State<BookingService> {
                                                   ? Icons.check_box
                                                   : Icons
                                                         .check_box_outline_blank),
-                                        color: isFull
+                                        color: count != null ? isFull
                                             ? (isDarkMode
                                                   ? Colors.blueGrey[500]
                                                   : Colors.grey[400])
                                             : (isDarkMode
                                                   ? Colors.blueGrey[50]
-                                                  : const Color(0xff014689)),
+                                                  : const Color(0xff014689)) : (isDarkMode
+                                            ? Colors.blueGrey[400]
+                                            : Colors
+                                            .blueGrey[300]),
                                         size: fontSizeHeading,
                                       ),
                                     ),

@@ -194,6 +194,7 @@ class NewsAnnouncement extends StatelessWidget {
           color: isDarkMode
               ? Color(0xfffeb041)
               : Colors.white, // Arrow back color
+          size: fontSizeText,
         ),
         backgroundColor: isDarkMode ? Colors.blueGrey[800] : Color(0xff014689),
         title: Text(

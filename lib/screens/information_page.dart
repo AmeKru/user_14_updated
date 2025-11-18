@@ -95,6 +95,7 @@ class _InformationPageState extends State<InformationPage> {
           color: isDarkMode
               ? Colors.cyan[200]
               : Colors.white, // Arrow back color
+          size: fontSizeText,
         ),
         backgroundColor: isDarkMode ? Colors.blueGrey[800] : Color(0xff014689),
         title: Text(

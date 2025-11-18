@@ -76,6 +76,7 @@ class _SettingsState extends State<Settings> {
           color: isDarkMode
               ? Colors.green[300]
               : Colors.white, // Arrow back color
+          size: fontSizeText,
         ),
         title: Text(
           maxLines: 1, //  limits to 1 lines
