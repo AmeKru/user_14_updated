@@ -6,13 +6,13 @@ import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/foundation.dart';
 // Flutter UI framework
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide TimeOfDay;
 // For generating unique IDs
 import 'package:uuid/uuid.dart';
 
 import '../data/get_data.dart'; // Local bus data helper
 import '../data/global.dart'; // Global variables
-import '../models/model_provider.dart'; // Amplify model provider
+import '../models/ModelProvider.dart'; // Amplify model provider
 import '../services/booking_confirmation.dart'; // Booking confirmation UI
 import '../services/booking_service.dart'; // Booking servicing confirmation UI
 import '../services/shared_preference.dart'; // SharedPreferences wrapper
@@ -107,9 +107,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // to prevent loading UI before checking everything else
   bool loadingInitialData = false;
 
-  // to prevent multiple restarting poll all the time
-  bool restartPolling = false;
-
   // to prevent User from switching between boxes and UI being too slow to catch up
   bool updatingSelectedBox = false;
 
@@ -176,12 +173,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     };
     _busData.addListener(_busDataListener!);
     loadInitialData();
-    restartPolling = true;
-    if (kDebugMode) {
-      print('restartPolling in Init function set to true');
-    }
-    _restartPolling();
-
     if (kDebugMode) {
       print("TimeNow ready: $timeNow");
     }
@@ -211,14 +202,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       _busData.removeListener(_busDataListener!);
       _busDataListener = null;
     }
-    try {
-      // stop polling when screen disposed
-      _busData.stopPolling();
-    } catch (e, st) {
-      if (kDebugMode) {
-        print("Error stopping polling: $e\n$st");
-      }
-    }
 
     // cancel all timers when disposed
     _inactivityStopTimer?.cancel();
@@ -230,7 +213,20 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  // Load initial data
+
+  Future<void> loadInitialData() async {
+    await _waitForTimeAndCheckBooking();
+    if (mounted) {
+      setState(() {
+        loadingInitialData = false;
+      });
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   // Unified refresh function (used by polling listener AND manual button)
+
   Future<void> _refreshTrips() async {
     if (!mounted || _isRefreshing) return;
     _isRefreshing = true;
@@ -281,38 +277,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       if (kDebugMode) print('Error refreshing trips: $e\n$st');
     } finally {
       _isRefreshing = false;
-      restartPolling = true;
-      _restartPolling();
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Polling control
-
-  void _restartPolling() {
-    if (restartPolling == false) {
-      if (kDebugMode) {
-        print('restartPolling == false, wont restart polling');
-      }
-      return;
-    } else {
-      try {
-        _busData.stopPolling();
-      } catch (e, st) {
-        if (kDebugMode) print("Error stopping polling before restart: $e\n$st");
-      }
-      _busData.startPolling(interval: const Duration(seconds: 30));
-      if (kDebugMode) print("started Polling");
-      restartPolling = false;
-    }
-  }
-
-  Future<void> loadInitialData() async {
-    await _waitForTimeAndCheckBooking();
-    if (mounted) {
-      setState(() {
-        loadingInitialData = false;
-      });
     }
   }
 
@@ -347,11 +311,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           print('Lifecycle paused: stopping polling immediately (background)');
         }
         _cancelInactivityStopTimer();
-        try {
-          _busData.stopPolling();
-        } catch (e, st) {
-          if (kDebugMode) print("Error stopping polling on paused: $e\n$st");
-        }
         _lastBackgroundAt = DateTime.now();
         _previousAppLifecycleState = state;
         // clear resume cooldown guard so next resume will act
@@ -390,10 +349,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
               'Resumed after real background; restarting polling and refreshing',
             );
           }
-          // Mark and restart polling safely; _restartPolling must be idempotent
-          restartPolling = true;
           try {
-            _restartPolling();
             if (confirmationPressed != true && mounted) {
               if (kDebugMode) {
                 print(
@@ -440,14 +396,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
       case AppLifecycleState.detached:
         if (kDebugMode) {
-          print('Lifecycle detached: stopping polling and clearing guards');
+          print('Lifecycle detached: clearing guards');
         }
         _cancelInactivityStopTimer();
-        try {
-          _busData.stopPolling();
-        } catch (e, st) {
-          if (kDebugMode) print("Error stopping polling on detached: $e\n$st");
-        }
         _previousAppLifecycleState = state;
         _lastBackgroundAt = null;
         _lifecycleResetTimer?.cancel();
@@ -467,14 +418,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
     _inactivityStopTimer = Timer(_inactivityStopDelay, () {
       _inactivityStopTimer = null;
-      if (kDebugMode) print('Inactivity delay expired; stopping polling now');
-      try {
-        _busData.stopPolling();
-      } catch (e, st) {
-        if (kDebugMode) {
-          print("Error stopping polling after inactivity delay: $e\n$st");
-        }
-      }
+      if (kDebugMode) print('Inactivity delay expired');
       _lastBackgroundAt = DateTime.now();
       // record that we were backgrounded via hidden path
       _previousAppLifecycleState = AppLifecycleState.hidden;
@@ -562,7 +506,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
     // Only if ok, will continue to create a booking
     try {
-      final model = BOOKINGDETAILS5(
+      final model = BookingDetails(
         id: const Uuid().v4(),
         MRTStation: mrtStation,
         TripNo: tripNo,
@@ -570,7 +514,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       );
 
       final response = await Amplify.API
-          .mutate(request: ModelMutations.create(model))
+          .mutate(
+            request: ModelMutations.create(
+              model,
+              authorizationMode: APIAuthorizationType.iam,
+            ),
+          )
           .response;
 
       final createdBooking = response.data;
@@ -664,7 +613,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       safePrint('Booking created with ID: $bookingID');
 
       // Only update passenger count after success
-      _updateCount(mrtStation == 'KAP', tripNo, busStop);
+      _updateCount(
+        isKAP: selectedBox == 1,
+        busStop: selectedBusStop,
+        increment: true,
+        tripNo: tripNo,
+      );
     } on ApiException catch (e) {
       safePrint('Booking creation failed: $e');
     }
@@ -708,9 +662,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             message: 'Your previously selected trip was removed',
           );
           if (success != true && mounted) {
-            _showAsyncSnackBar(
-              'Could not delete booking on server. Please try again later.',
-            );
+            if (kDebugMode) print('could not delete old booking on server');
           }
         } catch (e, st) {
           if (kDebugMode) print('Error deleting booking on server: $e\n$st');
@@ -729,6 +681,14 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         try {
           final success = await deleteBookingOnServerByID();
           // Always clear local booking, even if server deletion fails
+          await _updateCount(
+            isKAP: selectedBox == 1,
+            tripNo: selectedBox == 1
+                ? bookedTripIndexKAP! + 1
+                : bookedTripIndexCLE! + 1,
+            busStop: selectedBusStop,
+            increment: false,
+          );
           await _deleteLocalBookingAndNotify(message: '');
           if (success == true && kDebugMode) {
             if (kDebugMode) {
@@ -762,9 +722,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
   //////////////////////////////////////////////////////////////////////////////
   // Reads a booking from the backend using the stored bookingID.
-  // Returns the BOOKINGDETAILS5 object if found, otherwise null.
+  // Returns the BookingDetails object if found, otherwise null.
 
-  Future<BOOKINGDETAILS5?> _readBookingByID() async {
+  Future<BookingDetails?> _readBookingByID() async {
     if (bookingID == null) return null;
     try {
       final response = await _retry(() async {
@@ -772,8 +732,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         final call = Amplify.API
             .query(
               request: ModelQueries.list(
-                BOOKINGDETAILS5.classType,
-                where: BOOKINGDETAILS5.ID.eq(bookingID!),
+                BookingDetails.classType,
+                where: BookingDetails.ID.eq(bookingID!),
+                authorizationMode: APIAuthorizationType.iam,
               ),
             )
             .response;
@@ -811,8 +772,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         final call = Amplify.API
             .query(
               request: ModelQueries.list(
-                BOOKINGDETAILS5.classType,
-                where: BOOKINGDETAILS5.ID.eq(id),
+                BookingDetails.classType,
+                where: BookingDetails.ID.eq(id),
+                authorizationMode: APIAuthorizationType.iam,
               ),
             )
             .response;
@@ -950,6 +912,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         }
         return false;
       }
+
       // Attempt delete; if mutation throws or returns null, we’ll handle errors below
       final booking = await _readBookingByID(); // returns model or null
       if (booking == null) {
@@ -958,7 +921,12 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       }
 
       final resp = await Amplify.API
-          .mutate(request: ModelMutations.delete(booking))
+          .mutate(
+            request: ModelMutations.delete(
+              booking,
+              authorizationMode: APIAuthorizationType.iam,
+            ),
+          )
           .response;
 
       final ok = resp.errors.isEmpty;
@@ -1079,7 +1047,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         }
 
         if (exists) {
-          final BOOKINGDETAILS5? serverBooking = await _readBookingByID();
+          final BookingDetails? serverBooking = await _readBookingByID();
 
           if (serverBooking != null) {
             // Parse server map safely (no context use here)
@@ -1407,65 +1375,86 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // If a count record exists, it is deleted and replaced with the new count.
   // If no bookings remain, no new record is created.
 
-  Future<void> _updateCount(bool isKAP, int tripNo, String busStop) async {
-    final ModelType<Model> classType = isKAP
-        ? KAPAfternoon.classType
-        : CLEAfternoon.classType;
-
-    final whereClause = isKAP
-        ? KAPAfternoon.TRIPNO.eq(tripNo).and(KAPAfternoon.BUSSTOP.eq(busStop))
-        : CLEAfternoon.TRIPNO.eq(tripNo).and(CLEAfternoon.BUSSTOP.eq(busStop));
+  Future<void> _updateCount({
+    required bool isKAP,
+    required int tripNo,
+    required String busStop,
+    required bool increment, // true = +1, false = -1
+  }) async {
+    final station = isKAP ? 'KAP' : 'CLE';
 
     try {
-      // Step 1: Delete existing count record if present (use retry and timeout)
-      final existing = await _retry(() async {
-        final call = Amplify.API
-            .query(request: ModelQueries.list(classType, where: whereClause))
-            .response;
-        return await call.timeout(const Duration(seconds: 8));
-      }, attempts: 2);
+      // Step 1: Query existing CountTripList entry
+      final existingResponse = await Amplify.API
+          .query(
+            request: ModelQueries.list(
+              CountTripList.classType,
+              where: CountTripList.MRTSTATION
+                  .eq(station)
+                  .and(CountTripList.TRIPTIME.eq(TripTimeOfDay.AFTERNOON))
+                  .and(CountTripList.TRIPNO.eq(tripNo))
+                  .and(CountTripList.BUSSTOP.eq(busStop)),
+              authorizationMode: APIAuthorizationType.iam,
+            ),
+          )
+          .response;
 
-      final items = existing.data?.items;
-      final existingRow = (items != null && items.isNotEmpty)
-          ? items.first
-          : null;
+      final items = existingResponse.data?.items.cast<CountTripList>() ?? [];
+      final existingRow = items.isNotEmpty ? items.first : null;
+
       if (existingRow != null) {
-        await Amplify.API
-            .mutate(request: ModelMutations.delete(existingRow))
-            .response;
-      }
+        // Step 2: Update existing row
+        final newCount = (existingRow.Count) + (increment ? 1 : -1);
 
-      // Step 2: Count current bookings (use retry)
-      final countResult = await _retry(() async {
-        return await countBooking(isKAP ? 'KAP' : 'CLE', tripNo);
-      }, attempts: 2);
-
-      // If countResult is null, treat as inconclusive and skip changes to avoid accidental deletions
-      if (countResult == null) {
-        if (kDebugMode) {
-          print(
-            'Counting bookings inconclusive, skipping count update for $tripNo at $busStop',
-          );
+        if (newCount <= 0) {
+          // Option A: delete if count goes to 0
+          await Amplify.API
+              .mutate(
+                request: ModelMutations.delete(
+                  existingRow,
+                  authorizationMode: APIAuthorizationType.iam,
+                ),
+              )
+              .response;
+          if (kDebugMode) {
+            print('Deleted CountTripList because count reached 0');
+          }
+        } else {
+          // Option B: update with new count
+          final updatedRow = existingRow.copyWith(Count: newCount);
+          await Amplify.API
+              .mutate(
+                request: ModelMutations.update(
+                  updatedRow,
+                  authorizationMode: APIAuthorizationType.iam,
+                ),
+              )
+              .response;
+          if (kDebugMode) print('Updated count → $newCount');
         }
-        return;
-      }
-      final count = countResult;
-
-      // Step 3: If there are bookings, create a new count record
-      if (count > 0) {
-        final model = isKAP
-            ? KAPAfternoon(BusStop: busStop, TripNo: tripNo, Count: count)
-            : CLEAfternoon(BusStop: busStop, TripNo: tripNo, Count: count);
-
-        await Amplify.API
-            .mutate(request: ModelMutations.create(model))
-            .response;
-      }
-
-      if (kDebugMode) {
-        print(
-          'Updated count for ${isKAP ? 'KAP' : 'CLE'} trip $tripNo at $busStop → $count',
+      } else {
+        // Step 3: Create new row if none exists
+        final model = CountTripList(
+          MRTStation: station,
+          TripTime: TripTimeOfDay.AFTERNOON,
+          BusStop: busStop,
+          TripNo: tripNo,
+          Count: increment
+              ? 1
+              : 0, // if decrement called on non-existent, set 0
         );
+
+        if (model.Count > 0) {
+          await Amplify.API
+              .mutate(
+                request: ModelMutations.create(
+                  model,
+                  authorizationMode: APIAuthorizationType.iam,
+                ),
+              )
+              .response;
+          if (kDebugMode) print('Created new CountTripList with count=1');
+        }
       }
     } catch (e, st) {
       if (kDebugMode) print('Error updating count: $e\n$st');
@@ -1483,10 +1472,11 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         final call = Amplify.API
             .query(
               request: ModelQueries.list(
-                BOOKINGDETAILS5.classType,
-                where: BOOKINGDETAILS5.MRTSTATION
+                BookingDetails.classType,
+                where: BookingDetails.MRTSTATION
                     .eq(mrt)
-                    .and(BOOKINGDETAILS5.TRIPNO.eq(tripNo)),
+                    .and(BookingDetails.TRIPNO.eq(tripNo)),
+                authorizationMode: APIAuthorizationType.iam,
               ),
             )
             .response;
@@ -1509,8 +1499,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // If `selectedBox` is 1 → return KAP departure times, otherwise return CLE departure times.
 
   List<DateTime> getDepartureTimes([int? box]) => (box ?? selectedBox) == 1
-      ? _busData.departureTimeKAP
-      : _busData.departureTimeCLE;
+      ? _busData.afternoonTimesKAP
+      : _busData.afternoonTimesCLE;
 
   //////////////////////////////////////////////////////////////////////////////
   /// //////////////////////////////////////////////////////////////////////////
@@ -1919,8 +1909,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
         // Resolve departure safely using a captured list based on the computed box
         final departures = (newSelectedBox == 1)
-            ? _busData.departureTimeKAP
-            : _busData.departureTimeCLE;
+            ? _busData.afternoonTimesKAP
+            : _busData.afternoonTimesCLE;
         final idx = newSelectedBox == 1
             ? newBookedTripIndexKAP
             : newBookedTripIndexCLE;
@@ -2021,6 +2011,14 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             bool? deleted = await deleteBookingOnServerByID();
 
             if (deleted == true) {
+              await _updateCount(
+                isKAP: selectedBox == 1,
+                tripNo: selectedBox == 1
+                    ? bookedTripIndexKAP! + 1
+                    : bookedTripIndexCLE! + 1,
+                busStop: selectedBusStop,
+                increment: false,
+              );
               await _deleteLocalBookingAndNotify(
                 message: 'Booking has been Cancelled.',
               );

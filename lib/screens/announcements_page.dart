@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/get_data.dart';
@@ -52,12 +53,17 @@ class NewsAnnouncementWidgetState extends State<NewsAnnouncementWidget> {
     busData.loadData();
 
     // Initialize local content from current BusData (may be empty)
-    newsContent = busData.news;
+    newsContent = busData.announcements;
 
     // Listener updates local state when BusData notifies
     _busDataListener = () {
       if (!mounted) return;
-      final newNews = busData.news;
+      final newNews = busData.announcements;
+      if (kDebugMode) {
+        print(
+          'Announcement Widget: BusDataListener fired with newNews = $newNews',
+        );
+      }
       if (newNews != newsContent) {
         setState(() {
           // Set State if changed

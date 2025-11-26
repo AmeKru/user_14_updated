@@ -163,9 +163,9 @@ class AfternoonETAs {
 
     // Select departure times based on the box value
     if (box == 1) {
-      busArrivalTimes = busData.departureTimeKAP;
+      busArrivalTimes = busData.afternoonTimesKAP;
     } else {
-      busArrivalTimes = busData.departureTimeCLE;
+      busArrivalTimes = busData.afternoonTimesCLE;
     }
 
     // Filter to keep recent and upcoming times.
@@ -317,6 +317,7 @@ class AfternoonETAs {
             ],
           ),
 
+          // TODO: Adjust to show all bus st
           // Loop through bus stops (skipping first 2 and last 2 stops)
           for (int i = 2; i < (busData.busStop.length) - 2; i++)
             buildRowWidget(

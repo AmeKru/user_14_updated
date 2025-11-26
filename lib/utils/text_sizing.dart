@@ -59,8 +59,7 @@ class TextSizing {
   // function to check for shortest side of device
 
   static double shortestSide(BuildContext context) {
-    return (size.width < size.height ? size.width : size.height) *
-        2; // check if works better
+    return (size.width < size.height ? size.width : size.height) * 2;
   }
 
   //////////////////////////////////////////////////////////////////////////////

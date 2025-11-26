@@ -46,7 +46,7 @@ class BookingData {
     );
   }
 
-  /// Construct from server booking (BOOKINGDETAILS5.toMap())
+  /// Construct from server booking (BookingDetails.toMap())
   factory BookingData.fromServer(
     Map<String, dynamic> data,
     List<DateTime> departures,

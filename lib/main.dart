@@ -1,4 +1,5 @@
 import 'package:amplify_api/amplify_api.dart';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_datastore/amplify_datastore.dart';
 // Amplify imports
 import 'package:amplify_flutter/amplify_flutter.dart';
@@ -10,7 +11,7 @@ import '../services/shared_preference.dart';
 import 'amplifyconfiguration.dart'; // generated config
 import 'data/get_data.dart';
 import 'data/global.dart';
-import 'models/model_provider.dart';
+import 'models/ModelProvider.dart';
 import 'screens/map_page.dart';
 import 'utils/text_sizing.dart';
 
@@ -22,17 +23,32 @@ import 'utils/text_sizing.dart';
 
 ////////////////////////////////////////////////////////////////////////////////
 // Top-level Amplify configuration helper and readiness future
-
 Future<void> configureAmplifyOnce() async {
   try {
     if (!Amplify.isConfigured) {
       final provider = ModelProvider();
+
+      // Add DataStore
       Amplify.addPlugin(AmplifyDataStore(modelProvider: provider));
+
+      // Add API (AppSync)
       Amplify.addPlugin(
         AmplifyAPI(options: APIPluginOptions(modelProvider: provider)),
       );
+
+      // Add Auth (Cognito User Pool + Identity Pool)
+      Amplify.addPlugin(AmplifyAuthCognito());
+
+      // Configure Amplify with amplifyconfiguration.dart
       await Amplify.configure(amplifyconfig);
+
       if (kDebugMode) print('Amplify configured');
+      final session =
+          await Amplify.Auth.fetchAuthSession() as CognitoAuthSession;
+      if (kDebugMode) {
+        print('Identity ID: ${session.identityIdResult.value}');
+        print('Access Key: ${session.credentialsResult.value.accessKeyId}');
+      }
     } else {
       if (kDebugMode) print('Amplify already configured');
     }
@@ -41,6 +57,7 @@ Future<void> configureAmplifyOnce() async {
     rethrow;
   }
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 // Exposed readiness future other code can await
 

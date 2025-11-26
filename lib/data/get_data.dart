@@ -1,39 +1,41 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// ////////////////////////////////////////////////////////////////////////////
-/// --- Get Data From AWS through using polling ---
+/// --- Get Data From AWS through using subscriptions instead of polling ---
 /// ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 // Keep the singleton pattern but extend ChangeNotifier
+
 class BusData extends ChangeNotifier {
   static final BusData _instance = BusData._internal();
   factory BusData() => _instance;
   BusData._internal();
 
   // Public read-only lists (still mutable but replaced atomically)
-  final List<DateTime> arrivalTimeKAP = [];
-  final List<DateTime> arrivalTimeCLE = [];
-  final List<DateTime> departureTimeKAP = [];
-  final List<DateTime> departureTimeCLE = [];
+  final List<DateTime> morningTimesKAP = [];
+  final List<DateTime> morningTimesCLE = [];
+  final List<DateTime> afternoonTimesKAP = [];
+  final List<DateTime> afternoonTimesCLE = [];
   final List<String> busStop = [];
-  String news = '';
+  String announcements = '';
   bool isDataLoaded = false;
 
-  // Polling timer
-  Timer? _pollTimer;
-  Duration pollInterval = const Duration(seconds: 30);
+  // To prevent multiple calls at once
   bool _loadingInProgress = false;
-
-  // --- Change emission controls ---
-  String? _lastEmissionSignature;
   Timer? _notifyDebounce;
+
+  // Keep subscription handles so we can cancel them
+  StreamSubscription<GraphQLResponse<String>>? _announcementsSub;
+  StreamSubscription<GraphQLResponse<String>>? _busStopsSub;
+  StreamSubscription<GraphQLResponse<String>>? _tripListSub;
+  StreamSubscription<GraphQLResponse<String>>? _countTripListSub;
 
   //////////////////////////////////////////////////////////////////////////////
   /// //////////////////////////////////////////////////////////////////////////
@@ -42,145 +44,70 @@ class BusData extends ChangeNotifier {
   //////////////////////////////////////////////////////////////////////////////
 
   //////////////////////////////////////////////////////////////////////////////
-  // Fetches a List of DateTime with all Trip times for KAP Morning
+  // Fetches a List of DateTime with all Trip times for a given station + timeOfDay
+  // Results are sorted chronologically by DepartureTime
 
-  Future<List<DateTime>> _fetchTripTimesMorningKAP() async {
+  Future<List<DateTime>> fetchTripTimes({
+    required String station,
+    required String timeOfDay, // "MORNING" or "AFTERNOON"
+  }) async {
     final List<DateTime> loaded = [];
     try {
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://6f11dyznc2.execute-api.ap-southeast-2.amazonaws.com/prod/timing?info=KAP_MorningBus',
-            ),
-          )
-          .timeout(const Duration(seconds: 8));
-      final data = jsonDecode(response.body);
-      final List<dynamic> times = data['times'] ?? [];
-      for (var time in times) {
-        final timeStr = time['time'] as String;
-        final parts = timeStr.split(':');
-        final hour = int.parse(parts[0]);
-        final minute = int.parse(parts[1]);
-        loaded.add(
-          DateTime(
-            DateTime.now().year,
-            DateTime.now().month,
-            DateTime.now().day,
-            hour,
-            minute,
-          ),
-        );
+      const graphQLDocument = '''
+      query ListTrips(\$station: String!, \$timeOfDay: TripTimeOfDay!) {
+        listTripLists(
+          filter: {
+            and: [
+              { MRTStation: { eq: \$station } }
+              { TripTime: { eq: \$timeOfDay } }
+            ]
+          }
+        ) {
+          items {
+            TripNo
+            DepartureTime
+          }
+        }
+      }
+    ''';
+
+      final request = GraphQLRequest<String>(
+        document: graphQLDocument,
+        variables: {
+          'station': station,
+          'timeOfDay':
+              timeOfDay, // must be enum string: "MORNING" or "AFTERNOON"
+        },
+        authorizationMode: APIAuthorizationType.iam, // unauth read
+      );
+
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.data != null) {
+        final data = jsonDecode(response.data!);
+        final List<dynamic> items = data['listTripLists']['items'] ?? [];
+
+        // Sort items by TripNo
+        items.sort((a, b) {
+          final aNo = a['TripNo'] as int? ?? 0;
+          final bNo = b['TripNo'] as int? ?? 0;
+          return aNo.compareTo(bNo);
+        });
+
+        for (var item in items) {
+          final departureStr = item['DepartureTime'] as String;
+
+          // Parse into UTC
+          final departureUtc = DateTime.parse(departureStr);
+
+          // Convert to Singapore time (UTC+8)
+          final departureSingapore = departureUtc.add(const Duration(hours: 8));
+
+          loaded.add(departureSingapore);
+        }
       }
     } catch (e) {
-      if (kDebugMode) print('fetchTripTimesMorningKAP error: $e');
-    }
-    return loaded;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Fetches a List of DateTime with all Trip times for CLE Morning
-
-  Future<List<DateTime>> _fetchTripTimesMorningCLE() async {
-    final List<DateTime> loaded = [];
-    try {
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://6f11dyznc2.execute-api.ap-southeast-2.amazonaws.com/prod/timing?info=CLE_MorningBus',
-            ),
-          )
-          .timeout(const Duration(seconds: 8));
-      final data = jsonDecode(response.body);
-      final List<dynamic> times = data['times'] ?? [];
-      for (var time in times) {
-        final timeStr = time['time'] as String;
-        final parts = timeStr.split(':');
-        final hour = int.parse(parts[0]);
-        final minute = int.parse(parts[1]);
-        loaded.add(
-          DateTime(
-            DateTime.now().year,
-            DateTime.now().month,
-            DateTime.now().day,
-            hour,
-            minute,
-          ),
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) print('fetchTripTimesMorningCLE error: $e');
-    }
-    return loaded;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Fetches a List of DateTime with all Trip times for KAP Afternoon
-
-  Future<List<DateTime>> _fetchTripTimesAfternoonKAP() async {
-    final List<DateTime> loaded = [];
-    try {
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://6f11dyznc2.execute-api.ap-southeast-2.amazonaws.com/prod/timing?info=KAP_AfternoonBus',
-            ),
-          )
-          .timeout(const Duration(seconds: 8));
-      final data = jsonDecode(response.body);
-      final List<dynamic> times = data['times'] ?? [];
-      for (var time in times) {
-        final timeStr = time['time'] as String;
-        final parts = timeStr.split(':');
-        final hour = int.parse(parts[0]);
-        final minute = int.parse(parts[1]);
-        loaded.add(
-          DateTime(
-            DateTime.now().year,
-            DateTime.now().month,
-            DateTime.now().day,
-            hour,
-            minute,
-          ),
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) print('fetchTripTimesAfternoonKAP error: $e');
-    }
-    return loaded;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Fetches a List of DateTime with all Trip times for CLE Afternoon
-
-  Future<List<DateTime>> _fetchTripTimesAfternoonCLE() async {
-    final List<DateTime> loaded = [];
-    try {
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://6f11dyznc2.execute-api.ap-southeast-2.amazonaws.com/prod/timing?info=CLE_AfternoonBus',
-            ),
-          )
-          .timeout(const Duration(seconds: 8));
-      final data = jsonDecode(response.body);
-      final List<dynamic> times = data['times'] ?? [];
-      for (var time in times) {
-        final timeStr = time['time'] as String;
-        final parts = timeStr.split(':');
-        final hour = int.parse(parts[0]);
-        final minute = int.parse(parts[1]);
-        loaded.add(
-          DateTime(
-            DateTime.now().year,
-            DateTime.now().month,
-            DateTime.now().day,
-            hour,
-            minute,
-          ),
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) print('fetchTripTimesAfternoonCLE error: $e');
+      safePrint('fetchTripTimes error: $e');
     }
     return loaded;
   }
@@ -188,24 +115,46 @@ class BusData extends ChangeNotifier {
   //////////////////////////////////////////////////////////////////////////////
   // Fetches a List of String of the Bus Stop Names
 
-  Future<List<String>> _fetchBusStops() async {
+  Future<List<String>> fetchBusStops() async {
     final List<String> loaded = [];
     try {
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://6f11dyznc2.execute-api.ap-southeast-2.amazonaws.com/prod/busstop?info=BusStops',
-            ),
-          )
-          .timeout(const Duration(seconds: 8));
-      final data = jsonDecode(response.body);
-      final List<dynamic> positions = data['positions'] ?? [];
-      for (var position in positions) {
-        final id = position['id'] as String;
-        loaded.add(id);
+      const graphQLDocument = '''
+      query ListBusStops {
+        listBusStops {
+          items {
+            id
+            BusStop
+            StopNo
+          }
+        }
+      }
+    ''';
+
+      final request = GraphQLRequest<String>(
+        document: graphQLDocument,
+        authorizationMode: APIAuthorizationType.iam,
+      );
+
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.data != null) {
+        final data = jsonDecode(response.data!);
+        final List<dynamic> items = data['listBusStops']['items'] ?? [];
+
+        // Sort items by StopNo
+        items.sort((a, b) {
+          final aNo = a['StopNo'] as int? ?? 0;
+          final bNo = b['StopNo'] as int? ?? 0;
+          return aNo.compareTo(bNo);
+        });
+
+        for (var item in items) {
+          final busStop = item['BusStop'] as String;
+          loaded.add(busStop);
+        }
       }
     } catch (e) {
-      if (kDebugMode) print('fetchBusStops error: $e');
+      safePrint('fetchBusStops error: $e');
     }
     return loaded;
   }
@@ -213,89 +162,295 @@ class BusData extends ChangeNotifier {
   //////////////////////////////////////////////////////////////////////////////
   // Fetches the Announcement
 
-  Future<String> _fetchAnnouncements() async {
+  Future<String> fetchAnnouncements() async {
     try {
-      final response = await http
-          .get(
-            Uri.parse(
-              'https://6f11dyznc2.execute-api.ap-southeast-2.amazonaws.com/prod/news?info=News',
-            ),
-          )
-          .timeout(const Duration(seconds: 8));
-      final data = jsonDecode(response.body);
-      return data['news'] as String? ?? '';
+      const graphQLDocument = '''
+      query ListAnnouncements {
+        listAnnouncements {
+          items {
+            Announcement
+          }
+        }
+      }
+    ''';
+
+      final request = GraphQLRequest<String>(
+        document: graphQLDocument,
+        // Force unauthorized app to use Identity Pool (IAM) auth
+        authorizationMode: APIAuthorizationType.iam,
+      );
+
+      final response = await Amplify.API.query(request: request).response;
+
+      if (response.data != null) {
+        final data = jsonDecode(response.data!);
+        final List<dynamic> items = data['listAnnouncements']['items'] ?? [];
+
+        if (items.isNotEmpty) {
+          return items.first['Announcement'] as String? ?? '';
+        }
+      }
     } catch (e) {
-      if (kDebugMode) print('fetchAnnouncements error: $e');
-      return '';
+      safePrint('fetchAnnouncements error: $e');
     }
+    return '';
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  /// --- Subscriptions to keep data live ---
+  //////////////////////////////////////////////////////////////////////////////
 
-  /// //////////////////////////////////////////////////////////////////////////
-  /// ---  Atomic load method that updates public lists and notifies ---
-  ///  /////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  // Announcements
 
+  void _listenAnnouncements() {
+    const subscriptionDoc = '''
+    subscription OnUpdateAnnouncements {
+      onUpdateAnnouncements {
+        id
+        Announcement
+      }
+    }
+  ''';
+
+    final request = GraphQLRequest<String>(
+      document: subscriptionDoc,
+      authorizationMode: APIAuthorizationType.iam,
+    );
+
+    final stream = Amplify.API.subscribe<String>(request);
+
+    _announcementsSub = stream.listen(
+      (event) {
+        if (event.data != null) {
+          final data = jsonDecode(event.data!);
+          final announcement =
+              data['onUpdateAnnouncements']['Announcement'] as String;
+          announcements = announcement;
+          notifyListeners();
+        }
+      },
+      onError: (error) {
+        safePrint('Announcements subscription error: $error');
+      },
+      onDone: () {
+        safePrint('Announcements subscription closed');
+      },
+    );
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // BusStops
+
+  void _listenBusStops() {
+    const subscriptionDoc = '''
+    subscription OnUpdateBusStops {
+      onUpdateBusStops {
+        id
+        BusStop
+      }
+    }
+  ''';
+
+    final request = GraphQLRequest<String>(
+      document: subscriptionDoc,
+      authorizationMode: APIAuthorizationType.iam,
+    );
+
+    final stream = Amplify.API.subscribe<String>(request);
+
+    _busStopsSub = stream.listen(
+      (event) {
+        if (event.data != null) {
+          final data = jsonDecode(event.data!);
+          final stop = data['onUpdateBusStops']['BusStop'] as String;
+          if (!busStop.contains(stop)) {
+            busStop.add(stop);
+            notifyListeners();
+          }
+        }
+      },
+      onError: (error) {
+        safePrint('BusStops subscription error: $error');
+      },
+      onDone: () {
+        safePrint('BusStops subscription closed');
+      },
+    );
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // TripList
+
+  void _listenTripList() {
+    const subscriptionDoc = '''
+    subscription OnUpdateTripList {
+      onUpdateTripList {
+        id
+        MRTStation
+        TripTime
+        DepartureTime
+      }
+    }
+  ''';
+
+    final request = GraphQLRequest<String>(
+      document: subscriptionDoc,
+      authorizationMode: APIAuthorizationType.iam, // important for unauth
+    );
+
+    final stream = Amplify.API.subscribe<String>(request);
+
+    _tripListSub = stream.listen(
+      (event) {
+        if (event.data != null) {
+          final data = jsonDecode(event.data!);
+          final trip = data['onUpdateTripList'];
+          final station = trip['MRTStation'] as String;
+          final timeOfDay = trip['TripTime'] as String; // use TripTime
+          final departure = DateTime.parse(trip['DepartureTime'] as String);
+
+          // Update relevant list
+          if (station == 'KAP' && timeOfDay == 'MORNING') {
+            morningTimesKAP.add(departure);
+            morningTimesKAP.sort();
+          } else if (station == 'CLE' && timeOfDay == 'MORNING') {
+            morningTimesCLE.add(departure);
+            morningTimesCLE.sort();
+          } else if (station == 'KAP' && timeOfDay == 'AFTERNOON') {
+            afternoonTimesKAP.add(departure);
+            afternoonTimesKAP.sort();
+          } else if (station == 'CLE' && timeOfDay == 'AFTERNOON') {
+            afternoonTimesCLE.add(departure);
+            afternoonTimesCLE.sort();
+          }
+
+          notifyListeners();
+        }
+      },
+      onError: (error) {
+        safePrint('TripList subscription error: $error');
+      },
+      onDone: () {
+        safePrint('TripList subscription closed');
+      },
+    );
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // CountTripList
+
+  void _listenCountTripList() {
+    const subscriptionDoc = '''
+    subscription OnUpdateCountTripList {
+      onUpdateCountTripList {
+        id
+        MRTStation
+        TripTime
+        BusStop
+        TripNo
+        Count
+      }
+    }
+  ''';
+
+    final request = GraphQLRequest<String>(
+      document: subscriptionDoc,
+      authorizationMode: APIAuthorizationType.iam, // 👈 important for unauth
+    );
+
+    final stream = Amplify.API.subscribe<String>(request);
+
+    _countTripListSub = stream.listen(
+      (event) {
+        if (event.data != null) {
+          final data = jsonDecode(event.data!);
+          final trip = data['onUpdateCountTripList'];
+
+          final station = trip['MRTStation'] as String;
+          final tripTime = trip['TripTime'] as String; // enum value as string
+          final busStopName = trip['BusStop'] as String;
+          final tripNo = trip['TripNo'] as int;
+          final count = trip['Count'] as int;
+
+          // Example: update your local state with the new count
+          safePrint(
+            'CountTripList update: Station=$station, TripTime=$tripTime, '
+            'BusStop=$busStopName, TripNo=$tripNo, Count=$count',
+          );
+
+          // TODO: Update your relevant data structures here
+          // e.g. maintain a Map<String, int> keyed by station+tripNo
+          // counts['$station-$tripNo'] = count;
+
+          notifyListeners();
+        }
+      },
+      onError: (error) {
+        safePrint('CountTripList subscription error: $error');
+      },
+      onDone: () {
+        safePrint('CountTripList subscription closed');
+      },
+    );
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// --- Atomic load method that updates public lists and notifies ---
   //////////////////////////////////////////////////////////////////////////////
 
   Future<void> _loadAll() async {
     if (_loadingInProgress) return;
     _loadingInProgress = true;
     try {
+      // Fix #4: add timeout to prevent indefinite hang
       final results = await Future.wait([
-        _fetchTripTimesMorningKAP(),
-        _fetchTripTimesMorningCLE(),
-        _fetchTripTimesAfternoonKAP(),
-        _fetchTripTimesAfternoonCLE(),
-        _fetchBusStops(),
-        _fetchAnnouncements(),
-      ]);
+        fetchTripTimes(station: 'KAP', timeOfDay: 'MORNING'),
+        fetchTripTimes(station: 'CLE', timeOfDay: 'MORNING'),
+        fetchTripTimes(station: 'KAP', timeOfDay: 'AFTERNOON'),
+        fetchTripTimes(station: 'CLE', timeOfDay: 'AFTERNOON'),
+        fetchBusStops(),
+        fetchAnnouncements(),
+      ], eagerError: true).timeout(const Duration(seconds: 15));
 
-      final List<DateTime> newArrivalKAP = results[0] as List<DateTime>;
-      final List<DateTime> newArrivalCLE = results[1] as List<DateTime>;
-      final List<DateTime> newDepartureKAP = results[2] as List<DateTime>;
-      final List<DateTime> newDepartureCLE = results[3] as List<DateTime>;
-      final List<String> newBusStops = results[4] as List<String>;
-      final String newNews = results[5] as String;
+      // Fix #6: safer casting with type checks
+      final newMorningTimesKAP = (results[0] as List<DateTime>? ?? []);
+      final newMorningTimesCLE = (results[1] as List<DateTime>? ?? []);
+      final newAfternoonTimesKAP = (results[2] as List<DateTime>? ?? []);
+      final newAfternoonTimesCLE = (results[3] as List<DateTime>? ?? []);
+      final newBusStops = (results[4] as List<String>? ?? []);
+      final newAnnouncements = (results[5] as String? ?? '');
+
+      if (kDebugMode) {
+        print('loadAll in get_data: Announcements: $newAnnouncements');
+      }
 
       // Replace content atomically
-      arrivalTimeKAP
+      morningTimesKAP
         ..clear()
-        ..addAll(newArrivalKAP);
-      arrivalTimeCLE
+        ..addAll(newMorningTimesKAP);
+      morningTimesCLE
         ..clear()
-        ..addAll(newArrivalCLE);
-      departureTimeKAP
+        ..addAll(newMorningTimesCLE);
+      afternoonTimesKAP
         ..clear()
-        ..addAll(newDepartureKAP);
-      departureTimeCLE
+        ..addAll(newAfternoonTimesKAP);
+      afternoonTimesCLE
         ..clear()
-        ..addAll(newDepartureCLE);
+        ..addAll(newAfternoonTimesCLE);
       busStop
         ..clear()
         ..addAll(newBusStops);
-      news = newNews;
+      announcements = newAnnouncements;
       isDataLoaded = true;
 
-      // Notify listeners once after full replacement
-      // Only notify if data actually changed (signature comparison)
-      final signature = _buildSignature(
-        arrivalTimeKAP,
-        arrivalTimeCLE,
-        departureTimeKAP,
-        departureTimeCLE,
-        busStop,
-        news,
-      );
-      if (signature != _lastEmissionSignature) {
-        _lastEmissionSignature = signature;
-
-        // Short debounce to prevent multiple notifications within a tight window
-        _notifyDebounce?.cancel();
-        _notifyDebounce = Timer(const Duration(milliseconds: 150), () {
-          notifyListeners();
-        });
-      }
+      // Short debounce to prevent multiple notifications within a tight window
+      _notifyDebounce?.cancel();
+      _notifyDebounce = Timer(const Duration(milliseconds: 150), () {
+        // notify listeners of change
+        notifyListeners();
+      });
     } catch (e) {
       if (kDebugMode) print('BusData _loadAll error: $e');
     } finally {
@@ -303,77 +458,31 @@ class BusData extends ChangeNotifier {
     }
   }
 
-  // Build a lightweight signature from lengths and edges to avoid heavy deep-equality
-  String _buildSignature(
-    List<DateTime> aKAP,
-    List<DateTime> aCLE,
-    List<DateTime> dKAP,
-    List<DateTime> dCLE,
-    List<String> stops,
-    String newsText,
-  ) {
-    DateTime? edge(List<DateTime> l) => l.isEmpty ? null : l.first;
-    DateTime? tail(List<DateTime> l) => l.isEmpty ? null : l.last;
-    String? sEdge(List<String> l) => l.isEmpty ? null : l.first;
-    String? sTail(List<String> l) => l.isEmpty ? null : l.last;
-
-    return [
-      aKAP.length,
-      aCLE.length,
-      dKAP.length,
-      dCLE.length,
-      stops.length,
-      edge(aKAP)?.millisecondsSinceEpoch,
-      tail(aKAP)?.millisecondsSinceEpoch,
-      edge(aCLE)?.millisecondsSinceEpoch,
-      tail(aCLE)?.millisecondsSinceEpoch,
-      edge(dKAP)?.millisecondsSinceEpoch,
-      tail(dKAP)?.millisecondsSinceEpoch,
-      edge(dCLE)?.millisecondsSinceEpoch,
-      tail(dCLE)?.millisecondsSinceEpoch,
-      sEdge(stops),
-      sTail(stops),
-      newsText.hashCode,
-    ].join('|');
-  }
-
   //////////////////////////////////////////////////////////////////////////////
   // Public method to perform a one-shot load
+  //////////////////////////////////////////////////////////////////////////////
 
   Future<void> loadData() async {
     await _loadAll();
+
+    // Start subscriptions after initial load
+    _listenAnnouncements();
+    _listenBusStops();
+    _listenTripList();
+    _listenCountTripList();
   }
 
   //////////////////////////////////////////////////////////////////////////////
-
-  /// //////////////////////////////////////////////////////////////////////////
-  /// --- Polling control---
-  ///  /////////////////////////////////////////////////////////////////////////
-
+  // Dispose timer and subscriptions properly
   //////////////////////////////////////////////////////////////////////////////
-
-  void startPolling({Duration? interval}) {
-    if (interval != null) pollInterval = interval;
-    _pollTimer?.cancel();
-
-    // Immediately run a load, then schedule periodic loads
-    // Ensure we don’t overlap the immediate load with the first timer tick
-    _loadAll().whenComplete(() {
-      _pollTimer = Timer.periodic(pollInterval, (_) async {
-        await _loadAll();
-      });
-    });
-  }
-
-  void stopPolling() {
-    _pollTimer?.cancel();
-    _pollTimer = null;
-  }
 
   @override
   void dispose() {
     _notifyDebounce?.cancel();
-    _pollTimer?.cancel();
+    _announcementsSub?.cancel();
+    _busStopsSub?.cancel();
+    _tripListSub?.cancel();
+    _countTripListSub?.cancel();
     super.dispose();
   }
 }

@@ -148,7 +148,7 @@ class _InformationPageState extends State<InformationPage> {
                           TextSizing.isTabletOrLandscapeMode(context)
                               ? 'King Albert Park MRT Station (KAP)  to NP Campus'
                               : 'KAP MRT Station to NP Campus',
-                          busData.arrivalTimeKAP,
+                          busData.morningTimesKAP,
                           2,
                         ),
                         SizedBox(height: fontSizeText * 2),
@@ -156,7 +156,7 @@ class _InformationPageState extends State<InformationPage> {
                           TextSizing.isTabletOrLandscapeMode(context)
                               ? 'Clementi MRT Station (CLE) to NP Campus'
                               : 'CLE MRT Station to NP Campus',
-                          busData.arrivalTimeCLE,
+                          busData.morningTimesCLE,
                           1,
                         ),
 
@@ -191,7 +191,7 @@ class _InformationPageState extends State<InformationPage> {
                           TextSizing.isTabletOrLandscapeMode(context)
                               ? 'NP Campus to King Albert Park MRT Station (KAP)'
                               : 'NP Campus to KAP MRT Station',
-                          busData.departureTimeKAP,
+                          busData.afternoonTimesKAP,
                           2,
                         ),
                         SizedBox(height: fontSizeText * 2),
@@ -199,7 +199,7 @@ class _InformationPageState extends State<InformationPage> {
                           TextSizing.isTabletOrLandscapeMode(context)
                               ? 'NP Campus to Clementi MRT Station (CLE)'
                               : 'NP Campus to CLE MRT Station',
-                          busData.departureTimeCLE,
+                          busData.afternoonTimesCLE,
                           1,
                         ),
                         SizedBox(height: fontSizeText * 3),

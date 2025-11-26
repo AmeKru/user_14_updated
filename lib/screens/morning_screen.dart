@@ -76,22 +76,13 @@ class MorningScreenState extends State<MorningScreen>
     _isLoading = !busData.isDataLoaded;
 
     // Prime caches with current data snapshot
-    _lastArrivalKAP = List<DateTime>.from(busData.arrivalTimeKAP);
-    _lastArrivalCLE = List<DateTime>.from(busData.arrivalTimeCLE);
-    _lastDepartureKAP = List<DateTime>.from(busData.departureTimeKAP);
-    _lastDepartureCLE = List<DateTime>.from(busData.departureTimeCLE);
+    _lastArrivalKAP = List<DateTime>.from(busData.morningTimesKAP);
+    _lastArrivalCLE = List<DateTime>.from(busData.morningTimesCLE);
+    _lastDepartureKAP = List<DateTime>.from(busData.afternoonTimesKAP);
+    _lastDepartureCLE = List<DateTime>.from(busData.afternoonTimesCLE);
 
     // One-shot load in case BusData hasn't loaded yet
     busData.loadData();
-
-    // Start BusData polling for morning screen so it updates independently
-    // Adds a guard in case startPolling is already running or not implemented
-    try {
-      // Start polling bus data (adjust interval if desired)
-      busData.startPolling(interval: const Duration(seconds: 30));
-    } catch (_) {
-      // If BusData doesn't implement startPolling or throws, ignore and rely on loadData()
-    }
 
     // Listen for BusData updates so arrival/departure times refresh automatically
     _busDataListener = () {
@@ -103,26 +94,26 @@ class MorningScreenState extends State<MorningScreen>
       bool changed = false;
 
       // Compare each list for additions/removals or content changes
-      if (!_listsEqual(_lastArrivalKAP, busData.arrivalTimeKAP)) {
-        _lastArrivalKAP = List<DateTime>.from(busData.arrivalTimeKAP);
+      if (!_listsEqual(_lastArrivalKAP, busData.morningTimesKAP)) {
+        _lastArrivalKAP = List<DateTime>.from(busData.morningTimesKAP);
         changed = true;
       }
-      if (!_listsEqual(_lastArrivalCLE, busData.arrivalTimeCLE)) {
-        _lastArrivalCLE = List<DateTime>.from(busData.arrivalTimeCLE);
+      if (!_listsEqual(_lastArrivalCLE, busData.morningTimesCLE)) {
+        _lastArrivalCLE = List<DateTime>.from(busData.morningTimesCLE);
         changed = true;
       }
-      if (!_listsEqual(_lastDepartureKAP, busData.departureTimeKAP)) {
-        _lastDepartureKAP = List<DateTime>.from(busData.departureTimeKAP);
+      if (!_listsEqual(_lastDepartureKAP, busData.afternoonTimesKAP)) {
+        _lastDepartureKAP = List<DateTime>.from(busData.afternoonTimesKAP);
         changed = true;
       }
-      if (!_listsEqual(_lastDepartureCLE, busData.departureTimeCLE)) {
-        _lastDepartureCLE = List<DateTime>.from(busData.departureTimeCLE);
+      if (!_listsEqual(_lastDepartureCLE, busData.afternoonTimesCLE)) {
+        _lastDepartureCLE = List<DateTime>.from(busData.afternoonTimesCLE);
         changed = true;
       }
 
       // If selectedBox refers to trips that no longer exist, deselect and notify parent
       if (selectedBox == 1) {
-        final maxIndex = busData.arrivalTimeKAP.length;
+        final maxIndex = busData.morningTimesKAP.length;
         // if no trips left for this MRT, deselect
         if (maxIndex == 0 && selectedBox != 0) {
           selectedBox = 0;
@@ -131,7 +122,7 @@ class MorningScreenState extends State<MorningScreen>
           changed = true;
         }
       } else if (selectedBox == 2) {
-        final maxIndex = busData.arrivalTimeCLE.length;
+        final maxIndex = busData.morningTimesCLE.length;
         if (maxIndex == 0 && selectedBox != 0) {
           selectedBox = 0;
           selectedMRT = 0;
@@ -171,14 +162,6 @@ class MorningScreenState extends State<MorningScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     busData.removeListener(_busDataListener);
-    // Stop BusData polling when morning screen is disposed
-    try {
-      busData.stopPolling();
-    } catch (e, st) {
-      if (kDebugMode) {
-        print("Error stopping polling: $e\n$st");
-      }
-    }
     // stop polling when screen disposed
 
     _inactivityStopTimer?.cancel();
@@ -221,11 +204,6 @@ class MorningScreenState extends State<MorningScreen>
           print('Lifecycle paused: stopping polling immediately (background)');
         }
         _cancelInactivityStopTimer();
-        try {
-          busData.stopPolling();
-        } catch (e, st) {
-          if (kDebugMode) print("Error stopping polling on paused: $e\n$st");
-        }
         _lastBackgroundAt = DateTime.now();
         _previousAppLifecycleState = state;
         // clear resume cooldown guard so next resume will act
@@ -260,18 +238,7 @@ class MorningScreenState extends State<MorningScreen>
           }
 
           if (kDebugMode) {
-            print(
-              'Resumed after real background; restarting polling and refreshing',
-            );
-          }
-          // Mark and restart polling safely; _restartPolling must be idempotent
-
-          try {
-            busData.startPolling(interval: const Duration(seconds: 30));
-          } catch (e, st) {
-            if (kDebugMode) {
-              print("Error restarting polling on resume: $e\n$st");
-            }
+            print('Resumed after real background; now refreshing');
           }
 
           // Force immediate data refresh
@@ -302,11 +269,6 @@ class MorningScreenState extends State<MorningScreen>
           print('Lifecycle detached: stopping polling and clearing guards');
         }
         _cancelInactivityStopTimer();
-        try {
-          busData.stopPolling();
-        } catch (e, st) {
-          if (kDebugMode) print("Error stopping polling on detached: $e\n$st");
-        }
         _previousAppLifecycleState = state;
         _lastBackgroundAt = null;
         _lifecycleResetTimer?.cancel();
@@ -323,14 +285,7 @@ class MorningScreenState extends State<MorningScreen>
 
     _inactivityStopTimer = Timer(_inactivityStopDelay, () {
       _inactivityStopTimer = null;
-      if (kDebugMode) print('Inactivity delay expired; stopping polling now');
-      try {
-        busData.stopPolling();
-      } catch (e, st) {
-        if (kDebugMode) {
-          print("Error stopping polling after inactivity delay: $e\n$st");
-        }
-      }
+      if (kDebugMode) print('Inactivity delay expired');
       _lastBackgroundAt = DateTime.now();
       // record that we were backgrounded via hidden path
       _previousAppLifecycleState = AppLifecycleState.hidden;
@@ -391,23 +346,22 @@ class MorningScreenState extends State<MorningScreen>
       return; // return if update is in progress to prevent wrong UI loads
     }
     if (!mounted) return;
-      setState(() {
-        updatingSelectedBox = true; // setting guard to true
-        // If the same box is tapped again, deselect it
-        if (selectedBox == box) {
-          selectedBox = 0;
-          selectedMRT = 0; // reset global
-        } else {
-          selectedBox = box;
-          selectedMRT = box; // update global
-        }
-        if (kDebugMode) {
-          print('Printing selectedBox = $selectedBox');
-        }
-        // Inform parent of change so corresponding routes can be loaded
-        widget.updateSelectedBox(selectedBox);
-      });
-
+    setState(() {
+      updatingSelectedBox = true; // setting guard to true
+      // If the same box is tapped again, deselect it
+      if (selectedBox == box) {
+        selectedBox = 0;
+        selectedMRT = 0; // reset global
+      } else {
+        selectedBox = box;
+        selectedMRT = box; // update global
+      }
+      if (kDebugMode) {
+        print('Printing selectedBox = $selectedBox');
+      }
+      // Inform parent of change so corresponding routes can be loaded
+      widget.updateSelectedBox(selectedBox);
+    });
 
     // waits 1s before freeing up guard, as parents updateSelected box may also take a while before loading correct route
     // to prevent UI bug of not showing the correct routes on map etc.
@@ -486,8 +440,8 @@ class MorningScreenState extends State<MorningScreen>
               ? const LoadingScroll()
               : GetMorningETA(
                   selectedBox == 1
-                      ? busData.arrivalTimeKAP
-                      : busData.arrivalTimeCLE,
+                      ? busData.morningTimesKAP
+                      : busData.morningTimesCLE,
                 ),
       ],
     );
