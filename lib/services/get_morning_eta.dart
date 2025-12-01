@@ -111,7 +111,12 @@ class CalculateMorningBus {
     List<DateTime> busArrivalTimes,
     BuildContext context,
   ) {
-    DateTime currentTime = timeNow ?? DateTime.now();
+    // Get the current device time
+    DateTime localTime = DateTime.now();
+    // Convert local time to UTC
+    DateTime utcTime = localTime.toUtc();
+    // opt for timeNow if set, else use back up
+    DateTime currentTime = timeNow ?? utcTime.add(Duration(hours: 8));
 
     // Truncate seconds for minute-level comparison
     currentTime = DateTime(
@@ -123,8 +128,14 @@ class CalculateMorningBus {
     );
 
     // Filter to only upcoming bus times
+    TimeOfDay currentTod = TimeOfDay.fromDateTime(currentTime);
+
+    bool isAfter(TimeOfDay a, TimeOfDay b) {
+      return a.hour > b.hour || (a.hour == b.hour && a.minute > b.minute);
+    }
+
     final upcomingArrivalTimes = busArrivalTimes
-        .where((time) => time.isAfter(currentTime))
+        .where((time) => isAfter(TimeOfDay.fromDateTime(time), currentTod))
         .toList();
 
     // Helper to build "no buses" message
@@ -132,8 +143,13 @@ class CalculateMorningBus {
         buildMorningETADisplay(context, 'No upcoming buses available.');
 
     // Helper to calculate minutes until a bus
-    String minutesUntil(DateTime time) =>
-        time.difference(currentTime).inMinutes.toString();
+    int toMinutesOfDay(DateTime dt) => dt.hour * 60 + dt.minute;
+
+    String minutesUntil(DateTime time) {
+      final currentMinutes = toMinutesOfDay(currentTime);
+      final targetMinutes = toMinutesOfDay(time);
+      return (targetMinutes - currentMinutes).toString();
+    }
 
     // CASE 1: No upcoming buses
     if (upcomingArrivalTimes.isEmpty) {

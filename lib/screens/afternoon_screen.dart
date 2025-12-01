@@ -1,4 +1,5 @@
 import 'dart:async'; // For using Future, async/await, and delayed actions
+import 'dart:convert';
 import 'dart:math'; //
 
 // Amplify packages for API and DataStore functionality
@@ -457,7 +458,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     String busStop,
   ) async {
     // Checks if booking full
-    int? checkIfTripFull = await countBooking(mrtStation, tripNo);
+    int? checkIfTripFull = await fetchPassengerCountTrip(mrtStation, tripNo);
     if (checkIfTripFull == busMaxCapacity) {
       if (kDebugMode) {
         print(
@@ -813,6 +814,36 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  // get the time the booking was created, if cannot find booking returns null
+
+  Future<DateTime?> getBookingCreatedAt(String bookingId) async {
+    if (kDebugMode) {
+      print('afternoon_screen => getting time booking was created at');
+    }
+    try {
+      final request = ModelQueries.get(
+        BookingDetails.classType,
+        BookingDetailsModelIdentifier(id: bookingId),
+      );
+
+      final response = await Amplify.API.query(request: request).response;
+
+      final booking = response.data;
+      if (booking == null) {
+        return null; // booking not found
+      }
+
+      // Convert TemporalDateTime to Dart DateTime
+      return booking.createdAt?.getDateTimeInUtc();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching booking: $e');
+      }
+      return null;
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   ///  /////////////////////////////////////////////////////////////////////////
   /// --- Deleting Booking ---
   ///  /////////////////////////////////////////////////////////////////////////
@@ -1018,17 +1049,23 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       return null;
     }
 
-    final departure = safeDateTime(bookingData['bookedDepartureTime']);
-    if (departure != null) {
+    DateTime? dateOfBookedTrip;
+    if (bookingID != null) {
+      dateOfBookedTrip = await getBookingCreatedAt(bookingID!);
+    }
+    if (dateOfBookedTrip != null) {
       final TimeService timeService = TimeService();
       await timeService.getTime();
       final today = timeNow ?? DateTime.now();
+
       final bookingDate = DateTime(
-        departure.year,
-        departure.month,
-        departure.day,
+        dateOfBookedTrip.year,
+        dateOfBookedTrip.month,
+        dateOfBookedTrip.day,
       );
+
       final currentDate = DateTime(today.year, today.month, today.day);
+
       if (bookingDate.isBefore(currentDate)) {
         if (kDebugMode) print('Booking is from a past date → invalid');
         return BookingStatus.oldBooking;
@@ -1384,7 +1421,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
     final station = isKAP ? 'KAP' : 'CLE';
 
     try {
-      // Step 1: Query existing CountTripList entry
+      // Step 1: Query existing CountTripList entries for this station/trip/busStop
       final existingResponse = await Amplify.API
           .query(
             request: ModelQueries.list(
@@ -1400,27 +1437,37 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           .response;
 
       final items = existingResponse.data?.items.cast<CountTripList>() ?? [];
-      final existingRow = items.isNotEmpty ? items.first : null;
+
+      // Step 1a: filter by createdAt → only keep rows created today (Singapore time)
+      final nowLocal = DateTime.now();
+      final startOfDayLocal = DateTime(
+        nowLocal.year,
+        nowLocal.month,
+        nowLocal.day,
+      );
+      final endOfDayLocal = startOfDayLocal.add(const Duration(days: 1));
+
+      final todayRows = items.where((row) {
+        final createdUtc = row.createdAt?.getDateTimeInUtc();
+        if (createdUtc == null) return false;
+        final createdSgt = createdUtc.add(
+          const Duration(hours: 8),
+        ); // UTC → SGT
+        return createdSgt.isAfter(startOfDayLocal) &&
+            createdSgt.isBefore(endOfDayLocal);
+      }).toList();
+
+      final existingRow = todayRows.isNotEmpty ? todayRows.first : null;
 
       if (existingRow != null) {
         // Step 2: Update existing row
         final newCount = (existingRow.Count) + (increment ? 1 : -1);
 
-        if (newCount <= 0) {
-          // Option A: delete if count goes to 0
-          await Amplify.API
-              .mutate(
-                request: ModelMutations.delete(
-                  existingRow,
-                  authorizationMode: APIAuthorizationType.iam,
-                ),
-              )
-              .response;
+        if (newCount < 0) {
           if (kDebugMode) {
-            print('Deleted CountTripList because count reached 0');
+            print('No count changed, as newCount in invalid range');
           }
         } else {
-          // Option B: update with new count
           final updatedRow = existingRow.copyWith(Count: newCount);
           await Amplify.API
               .mutate(
@@ -1433,15 +1480,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           if (kDebugMode) print('Updated count → $newCount');
         }
       } else {
-        // Step 3: Create new row if none exists
+        // Step 3: Create new row if none exists for today
         final model = CountTripList(
           MRTStation: station,
           TripTime: TripTimeOfDay.AFTERNOON,
           BusStop: busStop,
           TripNo: tripNo,
-          Count: increment
-              ? 1
-              : 0, // if decrement called on non-existent, set 0
+          Count: increment ? 1 : 0,
         );
 
         if (model.Count > 0) {
@@ -1462,34 +1507,70 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Counts the number of bookings for a given MRT station and trip number.
-  // Returns the count as an integer, or null if an error occurs.
+  // fetches the number of bookings for a given MRT station and trip number for the current day
+  // Returns the count as an integer, or null if an error occurs
 
-  Future<int?> countBooking(String mrt, int tripNo) async {
+  Future<int?> fetchPassengerCountTrip(String mrt, int tripNo) async {
+    const tripTime = 'AFTERNOON';
     try {
-      // Use retry/timeout guard to be resilient
-      final response = await _retry(() async {
-        final call = Amplify.API
-            .query(
-              request: ModelQueries.list(
-                BookingDetails.classType,
-                where: BookingDetails.MRTSTATION
-                    .eq(mrt)
-                    .and(BookingDetails.TRIPNO.eq(tripNo)),
-                authorizationMode: APIAuthorizationType.iam,
-              ),
-            )
-            .response;
-        return await call.timeout(const Duration(seconds: 8));
-      }, attempts: 2);
+      final request = GraphQLRequest<String>(
+        document: '''
+        query GetTripCounts(\$station: String!, \$tripTime: TripTimeOfDay!, \$tripNo: Int!) {
+          listCountTripLists(
+            filter: {
+              MRTStation: { eq: \$station }
+              TripTime: { eq: \$tripTime }
+              TripNo: { eq: \$tripNo }
+            }
+          ) {
+            items {
+              Count
+              createdAt
+            }
+          }
+        }
+      ''',
+        variables: {'station': mrt, 'tripTime': tripTime, 'tripNo': tripNo},
+      );
 
-      // Count the number of matching bookings (watch for pagination if dataset grows)
-      final count = response.data?.items.length ?? 0;
-      return count;
+      final response = await Amplify.API.query(request: request).response;
+      final data = response.data;
+      if (data == null) return 0;
+
+      final items = (jsonDecode(data)['listCountTripLists']['items'] as List);
+
+      if (items.isEmpty) return 0;
+
+      // Singapore local time boundaries
+      final nowLocal = DateTime.now();
+      final startOfDayLocal = DateTime(
+        nowLocal.year,
+        nowLocal.month,
+        nowLocal.day,
+      );
+      final endOfDayLocal = startOfDayLocal.add(const Duration(days: 1));
+
+      // Filter by createdAt
+      final todayItems = items.where((item) {
+        final createdStr = item['createdAt'];
+        if (createdStr == null) return false;
+
+        final createdUtc = DateTime.tryParse(createdStr);
+        if (createdUtc == null) return false;
+
+        // Convert UTC to Singapore local time (+8)
+        final createdSgt = createdUtc.add(const Duration(hours: 8));
+
+        return createdSgt.isAfter(startOfDayLocal) &&
+            createdSgt.isBefore(endOfDayLocal);
+      });
+
+      return todayItems.fold<int>(
+        0,
+        (sum, item) => sum + (item['Count'] as int),
+      );
     } catch (e) {
-      if (kDebugMode) {
-        print('Error counting bookings: $e');
-      }
+      safePrint('Error fetching passenger count: $e');
       return null;
     }
   }
@@ -1577,8 +1658,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                         radius: const Radius.circular(8),
                         thumbColor: isDarkMode ? Colors.black : Colors.grey,
                         child: ListView.builder(
-                          // no shrinkWrap, no NeverScrollablePhysics
-                          itemCount: _busData.busStop.length - 2,
+                          // excludes first two and last bus stop
+                          itemCount: _busData.busStop.length - 3,
                           itemBuilder: (_, index) {
                             final stopName = _busData.busStop[index + 2];
                             return Padding(
@@ -2041,7 +2122,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           bookedTripIndexCLE: bookedTripIndexCLE,
           updateBookingStatusKAP: updateBookingStatusKAP,
           updateBookingStatusCLE: updateBookingStatusCLE,
-          countBooking: countBooking,
+          countBooking: fetchPassengerCountTrip,
           showBusStopSelectionBottomSheet: showBusStopSelectionBottomSheet,
           selectedBusStop: selectedBusStop,
           onPressedConfirm: () async {

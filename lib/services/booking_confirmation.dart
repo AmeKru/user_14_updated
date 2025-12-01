@@ -13,7 +13,7 @@ import '../utils/text_styles_booking_confirmation.dart';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// ////////////////////////////////////////////////////////////////////////////
-/// --- Afternoon Screen ---
+/// --- Booking Confirmation ---
 /// ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -80,8 +80,27 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
   void initState() {
     super.initState();
 
-    // Start initialization flow that is allowed to be asynchronous.
-    // We don't mark initState as async; use a fire-and-forget helper.
+    bool isAfterOrEqual(TimeOfDay a, TimeOfDay b) {
+      return a.hour > b.hour || (a.hour == b.hour && a.minute >= b.minute);
+    }
+
+    // Retrieve the booked departure time passed from parent.
+    final DateTime? bookedTime = widget.bookedDepartureTime;
+
+    // Determine whether cancel button should be shown: only if bookedTime is in the future compared to timeNow
+    // Get the current device time
+    DateTime localTime = DateTime.now();
+    // Convert local time to UTC
+    DateTime utcTime = localTime.toUtc();
+
+    // opt for timeNow if set, else use back up
+    final DateTime now = timeNow ?? utcTime.add(Duration(hours: 8));
+
+    TimeOfDay bookedTod = TimeOfDay.fromDateTime(bookedTime!);
+    TimeOfDay nowTod = TimeOfDay.fromDateTime(now);
+    canCancel = isAfterOrEqual(bookedTod, nowTod);
+
+    // Start initialization flow that is allowed to be asynchronous
     _initializeTimeAndTimers();
   }
 
@@ -303,10 +322,23 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
     final DateTime? bookedTime = widget.bookedDepartureTime;
 
     // Determine whether cancel button should be shown: only if bookedTime is in the future compared to timeNow
-    final DateTime now = timeNow ?? DateTime.now();
-    canCancel = bookedTime != null
-        ? bookedTime.isAfter(now) || bookedTime.isAtSameMomentAs(now)
-        : false;
+
+    // Get the current device time
+    DateTime localTime = DateTime.now();
+    // Convert local time to UTC
+    DateTime utcTime = localTime.toUtc();
+
+    // opt for timeNow if set, else use back up
+    final DateTime now = timeNow ?? utcTime.add(Duration(hours: 8));
+
+    TimeOfDay bookedTod = TimeOfDay.fromDateTime(bookedTime!);
+    TimeOfDay nowTod = TimeOfDay.fromDateTime(now);
+
+    bool isAfterOrEqual(TimeOfDay a, TimeOfDay b) {
+      return a.hour > b.hour || (a.hour == b.hour && a.minute >= b.minute);
+    }
+
+    canCancel = isAfterOrEqual(bookedTod, nowTod);
 
     // Determine the station name based on the selected box.
     final String station = widget.selectedBox == 1
@@ -328,7 +360,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
         generateColor(bookedTime, bookedTripIndex ?? 0) ?? Colors.white;
 
     // Guard: if there is no booked trip index or booked time, show a user friendly empty state
-    if (bookedTripIndex == null || bookedTime == null) {
+    if (bookedTripIndex == null) {
       return Center(
         child: Padding(
           padding: EdgeInsets.all(widget.fontSizeText),
@@ -391,6 +423,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
           // Wrap card in Center to align it horizontally
           child: _BookingDetailsCard(
             bookedTripIndex: bookedTripIndex,
+            today: now,
             bookedTime: bookedTime,
             station: station,
             busStop: widget.busStop ?? '', // Fallback to empty string if null
@@ -420,6 +453,7 @@ class _BookingConfirmationState extends State<BookingConfirmation> {
 
 class _BookingDetailsCard extends StatelessWidget {
   final int? bookedTripIndex; // Index of the booked trip
+  final DateTime today;
   final DateTime? bookedTime; // Departure time of the booked trip
   final String station; // Station name (KAP or CLE)
   final String busStop; // Bus stop name
@@ -432,6 +466,7 @@ class _BookingDetailsCard extends StatelessWidget {
 
   const _BookingDetailsCard({
     required this.bookedTripIndex,
+    required this.today,
     required this.bookedTime,
     required this.station,
     required this.busStop,
@@ -448,9 +483,8 @@ class _BookingDetailsCard extends StatelessWidget {
     if (kDebugMode) debugPrint('bookingDetailsCard built');
     // Defensive local values
     final int displayIndex = (bookedTripIndex ?? 0) + 1;
-    final String dateLabel = bookedTime != null
-        ? '[${bookedTime!.day.toString().padLeft(2, '0')}.${bookedTime!.month.toString().padLeft(2, '0')}.${bookedTime!.year.toString()}]'
-        : '-';
+    final String dateLabel =
+        '[${today.day.toString().padLeft(2, '0')}.${today.month.toString().padLeft(2, '0')}.${today.year.toString()}]';
     final String timeLabel = bookedTime != null
         ? '${bookedTime!.hour.toString().padLeft(2, '0')}:${bookedTime!.minute.toString().padLeft(2, '0')}'
         : '-';
@@ -514,7 +548,7 @@ class _BookingDetailsCard extends StatelessWidget {
 
               // Display trip number (index + 1 for human-readable numbering)
               BookingConfirmationText(
-                label: 'Trip Number',
+                label: 'Trip No',
                 value: bookedTripIndex != null ? '$displayIndex' : '-',
                 size: 1,
                 darkText: true,

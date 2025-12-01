@@ -149,13 +149,24 @@ class AfternoonETAs {
   // No separate polling here — this method reads BusData state when called by the parent
 
   static Widget getBusTime(int box, BuildContext context) {
-    final DateTime currentTime = DateTime.now(); // Current time
-    final double timeBetweenBusStops =
-        2; // minutes per stop multiplier (adjustable)
+    // Current time setup
+    DateTime localTime = DateTime.now();
+    DateTime utcTime = localTime.toUtc();
+    DateTime currentTime = timeNow ?? utcTime.add(Duration(hours: 8));
 
-    final BusData busData = BusData(); // Data source for bus stops and times
-    List<DateTime> busArrivalTimes; // Holds the relevant departure times
-    final List<String> busStops = busData.busStop; // List of bus stop names
+    // Truncate seconds for minute-level comparison
+    currentTime = DateTime(
+      currentTime.year,
+      currentTime.month,
+      currentTime.day,
+      currentTime.hour,
+      currentTime.minute,
+    );
+
+    final double timeBetweenBusStops = 2; // minutes per stop multiplier
+    final BusData busData = BusData();
+    List<DateTime> busArrivalTimes;
+    final List<String> busStops = busData.busStop;
 
     final fontSizeMiniText = TextSizing.fontSizeMiniText(context);
     final fontSizeText = TextSizing.fontSizeText(context);
@@ -168,15 +179,27 @@ class AfternoonETAs {
       busArrivalTimes = busData.afternoonTimesCLE;
     }
 
-    // Filter to keep recent and upcoming times.
-    // Keep buses that are after (currentTime - travel buffer)
-    final travelBufferMinutes = ((busStops.length - 4) * timeBetweenBusStops)
+    // Calculate travel buffer
+    final travelBufferMinutes = ((busStops.length - 3) * timeBetweenBusStops)
         .round();
-    final upcomingArrivalTimes = busArrivalTimes.where((time) {
-      return time.isAfter(
-        currentTime.subtract(Duration(minutes: travelBufferMinutes)),
-      );
-    }).toList();
+
+    // Apply buffer subtraction
+    final adjustedDateTime = currentTime.subtract(
+      Duration(minutes: travelBufferMinutes),
+    );
+
+    // Convert cutoff into TimeOfDay
+    final adjustedTod = TimeOfDay.fromDateTime(adjustedDateTime);
+
+    // Helper for comparing TimeOfDay
+    bool isAfter(TimeOfDay a, TimeOfDay b) {
+      return a.hour > b.hour || (a.hour == b.hour && a.minute > b.minute);
+    }
+
+    // Filter upcoming times
+    final upcomingArrivalTimes = busArrivalTimes
+        .where((time) => isAfter(TimeOfDay.fromDateTime(time), adjustedTod))
+        .toList();
 
     // If there are no upcoming buses, show a message
     if (upcomingArrivalTimes.isEmpty) {
@@ -197,13 +220,25 @@ class AfternoonETAs {
       );
     } else {
       // Calculate minutes until the next bus
+      DateTime truncateToMinute(DateTime dt) => DateTime(
+        0,
+        1,
+        1,
+        dt.hour,
+        dt.minute,
+      ); // fixed dummy date, as we only care about the time
+
       final int nextBusTimeDiff = upcomingArrivalTimes.isNotEmpty
-          ? upcomingArrivalTimes[0].difference(currentTime).inMinutes
+          ? truncateToMinute(
+              upcomingArrivalTimes[0],
+            ).difference(truncateToMinute(currentTime)).inMinutes
           : 0;
 
       // Calculate minutes until the bus after the next
       final int nextNextBusTimeDiff = upcomingArrivalTimes.length > 1
-          ? upcomingArrivalTimes[1].difference(currentTime).inMinutes
+          ? truncateToMinute(
+              upcomingArrivalTimes[1],
+            ).difference(truncateToMinute(currentTime)).inMinutes
           : -1;
 
       // Build the UI showing the MRT name, headers, and each bus stop row
@@ -318,8 +353,8 @@ class AfternoonETAs {
           ),
 
           // TODO: Adjust to show all bus st
-          // Loop through bus stops (skipping first 2 and last 2 stops)
-          for (int i = 2; i < (busData.busStop.length) - 2; i++)
+          // Loop through bus stops (skipping first 2 and last 1 stops)
+          for (int i = 2; i < (busData.busStop.length) - 3; i++)
             buildRowWidget(
               context,
               busData.busStop[i], // Bus stop name

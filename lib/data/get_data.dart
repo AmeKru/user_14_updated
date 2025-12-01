@@ -27,6 +27,9 @@ class BusData extends ChangeNotifier {
   String announcements = '';
   bool isDataLoaded = false;
 
+  // just so can change when sub of countTripList is informed of change and notify listeners can be called
+  int countTrip = 0;
+
   // To prevent multiple calls at once
   bool _loadingInProgress = false;
   Timer? _notifyDebounce;
@@ -380,10 +383,7 @@ class BusData extends ChangeNotifier {
             'BusStop=$busStopName, TripNo=$tripNo, Count=$count',
           );
 
-          // TODO: Update your relevant data structures here
-          // e.g. maintain a Map<String, int> keyed by station+tripNo
-          // counts['$station-$tripNo'] = count;
-
+          countTrip == 0 ? countTrip = count : countTrip = 0;
           notifyListeners();
         }
       },

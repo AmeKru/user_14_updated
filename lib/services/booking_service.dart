@@ -20,8 +20,10 @@ import '../utils/text_sizing.dart';
 // used for booking trips in the afternoon
 
 class BookingService extends StatefulWidget {
-  // List of departure times for the currently selected station
+  //////////////////////////////////////////////////////////////////////////////
+  // Variables
 
+  // List of departure times for the currently selected station
   final List<DateTime> departureTimes;
 
   // Indicates which station is selected: 1 for KAP, otherwise CLE
@@ -68,6 +70,9 @@ class BookingService extends StatefulWidget {
 }
 
 class BookingServiceState extends State<BookingService> {
+  //////////////////////////////////////////////////////////////////////////////
+  // function used by afternoon screen to refresh shown trips when booking
+
   Future<void> refreshFromParent(bool refreshBecauseTripFull) async {
     if (kDebugMode) {
       print('booking service is being refreshed by parent');
@@ -82,6 +87,9 @@ class BookingServiceState extends State<BookingService> {
     await setTime();
     await _updateBookingCounts();
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Variables
 
   // Default color for UI elements before availability is determined
   Color finalColor = Colors.grey;
@@ -111,6 +119,9 @@ class BookingServiceState extends State<BookingService> {
   // To prevent pressing confirm multiple times
   bool confirmingBooking = false;
 
+  // If there are any more upcoming buses to book a trip for
+  bool noMoreUpcomingBuses = false;
+
   // for sizing
   double fontSizeMiniText = 0;
   double fontSizeText = 0;
@@ -129,7 +140,37 @@ class BookingServiceState extends State<BookingService> {
         : widget.bookedTripIndexCLE != null && busIndex.value != 0;
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+  // init state
+
+  @override
+  void initState() {
+    super.initState();
+    bookingCounts = {};
+    confirmingBooking = false;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // called right after init state, to assign sizing variables
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // assign sizing variables once at start
+    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
+    fontSizeText = TextSizing.fontSizeText(context);
+    fontSizeHeading = TextSizing.fontSizeHeading(context);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  // dispose
+  @override
+  void dispose() {
+    super.dispose();
+    confirmingBooking = false;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   // If the selected station changes, reset loading state and booking counts
 
   @override
@@ -148,7 +189,15 @@ class BookingServiceState extends State<BookingService> {
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- helper ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
   // helper to compare DateTime lists
+
   bool _listsEqual(List<DateTime> a, List<DateTime> b) {
     if (a.length != b.length) return false;
     for (int i = 0; i < a.length; i++) {
@@ -157,29 +206,15 @@ class BookingServiceState extends State<BookingService> {
     return true;
   }
 
-  @override
-  void initState() {
-    super.initState();
-    bookingCounts = {};
-    confirmingBooking = false;
-  }
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- functions ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // assign sizing variables once at start
-    fontSizeMiniText = TextSizing.fontSizeMiniText(context);
-    fontSizeText = TextSizing.fontSizeText(context);
-    fontSizeHeading = TextSizing.fontSizeHeading(context);
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    confirmingBooking = false;
-  }
-
+  //////////////////////////////////////////////////////////////////////////////
   // Fetches booking counts for all departure times and updates state.
+
   Future<void> _updateBookingCounts() async {
     if (_updating) return; // avoid overlapping calls
     _updating = true;
@@ -263,7 +298,7 @@ class BookingServiceState extends State<BookingService> {
     now = (await updateTime.getTime()) ?? DateTime.now();
   }
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // Returns a color based on the number of bookings:
   // - Green: plenty of space left
   // - Yellow: more than half full already
@@ -278,6 +313,14 @@ class BookingServiceState extends State<BookingService> {
       return Colors.red[400]!;
     }
   }
+  //////////////////////////////////////////////////////////////////////////////
+  /// //////////////////////////////////////////////////////////////////////////
+  /// --- Build ---
+  /// //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
+  // main build of booking service
 
   @override
   Widget build(BuildContext context) {
@@ -492,13 +535,15 @@ class BookingServiceState extends State<BookingService> {
                                     Expanded(
                                       child: Card(
                                         elevation: 0,
-                                        color: count!= null ? isFull
-                                            ? (isDarkMode
-                                                  ? Colors.blueGrey[800]
-                                                  : Colors.grey[300])
-                                            : (isDarkMode
-                                                  ? Colors.blueGrey[600]
-                                                  : Colors.blue[50]) : isDarkMode
+                                        color: count != null
+                                            ? isFull
+                                                  ? (isDarkMode
+                                                        ? Colors.blueGrey[800]
+                                                        : Colors.grey[300])
+                                                  : (isDarkMode
+                                                        ? Colors.blueGrey[600]
+                                                        : Colors.blue[50])
+                                            : isDarkMode
                                             ? Colors.blueGrey[700]
                                             : Colors.grey[200],
                                         shape: RoundedRectangleBorder(
@@ -527,7 +572,7 @@ class BookingServiceState extends State<BookingService> {
                                                     ) *
                                                     0.5,
                                                 height:
-                                                TextSizing.fontSizeText(
+                                                    TextSizing.fontSizeText(
                                                       context,
                                                     ) *
                                                     4,
@@ -812,16 +857,19 @@ class BookingServiceState extends State<BookingService> {
                                                   ? Icons.check_box
                                                   : Icons
                                                         .check_box_outline_blank),
-                                        color: count != null ? isFull
-                                            ? (isDarkMode
-                                                  ? Colors.blueGrey[500]
-                                                  : Colors.grey[400])
+                                        color: count != null
+                                            ? isFull
+                                                  ? (isDarkMode
+                                                        ? Colors.blueGrey[500]
+                                                        : Colors.grey[400])
+                                                  : (isDarkMode
+                                                        ? Colors.blueGrey[50]
+                                                        : const Color(
+                                                            0xff014689,
+                                                          ))
                                             : (isDarkMode
-                                                  ? Colors.blueGrey[50]
-                                                  : const Color(0xff014689)) : (isDarkMode
-                                            ? Colors.blueGrey[400]
-                                            : Colors
-                                            .blueGrey[300]),
+                                                  ? Colors.blueGrey[400]
+                                                  : Colors.blueGrey[300]),
                                         size: fontSizeHeading,
                                       ),
                                     ),
