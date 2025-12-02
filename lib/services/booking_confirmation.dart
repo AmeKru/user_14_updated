@@ -481,15 +481,6 @@ class _BookingDetailsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (kDebugMode) debugPrint('bookingDetailsCard built');
-    // Defensive local values
-    final int displayIndex = (bookedTripIndex ?? 0) + 1;
-    final String dateLabel =
-        '[${today.day.toString().padLeft(2, '0')}.${today.month.toString().padLeft(2, '0')}.${today.year.toString()}]';
-    final String timeLabel = bookedTime != null
-        ? '${bookedTime!.hour.toString().padLeft(2, '0')}:${bookedTime!.minute.toString().padLeft(2, '0')}'
-        : '-';
-    final String stopLabel = busStop.isNotEmpty ? busStop : '-';
-
     return Padding(
       padding: EdgeInsets.all(fontSizeText), // Outer padding around the card
       child: Container(
@@ -536,7 +527,7 @@ class _BookingDetailsCard extends StatelessWidget {
               SizedBox(height: fontSizeMiniText),
               Text(
                 // Date of Trip
-                dateLabel,
+                '[${today.day.toString().padLeft(2, '0')}.${today.month.toString().padLeft(2, '0')}.${today.year.toString()}]',
                 style: TextStyle(
                   fontSize: fontSizeMiniText,
                   fontWeight: FontWeight.bold,
@@ -549,7 +540,9 @@ class _BookingDetailsCard extends StatelessWidget {
               // Display trip number (index + 1 for human-readable numbering)
               BookingConfirmationText(
                 label: 'Trip No',
-                value: bookedTripIndex != null ? '$displayIndex' : '-',
+                value: bookedTripIndex != null
+                    ? '${(bookedTripIndex ?? 0) + 1}'
+                    : '-',
                 size: 1,
                 darkText: true,
                 fontSizeText: fontSizeText,
@@ -558,7 +551,9 @@ class _BookingDetailsCard extends StatelessWidget {
               // Display departure time in HH:mm format
               BookingConfirmationText(
                 label: 'Time',
-                value: timeLabel,
+                value: bookedTime != null
+                    ? '${bookedTime!.hour.toString().padLeft(2, '0')}:${bookedTime!.minute.toString().padLeft(2, '0')}'
+                    : '-',
                 size: 1,
                 darkText: true,
                 fontSizeText: fontSizeText,
@@ -576,7 +571,7 @@ class _BookingDetailsCard extends StatelessWidget {
               // Display bus stop name
               BookingConfirmationText(
                 label: 'Bus Stop',
-                value: stopLabel,
+                value: busStop.isNotEmpty ? busStop : '-',
                 size: 1,
                 darkText: true,
                 fontSizeText: fontSizeText,
