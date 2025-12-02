@@ -146,7 +146,7 @@ class AfternoonETAs {
 
   //////////////////////////////////////////////////////////////////////////////
   // Returns a widget showing the bus arrival times for a given MRT start point (KAP or CLE)
-  // No separate polling here — this method reads BusData state when called by the parent
+  // this method reads BusData state when called by the parent
 
   static Widget getBusTime(int box, BuildContext context) {
     // Current time setup
@@ -410,7 +410,7 @@ class _AfternoonETAsAutoRefreshState extends State<AfternoonETAsAutoRefresh> {
   @override
   void didUpdateWidget(covariant AfternoonETAsAutoRefresh oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If polling interval changes, restart timer
+    // If interval changes, restart timer
     if (oldWidget.interval != widget.interval) {
       _timer?.cancel();
       _timer = Timer.periodic(widget.interval, (_) {

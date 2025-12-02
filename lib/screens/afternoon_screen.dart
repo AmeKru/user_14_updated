@@ -226,7 +226,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Unified refresh function (used by polling listener AND manual button)
+  // Unified refresh function (used by listener AND manual button)
 
   Future<void> _refreshTrips() async {
     if (!mounted || _isRefreshing) return;
@@ -299,7 +299,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       case AppLifecycleState.hidden:
         // The app became not visible; schedule a delayed stop so we tolerate quick returns.
         if (kDebugMode) {
-          print('Lifecycle hidden: scheduling delayed stop of polling');
+          print('Lifecycle hidden');
         }
         _scheduleInactivityStop();
         // record the transition for later comparison
@@ -309,7 +309,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       case AppLifecycleState.paused:
         // Paused on many platforms is the real background; stop immediately (or you can delay).
         if (kDebugMode) {
-          print('Lifecycle paused: stopping polling immediately (background)');
+          print('Lifecycle paused');
         }
         _cancelInactivityStopTimer();
         _lastBackgroundAt = DateTime.now();
@@ -346,9 +346,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
           }
 
           if (kDebugMode) {
-            print(
-              'Resumed after real background; restarting polling and refreshing',
-            );
+            print('Resumed after real background; refreshing');
           }
           try {
             if (confirmationPressed != true && mounted) {
@@ -368,7 +366,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
             }
           } catch (e, st) {
             if (kDebugMode) {
-              print("Error restarting polling on resume: $e\n$st");
+              print("Error on resume: $e\n$st");
             }
           }
 

@@ -156,13 +156,12 @@ class MorningScreenState extends State<MorningScreen>
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // remove listener, stop polling and timers whn widget is disposed
+  // remove listener and timers when widget is disposed
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     busData.removeListener(_busDataListener);
-    // stop polling when screen disposed
 
     _inactivityStopTimer?.cancel();
     _inactivityStopTimer = null;
@@ -191,7 +190,7 @@ class MorningScreenState extends State<MorningScreen>
       case AppLifecycleState.hidden:
         // The app became not visible; schedule a delayed stop so we tolerate quick returns.
         if (kDebugMode) {
-          print('Lifecycle hidden: scheduling delayed stop of polling');
+          print('Lifecycle hidden');
         }
         _scheduleInactivityStop();
         // record the transition for later comparison
@@ -201,7 +200,7 @@ class MorningScreenState extends State<MorningScreen>
       case AppLifecycleState.paused:
         // Paused on many platforms is the real background; stop immediately (or you can delay).
         if (kDebugMode) {
-          print('Lifecycle paused: stopping polling immediately (background)');
+          print('Lifecycle paused)');
         }
         _cancelInactivityStopTimer();
         _lastBackgroundAt = DateTime.now();
@@ -266,7 +265,7 @@ class MorningScreenState extends State<MorningScreen>
 
       case AppLifecycleState.detached:
         if (kDebugMode) {
-          print('Lifecycle detached: stopping polling and clearing guards');
+          print('Lifecycle detached');
         }
         _cancelInactivityStopTimer();
         _previousAppLifecycleState = state;

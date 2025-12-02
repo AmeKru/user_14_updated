@@ -47,7 +47,6 @@ class _InformationPageState extends State<InformationPage> {
     _isLoading = !busData.isDataLoaded;
 
     // One-shot load in case BusData hasn't loaded yet
-    // This will call notifyListeners when load completes if BusData.startPolling wasn't started elsewhere
     busData.loadData();
 
     // Listen for BusData updates and update local state accordingly
