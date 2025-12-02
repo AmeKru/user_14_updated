@@ -1049,9 +1049,14 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       return null;
     }
 
+    final persistedBookingID = bookingData['bookingID'] as String?;
+
     DateTime? dateOfBookedTrip;
-    if (bookingID != null) {
-      dateOfBookedTrip = await getBookingCreatedAt(bookingID!);
+    if (persistedBookingID != null) {
+      dateOfBookedTrip = await getBookingCreatedAt(persistedBookingID);
+      if (kDebugMode) {
+        print('booking created at: $dateOfBookedTrip');
+      }
     }
     if (dateOfBookedTrip != null) {
       final TimeService timeService = TimeService();
@@ -1072,7 +1077,6 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       }
     }
 
-    final persistedBookingID = bookingData['bookingID'] as String?;
     if (persistedBookingID != null) {
       try {
         final bool? exists = await _doesBookingExistByID(persistedBookingID);
@@ -1440,21 +1444,22 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
       // Step 1a: filter by createdAt → only keep rows created today (Singapore time)
       final nowLocal = DateTime.now();
-      final startOfDayLocal = DateTime(
-        nowLocal.year,
-        nowLocal.month,
-        nowLocal.day,
-      );
-      final endOfDayLocal = startOfDayLocal.add(const Duration(days: 1));
+      final todayDate = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
 
       final todayRows = items.where((row) {
         final createdUtc = row.createdAt?.getDateTimeInUtc();
         if (createdUtc == null) return false;
-        final createdSgt = createdUtc.add(
-          const Duration(hours: 8),
-        ); // UTC → SGT
-        return createdSgt.isAfter(startOfDayLocal) &&
-            createdSgt.isBefore(endOfDayLocal);
+
+        // Convert UTC → local (SGT if device timezone is Singapore)
+        final createdLocal = createdUtc.toLocal();
+        final createdDate = DateTime(
+          createdLocal.year,
+          createdLocal.month,
+          createdLocal.day,
+        );
+
+        // Compare only the date parts
+        return createdDate == todayDate;
       }).toList();
 
       final existingRow = todayRows.isNotEmpty ? todayRows.first : null;
@@ -1541,16 +1546,10 @@ class _AfternoonScreenState extends State<AfternoonScreen>
 
       if (items.isEmpty) return 0;
 
-      // Singapore local time boundaries
+      // Singapore local time (system timezone should be set to SGT)
       final nowLocal = DateTime.now();
-      final startOfDayLocal = DateTime(
-        nowLocal.year,
-        nowLocal.month,
-        nowLocal.day,
-      );
-      final endOfDayLocal = startOfDayLocal.add(const Duration(days: 1));
+      final todayDate = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
 
-      // Filter by createdAt
       final todayItems = items.where((item) {
         final createdStr = item['createdAt'];
         if (createdStr == null) return false;
@@ -1558,12 +1557,17 @@ class _AfternoonScreenState extends State<AfternoonScreen>
         final createdUtc = DateTime.tryParse(createdStr);
         if (createdUtc == null) return false;
 
-        // Convert UTC to Singapore local time (+8)
-        final createdSgt = createdUtc.add(const Duration(hours: 8));
+        // Convert UTC → local (SGT if system timezone is Singapore)
+        final createdLocal = createdUtc.toLocal();
+        final createdDate = DateTime(
+          createdLocal.year,
+          createdLocal.month,
+          createdLocal.day,
+        );
 
-        return createdSgt.isAfter(startOfDayLocal) &&
-            createdSgt.isBefore(endOfDayLocal);
-      });
+        // Compare only the date parts
+        return createdDate == todayDate;
+      }).toList();
 
       return todayItems.fold<int>(
         0,
