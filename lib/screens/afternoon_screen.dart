@@ -1596,6 +1596,8 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Updates `selectedBusStop` and `busIndex` when a stop is chosen.
 
   void showBusStopSelectionBottomSheet(BuildContext context) {
+    final scrollController = ScrollController();
+
     if (kDebugMode) {
       print('afternoon_screen => bus stop selection bottom sheet built');
     }
@@ -1655,11 +1657,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                     // Give the list bounded height via Expanded
                     Expanded(
                       child: RawScrollbar(
+                        controller: scrollController,
                         thumbVisibility: true,
                         thickness: fontSizeText * 0.2,
                         radius: const Radius.circular(8),
                         thumbColor: isDarkMode ? Colors.black : Colors.grey,
                         child: ListView.builder(
+                          controller: scrollController,
                           // excludes first two and last bus stop
                           itemCount: _busData.busStop.length - 3,
                           itemBuilder: (_, index) {
@@ -1761,6 +1765,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   // Displays trip number, time, station, and bus stop.
 
   void showBookingConfirmationDialog(BuildContext context) {
+    final scrollController = ScrollController();
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -1825,11 +1830,13 @@ class _AfternoonScreenState extends State<AfternoonScreen>
                 SizedBox(height: fontSizeHeading),
                 Flexible(
                   child: RawScrollbar(
+                    controller: scrollController,
                     thumbVisibility: true,
                     thickness: fontSizeText * 0.2,
                     radius: const Radius.circular(8),
                     thumbColor: isDarkMode ? Colors.black : Colors.grey,
                     child: SingleChildScrollView(
+                      controller: scrollController,
                       child: Column(
                         children: [
                           // Trip number display

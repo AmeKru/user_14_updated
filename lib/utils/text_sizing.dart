@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
@@ -70,9 +69,22 @@ class TextSizing {
     BuildContext context, {
     double iphoneFactor = 0.02,
     double androidFactor = 0.015,
+    double webFactor = 0.018, // new factor for web
     bool respectAccessibility = true,
   }) {
-    final baseFactor = Platform.isAndroid ? androidFactor : iphoneFactor;
+    double baseFactor;
+
+    if (kIsWeb) {
+      baseFactor = webFactor;
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      baseFactor = androidFactor;
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      baseFactor = iphoneFactor;
+    } else {
+      // fallback for desktop or other platforms
+      baseFactor = 0.017;
+    }
+
     double textFontSize = shortestSide(context) * baseFactor;
 
     if (respectAccessibility) {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:circular_menu/circular_menu.dart';
 import 'package:flutter/cupertino.dart';
@@ -1110,6 +1111,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white, width: 4),
+            color: Colors.white,
             boxShadow: [
               BoxShadow(
                 color: Colors.blueGrey.withAlpha(100), // ~45% opacity
@@ -1273,58 +1275,70 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                       ),
 
                       // Main body section
+                      // Main body section
                       Expanded(
                         child: Container(
                           color: isDarkMode
                               ? Colors.blueGrey[900]
                               : Colors.white,
-                          child: ListView.builder(
-                            controller: controller,
-                            padding: EdgeInsets.only(
-                              bottom: MediaQuery.of(context).padding.bottom,
+                          child: ScrollConfiguration(
+                            behavior: const MaterialScrollBehavior().copyWith(
+                              dragDevices: {
+                                PointerDeviceKind.touch,
+                                PointerDeviceKind.mouse,
+                                PointerDeviceKind.trackpad,
+                                PointerDeviceKind.stylus,
+                              },
                             ),
-                            // We have 6 visual "slots" to build:
-                            // 0: SizedBox(height: fontSizeMiniText)
-                            // 1: Title Text 'Select MRT'
-                            // 2: SizedBox(height: fontSizeMiniText)
-                            // 3: displayPage
-                            // 4: SizedBox(height: fontSizeText)
-                            // 5: NewsAnnouncementWidget
-                            itemCount: 6,
-                            itemBuilder: (context, index) {
-                              switch (index) {
-                                case 0:
-                                  return SizedBox(height: fontSizeMiniText);
-                                case 1:
-                                  return Center(
-                                    child: Text(
-                                      'Select MRT',
-                                      maxLines: 1, //  limits to 1 lines
-                                      overflow: TextOverflow
-                                          .ellipsis, // clips text if not fitting
-                                      style: TextStyle(
-                                        color: isDarkMode
-                                            ? Colors.white
-                                            : Colors.black,
-                                        fontSize: fontSizeText,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: 'Roboto',
+                            child: ListView.builder(
+                              controller: controller,
+                              physics:
+                                  const ClampingScrollPhysics(), // keep this
+                              padding: EdgeInsets.only(
+                                bottom: MediaQuery.of(context).padding.bottom,
+                              ),
+                              // We have 6 visual "slots" to build:
+                              // 0: SizedBox(height: fontSizeMiniText)
+                              // 1: Title Text 'Select MRT'
+                              // 2: SizedBox(height: fontSizeMiniText)
+                              // 3: displayPage
+                              // 4: SizedBox(height: fontSizeText)
+                              // 5: NewsAnnouncementWidget
+                              itemCount: 6,
+                              itemBuilder: (context, index) {
+                                switch (index) {
+                                  case 0:
+                                    return SizedBox(height: fontSizeMiniText);
+                                  case 1:
+                                    return Center(
+                                      child: Text(
+                                        'Select MRT',
+                                        maxLines: 1, //  limits to 1 lines
+                                        overflow: TextOverflow
+                                            .ellipsis, // clips text if not fitting
+                                        style: TextStyle(
+                                          color: isDarkMode
+                                              ? Colors.white
+                                              : Colors.black,
+                                          fontSize: fontSizeText,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'Roboto',
+                                        ),
                                       ),
-                                    ),
-                                  );
-
-                                case 2:
-                                  return SizedBox(height: fontSizeMiniText);
-                                case 3:
-                                  return RepaintBoundary(child: displayPage);
-                                case 4:
-                                  return SizedBox(height: fontSizeText);
-                                case 5:
-                                  return NewsAnnouncementWidget();
-                                default:
-                                  return const SizedBox.shrink();
-                              }
-                            },
+                                    );
+                                  case 2:
+                                    return SizedBox(height: fontSizeMiniText);
+                                  case 3:
+                                    return RepaintBoundary(child: displayPage);
+                                  case 4:
+                                    return SizedBox(height: fontSizeText);
+                                  case 5:
+                                    return NewsAnnouncementWidget();
+                                  default:
+                                    return const SizedBox.shrink();
+                                }
+                              },
+                            ),
                           ),
                         ),
                       ),
@@ -1350,7 +1364,7 @@ class _MapPageState extends State<MapPage> with WidgetsBindingObserver {
                 left: 0,
                 right: 0,
                 bottom: 0, //  anchored to bottom
-                height: fontSizeHeading*2,
+                height: fontSizeHeading * 2,
                 child: SafeArea(
                   top: false,
                   bottom: false,

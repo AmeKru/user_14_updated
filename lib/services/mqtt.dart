@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show SecurityContext; // only used on mobile/desktop
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -188,30 +188,37 @@ class ConnectMQTTState extends State<ConnectMQTT> {
 
   Future<bool> mqttConnect() async {
     try {
-      // ===== Load AWS IoT Certificates =====
-      ByteData rootCA = await rootBundle.load(
-        'assets/c_certs/AmazonRootCA1.pem',
-      );
-      ByteData deviceCert = await rootBundle.load(
-        'assets/c_certs/certificate.pem.crt',
-      );
-      ByteData privateKey = await rootBundle.load(
-        'assets/c_certs/private.pem.key',
-      );
-      // =====================================
+      if (!kIsWeb) {
+        // ===== Load AWS IoT Certificates =====
+        ByteData rootCA = await rootBundle.load(
+          'assets/c_certs/AmazonRootCA1.pem',
+        );
+        ByteData deviceCert = await rootBundle.load(
+          'assets/c_certs/certificate.pem.crt',
+        );
+        ByteData privateKey = await rootBundle.load(
+          'assets/c_certs/private.pem.key',
+        );
+        // =====================================
 
-      // Configure TLS security context
-      SecurityContext context = SecurityContext.defaultContext;
-      context.setClientAuthoritiesBytes(rootCA.buffer.asUint8List());
-      context.useCertificateChainBytes(deviceCert.buffer.asUint8List());
-      context.usePrivateKeyBytes(privateKey.buffer.asUint8List());
+        // Configure TLS security context (mobile/desktop only)
+        SecurityContext context = SecurityContext.defaultContext;
+        context.setClientAuthoritiesBytes(rootCA.buffer.asUint8List());
+        context.useCertificateChainBytes(deviceCert.buffer.asUint8List());
+        context.usePrivateKeyBytes(privateKey.buffer.asUint8List());
 
-      // Configure MQTT client
-      client.securityContext = context;
+        client.securityContext = context;
+        client.port = 8883; // AWS IoT secure MQTT port
+        client.secure = true;
+      } else {
+        // Web: TLS handled by browser, no SecurityContext
+        client.port = 443; // often required for WebSocket over HTTPS
+        client.secure = true;
+      }
+
+      // Common MQTT client configuration
       client.logging(on: true);
       client.keepAlivePeriod = 20;
-      client.port = 8883; // AWS IoT secure MQTT port
-      client.secure = true;
       client.onConnected = onConnected;
       client.onDisconnected = onDisconnected;
       client.pongCallback = pong;
@@ -228,7 +235,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
       if (client.connectionStatus!.state == MqttConnectionState.connected) {
         logDebug("Connected to AWS Successfully!");
 
-        // Subscribe to all topics for all buses
+        // Subscribe to topics
         topics.forEach((_, topicMap) {
           for (var topic in topicMap.values) {
             client.subscribe(topic, MqttQos.atMostOnce);

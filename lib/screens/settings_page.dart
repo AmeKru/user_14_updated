@@ -136,17 +136,19 @@ class _SettingsState extends State<Settings> {
                     SizedBox(width: TextSizing.fontSizeMiniText(context) * 0.8),
 
                     // Switch to toggle Dark Mode On/Off
-                    Switch(
-                      value: isDarkMode,
-                      onChanged: (value) {
-                        toggleTheme(value);
-                      },
-                      activeThumbColor: Colors.green, // Thumb color when ON
-                      activeTrackColor:
-                          Colors.green[200], // Track color when ON
-                      inactiveThumbColor: Colors.grey, // Thumb color when OFF
-                      inactiveTrackColor:
-                          Colors.grey[200], // Track color when OFF
+                    Flexible(
+                      child: Switch(
+                        value: isDarkMode,
+                        onChanged: (value) {
+                          toggleTheme(value);
+                        },
+                        activeThumbColor: Colors.green, // Thumb color when ON
+                        activeTrackColor:
+                            Colors.green[200], // Track color when ON
+                        inactiveThumbColor: Colors.grey, // Thumb color when OFF
+                        inactiveTrackColor:
+                            Colors.grey[200], // Track color when OFF
+                      ),
                     ),
 
                     // Spacing between switch and icon
