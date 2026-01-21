@@ -344,6 +344,10 @@ class MorningScreenState extends State<MorningScreen>
       }
       return; // return if update is in progress to prevent wrong UI loads
     }
+
+    // fetch data, in case changes in backend
+    busData.loadData();
+
     if (!mounted) return;
     setState(() {
       updatingSelectedBox = true; // setting guard to true

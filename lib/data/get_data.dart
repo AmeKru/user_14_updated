@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// ////////////////////////////////////////////////////////////////////////////
-/// --- Get Data From AWS through using subscriptions ---
+/// --- Get Data From AWS ---
 /// ////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,12 +33,6 @@ class BusData extends ChangeNotifier {
   // To prevent multiple calls at once
   bool _loadingInProgress = false;
   Timer? _notifyDebounce;
-
-  // Keep subscription handles so we can cancel them
-  StreamSubscription<GraphQLResponse<String>>? _announcementsSub;
-  StreamSubscription<GraphQLResponse<String>>? _busStopsSub;
-  StreamSubscription<GraphQLResponse<String>>? _tripListSub;
-  StreamSubscription<GraphQLResponse<String>>? _countTripListSub;
 
   //////////////////////////////////////////////////////////////////////////////
   /// //////////////////////////////////////////////////////////////////////////
@@ -200,203 +194,6 @@ class BusData extends ChangeNotifier {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
-  /// --- Subscriptions to keep data live ---
-  //////////////////////////////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////////////////////////////
-  // Announcements
-
-  void _listenAnnouncements() {
-    const subscriptionDoc = '''
-    subscription OnUpdateAnnouncements {
-      onUpdateAnnouncements {
-        id
-        Announcement
-      }
-    }
-  ''';
-
-    final request = GraphQLRequest<String>(
-      document: subscriptionDoc,
-      authorizationMode: APIAuthorizationType.iam,
-    );
-
-    final stream = Amplify.API.subscribe<String>(request);
-
-    _announcementsSub = stream.listen(
-      (event) {
-        if (event.data != null) {
-          final data = jsonDecode(event.data!);
-          final announcement =
-              data['onUpdateAnnouncements']['Announcement'] as String;
-          announcements = announcement;
-          notifyListeners();
-        }
-      },
-      onError: (error) {
-        safePrint('Announcements subscription error: $error');
-      },
-      onDone: () {
-        safePrint('Announcements subscription closed');
-      },
-    );
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // BusStops
-
-  void _listenBusStops() {
-    const subscriptionDoc = '''
-    subscription OnUpdateBusStops {
-      onUpdateBusStops {
-        id
-        BusStop
-      }
-    }
-  ''';
-
-    final request = GraphQLRequest<String>(
-      document: subscriptionDoc,
-      authorizationMode: APIAuthorizationType.iam,
-    );
-
-    final stream = Amplify.API.subscribe<String>(request);
-
-    _busStopsSub = stream.listen(
-      (event) {
-        if (event.data != null) {
-          final data = jsonDecode(event.data!);
-          final stop = data['onUpdateBusStops']['BusStop'] as String;
-          if (!busStop.contains(stop)) {
-            busStop.add(stop);
-            notifyListeners();
-          }
-        }
-      },
-      onError: (error) {
-        safePrint('BusStops subscription error: $error');
-      },
-      onDone: () {
-        safePrint('BusStops subscription closed');
-      },
-    );
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // TripList
-
-  void _listenTripList() {
-    const subscriptionDoc = '''
-    subscription OnUpdateTripList {
-      onUpdateTripList {
-        id
-        MRTStation
-        TripTime
-        DepartureTime
-      }
-    }
-  ''';
-
-    final request = GraphQLRequest<String>(
-      document: subscriptionDoc,
-      authorizationMode: APIAuthorizationType.iam, // important for unauth
-    );
-
-    final stream = Amplify.API.subscribe<String>(request);
-
-    _tripListSub = stream.listen(
-      (event) {
-        if (event.data != null) {
-          final data = jsonDecode(event.data!);
-          final trip = data['onUpdateTripList'];
-          final station = trip['MRTStation'] as String;
-          final timeOfDay = trip['TripTime'] as String; // use TripTime
-          final departure = DateTime.parse(trip['DepartureTime'] as String);
-
-          // Update relevant list
-          if (station == 'KAP' && timeOfDay == 'MORNING') {
-            morningTimesKAP.add(departure);
-            morningTimesKAP.sort();
-          } else if (station == 'CLE' && timeOfDay == 'MORNING') {
-            morningTimesCLE.add(departure);
-            morningTimesCLE.sort();
-          } else if (station == 'KAP' && timeOfDay == 'AFTERNOON') {
-            afternoonTimesKAP.add(departure);
-            afternoonTimesKAP.sort();
-          } else if (station == 'CLE' && timeOfDay == 'AFTERNOON') {
-            afternoonTimesCLE.add(departure);
-            afternoonTimesCLE.sort();
-          }
-
-          notifyListeners();
-        }
-      },
-      onError: (error) {
-        safePrint('TripList subscription error: $error');
-      },
-      onDone: () {
-        safePrint('TripList subscription closed');
-      },
-    );
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  // CountTripList
-
-  void _listenCountTripList() {
-    const subscriptionDoc = '''
-    subscription OnUpdateCountTripList {
-      onUpdateCountTripList {
-        id
-        MRTStation
-        TripTime
-        BusStop
-        TripNo
-        Count
-      }
-    }
-  ''';
-
-    final request = GraphQLRequest<String>(
-      document: subscriptionDoc,
-      authorizationMode: APIAuthorizationType.iam, // 👈 important for unauth
-    );
-
-    final stream = Amplify.API.subscribe<String>(request);
-
-    _countTripListSub = stream.listen(
-      (event) {
-        if (event.data != null) {
-          final data = jsonDecode(event.data!);
-          final trip = data['onUpdateCountTripList'];
-
-          final station = trip['MRTStation'] as String;
-          final tripTime = trip['TripTime'] as String; // enum value as string
-          final busStopName = trip['BusStop'] as String;
-          final tripNo = trip['TripNo'] as int;
-          final count = trip['Count'] as int;
-
-          // Example: update your local state with the new count
-          safePrint(
-            'CountTripList update: Station=$station, TripTime=$tripTime, '
-            'BusStop=$busStopName, TripNo=$tripNo, Count=$count',
-          );
-
-          countTrip == 0 ? countTrip = count : countTrip = 0;
-          notifyListeners();
-        }
-      },
-      onError: (error) {
-        safePrint('CountTripList subscription error: $error');
-      },
-      onDone: () {
-        safePrint('CountTripList subscription closed');
-      },
-    );
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// --- Atomic load method that updates public lists and notifies ---
   //////////////////////////////////////////////////////////////////////////////
 
@@ -464,12 +261,6 @@ class BusData extends ChangeNotifier {
 
   Future<void> loadData() async {
     await _loadAll();
-
-    // Start subscriptions after initial load
-    _listenAnnouncements();
-    _listenBusStops();
-    _listenTripList();
-    _listenCountTripList();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -479,10 +270,6 @@ class BusData extends ChangeNotifier {
   @override
   void dispose() {
     _notifyDebounce?.cancel();
-    _announcementsSub?.cancel();
-    _busStopsSub?.cancel();
-    _tripListSub?.cancel();
-    _countTripListSub?.cancel();
     super.dispose();
   }
 }

@@ -1264,6 +1264,7 @@ class _AfternoonScreenState extends State<AfternoonScreen>
   void updateSelectedBox(int box, bool refresh) {
     // Prevent interactions while a confirmation/cancel flow is in progress.
     // confirmationPressed is tri-state: true = confirmed, false = normal, null = cancelling.
+
     if (confirmationPressed != false) {
       if (kDebugMode) {
         print('Tap ignored: confirmationPressed=$confirmationPressed');
@@ -1284,6 +1285,9 @@ class _AfternoonScreenState extends State<AfternoonScreen>
       }
       return; // return if update is in progress to prevent wrong UI loads
     }
+
+    // fetch data, in case changes in backend
+    _busData.loadData();
 
     if (kDebugMode) {
       // Debug: show the previous selection before we change it.
