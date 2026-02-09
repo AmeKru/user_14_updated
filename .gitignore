@@ -44,6 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# AWS IoT access keys
+assets/c_certs
+
 # Amplify config
 lib/amplifyconfiguration.dart
 

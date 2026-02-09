@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
 import 'package:geolocator/geolocator.dart';
@@ -45,9 +44,9 @@ class LocationService {
       // Convert to LatLng for map usage
       return LatLng(position.latitude, position.longitude);
     } catch (e) {
-      if (kDebugMode) {
-        print('Error getting current location: $e');
-      }
+      // if (kDebugMode) {
+      //   print('Error getting current location: $e');
+      // }
       return null;
     }
   }

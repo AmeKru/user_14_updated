@@ -1,13 +1,18 @@
 import 'dart:convert';
 import 'dart:io' show SecurityContext; // only used on mobile/desktop
 
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_core/amplify_core.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart' as mqtt;
+
+import 'mqtt_imports/mqtt_neither.dart'
+    if (dart.library.io) 'mqtt_imports/mqtt_io.dart'
+    if (dart.library.html) 'mqtt_imports/mqtt_web.dart';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// ////////////////////////////////////////////////////////////////////////////
@@ -16,35 +21,33 @@ import 'package:mqtt_client/mqtt_server_client.dart' as mqtt;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-// Data model for storing MQTT-related values for a single bus.
+// data model for storing MQTT-related values for a single bus
 //
-// Each property is wrapped in a [ValueNotifier] so that UI widgets
-// can listen for changes and update automatically when new data arrives.
+// each property is wrapped in a [ValueNotifier] so that UI widgets
+// can listen for changes and update automatically when new data arrives
 
 class BusData {
   final ValueNotifier<LatLng?> location = ValueNotifier(
     null,
-  ); // Current GPS location
-  final ValueNotifier<String?> time = ValueNotifier(''); // Last reported time
+  ); // current GPS location
+  final ValueNotifier<String?> time = ValueNotifier(''); // last reported time
   final ValueNotifier<double?> speed = ValueNotifier(
     0,
-  ); // Current speed in km/h
-  final ValueNotifier<String?> stop = ValueNotifier(''); // Next bus stop name
+  ); // current speed in km/h
+  final ValueNotifier<String?> stop = ValueNotifier(''); // next bus stop name
   final ValueNotifier<String?> eta = ValueNotifier(''); // ETA to next stop
-  final ValueNotifier<int?> count = ValueNotifier(0); // Passenger count
+  final ValueNotifier<int?> count = ValueNotifier(0); // passenger count
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Widget that connects to an MQTT broker and listens for bus telemetry.
-//
-// Displays bus markers on a map based on live location updates.
+// widget that connects to an MQTT broker and listens for bus telemetry.
 
 class ConnectMQTT extends StatefulWidget {
   const ConnectMQTT({super.key});
 
   //////////////////////////////////////////////////////////////////////////////
-  // Static map of bus IDs to their [BusData] instances.
-  // This allows easy access to bus data from anywhere in the app.
+  // static map of bus IDs to their [BusData] instances.
+  // this allows easy access to bus data from anywhere in the app.
 
   static final Map<int, BusData> buses = {
     1: BusData(),
@@ -57,23 +60,16 @@ class ConnectMQTT extends StatefulWidget {
 }
 
 class ConnectMQTTState extends State<ConnectMQTT> {
-  String uniqueID = 'MyPC_24092024'; //MR HUI
-
   String statusText = "Status Text";
   String? _pendingStatus; // stores a status set before mount
-  bool isConnected = false; // Tracks connection state
+  bool isConnected = false; // tracks connection state
 
-  // Chelsters
-  final mqtt.MqttServerClient client = mqtt.MqttServerClient(
-    'a2a1gb4ur9migt-ats.iot.ap-southeast-2.amazonaws.com',
-    '',
-  );
-  // Chelsters
+  late dynamic client;
 
   //////////////////////////////////////////////////////////////////////////////
-  // Topics for each bus and data type.
+  // topics for each bus and data type.  (=°^°=)
   //
-  // Keys: bus ID → Map of data type → MQTT topic name.
+  // keys: bus ID → Map of data type → MQTT topic name.
 
   final Map<int, Map<String, String>> topics = {
     1: {
@@ -102,10 +98,10 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     },
   };
 
-  // Unique client ID for this MQTT session
+  // unique client ID for this MQTT session
   final randomClientID = 'MooRideApp_${DateTime.now().millisecondsSinceEpoch}';
 
-  // Toggle debug logging
+  // toggle debug logging
   bool debugMode = true;
   void logDebug(String message) {
     if (debugMode) {
@@ -119,7 +115,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   void initState() {
     super.initState();
 
-    // If a status was assigned prior to mounting, apply it now without extra logic
+    // if a status was assigned prior to mounting, apply it now without extra logic
     if (_pendingStatus != null) {
       statusText = _pendingStatus!;
       _pendingStatus = null;
@@ -129,38 +125,12 @@ class ConnectMQTTState extends State<ConnectMQTT> {
 
   @override
   Widget build(BuildContext context) {
-    // Dynamically render markers for all buses based on their live location
-    return Stack(
-      children: ConnectMQTT.buses.entries.map((entry) {
-        final busId = entry.key;
-        final busData = entry.value;
-
-        return ValueListenableBuilder<LatLng?>(
-          valueListenable: busData.location,
-          builder: (context, location, _) {
-            if (location != null) {
-              return MarkerLayer(
-                markers: [
-                  Marker(
-                    point: location,
-                    child: Icon(
-                      Icons.directions_bus,
-                      color:
-                          Colors.blue[busId * 200], // Different shade per bus
-                    ),
-                  ),
-                ],
-              );
-            }
-            return Container(); // No marker if location is null
-          },
-        );
-      }).toList(),
-    );
+    // dynamically render markers for all buses based on their live location
+    return SizedBox();
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Initiates connection to the MQTT broker.
+  // initiates connection to the MQTT broker.
 
   Future<void> _connect() async {
     try {
@@ -189,7 +159,12 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   Future<bool> mqttConnect() async {
     try {
       if (!kIsWeb) {
-        // ===== Load AWS IoT Certificates =====
+        client = MqttClientDef(
+          'a1k1lijdpm8d3s-ats.iot.ap-southeast-1.amazonaws.com',
+          '',
+        );
+
+        // ===== Mobile/Desktop: TLS Certificates =====
         ByteData rootCA = await rootBundle.load(
           'assets/c_certs/AmazonRootCA1.pem',
         );
@@ -199,7 +174,6 @@ class ConnectMQTTState extends State<ConnectMQTT> {
         ByteData privateKey = await rootBundle.load(
           'assets/c_certs/private.pem.key',
         );
-        // =====================================
 
         // Configure TLS security context (mobile/desktop only)
         SecurityContext context = SecurityContext.defaultContext;
@@ -212,8 +186,21 @@ class ConnectMQTTState extends State<ConnectMQTT> {
         client.secure = true;
       } else {
         // Web: TLS handled by browser, no SecurityContext
-        client.port = 443; // often required for WebSocket over HTTPS
-        client.secure = true;
+        final session =
+            await Amplify.Auth.fetchAuthSession() as CognitoAuthSession;
+        final creds = session.credentialsResult.value;
+
+        final signedUrl = buildSignedUrl(
+          accessKeyId: creds.accessKeyId,
+          secretAccessKey: creds.secretAccessKey,
+          sessionToken: creds.sessionToken!,
+          region: "ap-southeast-1",
+          endpoint: "a1k1lijdpm8d3s-ats.iot.ap-southeast-1.amazonaws.com",
+        );
+
+        // Instantiate browser client with the signed URL string
+        client = MqttClientDef(signedUrl, randomClientID);
+        client.port = 443;
       }
 
       // Common MQTT client configuration
@@ -255,6 +242,87 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     }
   }
 
+  String buildSignedUrl({
+    required String accessKeyId,
+    required String secretAccessKey,
+    required String sessionToken,
+    required String region,
+    required String endpoint, // e.g. "xxxx.iot.ap-southeast-1.amazonaws.com"
+  }) {
+    final now = DateTime.now().toUtc();
+    final amzDate = _formatAmzDate(now);
+    final dateStamp = _formatDateStamp(now);
+
+    final service = "iotdevicegateway";
+    final algorithm = "AWS4-HMAC-SHA256";
+    final credentialScope = "$dateStamp/$region/$service/aws4_request";
+
+    final canonicalUri = "/mqtt";
+    final canonicalQuerystring =
+        "X-Amz-Algorithm=$algorithm&X-Amz-Credential=${Uri.encodeComponent("$accessKeyId/$credentialScope")}"
+        "&X-Amz-Date=$amzDate&X-Amz-SignedHeaders=host";
+
+    final canonicalHeaders = "host:$endpoint\n";
+    final signedHeaders = "host";
+    final payloadHash = sha256.convert(utf8.encode("")).toString();
+
+    final canonicalRequest =
+        "GET\n$canonicalUri\n$canonicalQuerystring\n$canonicalHeaders\n$signedHeaders\n$payloadHash";
+
+    final stringToSign =
+        "$algorithm\n$amzDate\n$credentialScope\n${sha256.convert(utf8.encode(canonicalRequest)).toString()}";
+
+    final signingKey = _getSignatureKey(
+      secretAccessKey,
+      dateStamp,
+      region,
+      service,
+    );
+    final signature = Hmac(
+      sha256,
+      signingKey,
+    ).convert(utf8.encode(stringToSign)).toString();
+
+    final finalQuerystring =
+        "$canonicalQuerystring&X-Amz-Signature=$signature&X-Amz-Security-Token=${Uri.encodeComponent(sessionToken)}";
+
+    return "wss://$endpoint$canonicalUri?$finalQuerystring";
+  }
+
+  String _formatAmzDate(DateTime dt) {
+    return "${dt.year.toString().padLeft(4, '0')}"
+        "${dt.month.toString().padLeft(2, '0')}"
+        "${dt.day.toString().padLeft(2, '0')}T"
+        "${dt.hour.toString().padLeft(2, '0')}"
+        "${dt.minute.toString().padLeft(2, '0')}"
+        "${dt.second.toString().padLeft(2, '0')}Z";
+  }
+
+  String _formatDateStamp(DateTime dt) {
+    return "${dt.year.toString().padLeft(4, '0')}"
+        "${dt.month.toString().padLeft(2, '0')}"
+        "${dt.day.toString().padLeft(2, '0')}";
+  }
+
+  Uint8List _getSignatureKey(
+    String key,
+    String dateStamp,
+    String region,
+    String service,
+  ) {
+    final kDate = Hmac(
+      sha256,
+      utf8.encode("AWS4$key"),
+    ).convert(utf8.encode(dateStamp)).bytes;
+    final kRegion = Hmac(sha256, kDate).convert(utf8.encode(region)).bytes;
+    final kService = Hmac(sha256, kRegion).convert(utf8.encode(service)).bytes;
+    final kSigning = Hmac(
+      sha256,
+      kService,
+    ).convert(utf8.encode("aws4_request")).bytes;
+    return Uint8List.fromList(kSigning);
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   // Handles incoming MQTT messages and routes them to the
   // correct bus/data type
@@ -266,7 +334,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
       recMess.payload.message,
     );
 
-    // Match topic to bus and data type
+    // match topic to bus and data type
     topics.forEach((busId, topicMap) {
       topicMap.forEach((type, topicName) {
         if (topic == topicName) {
@@ -277,7 +345,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Safely retrieves a value from a JSON map, returning a default if missing
+  // safely retrieves a value from a JSON map, returning a default if missing
 
   String _safeGet(
     Map<String, dynamic> data,
@@ -288,8 +356,8 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Processes a decoded MQTT message for a specific bus and data type
-  // Updates the corresponding [ValueNotifier] in [BusData] so the UI refreshes
+  // processes a decoded MQTT message for a specific bus and data type
+  // updates the corresponding [ValueNotifier] in [BusData] so the UI refreshes
 
   void _processMessage(int busId, String type, String payload) {
     try {
@@ -304,16 +372,16 @@ class ConnectMQTTState extends State<ConnectMQTT> {
               double.tryParse(_safeGet(data, 'speed_kmPh')) ?? 0;
           break;
         case 'loc':
-          // Parse latitude and longitude from the payload
+          // parse latitude and longitude from the payload
           final lat = double.tryParse(_safeGet(data, 'lat')) ?? 0;
           final lon = double.tryParse(_safeGet(data, 'lon')) ?? 0;
 
-          // Update the bus's location ValueNotifier so the map marker moves
+          // update the bus's location ValueNotifier so the map marker moves
           ConnectMQTT.buses[busId]!.location.value = LatLng(lat, lon);
           break;
 
         case 'stop':
-          // Update the next bus stop name
+          // update the next bus stop name
           ConnectMQTT.buses[busId]!.stop.value = _safeGet(
             data,
             'next_bus_stop',
@@ -321,11 +389,11 @@ class ConnectMQTTState extends State<ConnectMQTT> {
           break;
 
         case 'eta':
-          // Extract ETA minutes and seconds
+          // extract ETA minutes and seconds
           final min = _safeGet(data, 'eta_minutes');
           final sec = _safeGet(data, 'eta_seconds');
 
-          // Handle special cases for ETA display
+          // handle special cases for ETA display
           ConnectMQTT.buses[busId]!.eta.value =
               (min == 'Calculating...' || sec == 'Calculating...')
               ? 'Calculating...'
@@ -335,7 +403,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
           break;
 
         case 'count':
-          // Update passenger count
+          // update passenger count
           ConnectMQTT.buses[busId]!.count.value =
               int.tryParse(_safeGet(data, 'passenger_count')) ?? 0;
           break;
@@ -346,26 +414,26 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Updates the connection status text in the UI
+  // updates the connection status text in the UI
 
   void setStatus(String content) {
-    // Always keep the internal value up to date
+    // always keep the internal value up to date
     statusText = content;
 
-    // If not mounted yet, store for later and skip setState
+    // if not mounted yet, store for later and skip setState
     if (!mounted) {
       _pendingStatus = content;
       return;
     }
 
-    // Only call setState when safe
+    // only call setState when safe
     setState(() {
       statusText = content;
     });
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  // Called when the MQTT client successfully connects to the broker
+  // called when the MQTT client successfully connects to the broker
 
   void onConnected() {
     logDebug("MQTT connection established.");
@@ -375,28 +443,27 @@ class ConnectMQTTState extends State<ConnectMQTT> {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Called when the MQTT client disconnects from the broker
-  // Also attempts to auto-reconnect after 5 seconds if still disconnected
+  // called when the MQTT client disconnects from the broker
+  // also attempts to auto-reconnect after 5 seconds if still disconnected
 
   void onDisconnected() {
     logDebug("MQTT connection lost.");
     isConnected = false;
     setStatus("Client Disconnected");
 
-    // Auto-reconnect after a delay; ensure we don't start connect loops while unmounted
+    // auto-reconnect after a delay; ensure we don't start connect loops while unmounted
     Future.delayed(const Duration(seconds: 5), () {
       if (!isConnected && mounted) {
         logDebug("Attempting to reconnect...");
         _connect();
       } else if (!isConnected && !mounted) {
-        // optional: schedule reconnect later or let parent handle it
         logDebug("Skipped reconnect because widget is not mounted");
       }
     });
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // Called when a PING RESP (pong) is received from the broker
+  // called when a PING RESP (pong) is received from the broker
 
   void pong() {
     logDebug('Ping response client callback invoked');
