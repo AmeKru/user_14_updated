@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.16.0+16
+version: 1.17.0+17
 
 environment:
   sdk: ^3.9.0
@@ -99,11 +99,10 @@ flutter:
   assets:
     - images/np_logo.png
 
-    #### CHELSTER ####
+    # necessary certificates for MQTT
     - assets/c_certs/AmazonRootCA1.pem
     - assets/c_certs/certificate.pem
     - assets/c_certs/private.pem
-    #### CHELSTER ####
 
 
   # An image asset can refer to one or more resolution-specific "variants", see
