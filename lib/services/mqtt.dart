@@ -10,6 +10,8 @@ import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 
+// imports necessary mqtt client depending on where program is run (web/mobile app)
+// needed as will throw error when importing a library that is unavailable on mobile/web
 import 'mqtt_imports/mqtt_neither.dart'
     if (dart.library.io) 'mqtt_imports/mqtt_io.dart'
     if (dart.library.html) 'mqtt_imports/mqtt_web.dart';
