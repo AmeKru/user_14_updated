@@ -1,13 +1,13 @@
 {
   "api": {
-    "moobusapps": {
+    "user14updated": {
       "dependsOn": [
         {
           "attributes": [
             "UserPoolId"
           ],
           "category": "auth",
-          "resourceName": "moobusappsc354c1dbc354c1db"
+          "resourceName": "user14updated36572e51"
         }
       ],
       "output": {
@@ -16,7 +16,7 @@
             {
               "authenticationType": "AMAZON_COGNITO_USER_POOLS",
               "userPoolConfig": {
-                "userPoolId": "authmoobusappsc354c1dbc354c1db"
+                "userPoolId": "authuser14updated36572e51"
               }
             }
           ],
@@ -30,7 +30,7 @@
     }
   },
   "auth": {
-    "moobusappsc354c1dbc354c1db": {
+    "user14updated36572e51": {
       "customAuth": false,
       "dependsOn": [],
       "frontendAuthConfig": {

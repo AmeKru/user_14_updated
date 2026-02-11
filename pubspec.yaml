@@ -101,8 +101,8 @@ flutter:
 
     #### CHELSTER ####
     - assets/c_certs/AmazonRootCA1.pem
-    - assets/c_certs/certificate.pem.crt
-    - assets/c_certs/private.pem.key
+    - assets/c_certs/certificate.pem
+    - assets/c_certs/private.pem
     #### CHELSTER ####
 
 

@@ -160,7 +160,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     try {
       if (!kIsWeb) {
         client = MqttClientDef(
-          'a1k1lijdpm8d3s-ats.iot.ap-southeast-1.amazonaws.com',
+          'azhwphql7mbha-ats.iot.ap-southeast-1.amazonaws.com',
           '',
         );
 
@@ -169,10 +169,10 @@ class ConnectMQTTState extends State<ConnectMQTT> {
           'assets/c_certs/AmazonRootCA1.pem',
         );
         ByteData deviceCert = await rootBundle.load(
-          'assets/c_certs/certificate.pem.crt',
+          'assets/c_certs/certificate.pem',
         );
         ByteData privateKey = await rootBundle.load(
-          'assets/c_certs/private.pem.key',
+          'assets/c_certs/private.pem',
         );
 
         // Configure TLS security context (mobile/desktop only)
@@ -195,7 +195,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
           secretAccessKey: creds.secretAccessKey,
           sessionToken: creds.sessionToken!,
           region: "ap-southeast-1",
-          endpoint: "a1k1lijdpm8d3s-ats.iot.ap-southeast-1.amazonaws.com",
+          endpoint: "azhwphql7mbha-ats.iot.ap-southeast-1.amazonaws.com",
         );
 
         // Instantiate browser client with the signed URL string
@@ -247,7 +247,7 @@ class ConnectMQTTState extends State<ConnectMQTT> {
     required String secretAccessKey,
     required String sessionToken,
     required String region,
-    required String endpoint, // e.g. "xxxx.iot.ap-southeast-1.amazonaws.com"
+    required String endpoint,
   }) {
     final now = DateTime.now().toUtc();
     final amzDate = _formatAmzDate(now);

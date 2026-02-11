@@ -1,0 +1,11 @@
+{
+  "AppSyncApiName": "moobusapps",
+  "DynamoDBBillingMode": "PAY_PER_REQUEST",
+  "DynamoDBEnableServerSideEncryption": false,
+  "AuthCognitoUserPoolId": {
+    "Fn::GetAtt": [
+      "authmoobusappsc354c1dbc354c1db",
+      "Outputs.UserPoolId"
+    ]
+  }
+}
